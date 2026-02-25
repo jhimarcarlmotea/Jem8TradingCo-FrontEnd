@@ -1,0 +1,64 @@
+{
+  "leaders": [
+    {
+      "name": "Ms. Shella R. Acibar",
+      "role": "Co-Owner of Jem 8 Circle",
+      "image": "./assets/Shella_Ricafrente-Acibar.png"
+    },
+    {
+      "name": "Ms. Jinkie Malinag",
+      "role": "Co-Owner of Jem 8 Circle",
+      "image": "./assets/Jinkie_Ricafrente-Malinag.png"
+    },
+    {
+      "name": "Ms. Akiko Serrano",
+      "role": "Sales Executive of Jem 8 Circle",
+      "image": "./assets/Akiko_Serrano.png"
+    },
+    {
+      "name": "Ms. Ruby Ann Castillo",
+      "role": "Sales Executive of Jem 8 Circle",
+      "image": "./assets/Ruby_Ann_Castillo.png"
+    },
+    {
+      "name": "Ms. Charisse Mae Decano",
+      "role": "Admin/HR Representative of Jem 8 Circle",
+      "image": "./assets/Charisse_Decano.png"
+    },
+    {
+      "name": "Mr. Adrian Mallanao",
+      "role": "Laison Head Officer of Jem 8 Circle",
+      "image": "./assets/Adrian_Mallanao.png"
+    },
+    {
+      "name": "Mr. Vhernaldo Ricafrente",
+      "role": "Marketing/Admin Assistant of Jem 8 Circle",
+      "image": "./assets/Vhernaldo_Ricafrente.png"
+    },
+    {
+      "name": "Mr. Mark Edward Malinag",
+      "role": "Marketing/Admin Assistant of Jem 8 Circle",
+      "image": "./assets/Mark_Edward_C_Malinag.png"
+    },
+    {
+      "name": "Mr. Daniel Kian Rodriguez Cadena",
+      "role": "Business Associate of Jem 8 Circle",
+      "image": "./assets/Daniel_Kian_Rodriguez_Cadena.png"
+    },
+    {
+      "name": "Ms. Kayla R. Bacsafra",
+      "role": "Sales Executive of Jem 8 Circle (South Luzon Area)",
+      "image": "./assets/Kayla_R_Bacsafra.png"
+    },
+    {
+      "name": "Ms. Cristina A. Saturnio",
+      "role": "Accounting and Finance of Jem 8 Circle",
+      "image": "./assets/Cristina_A_Saturnio.png"
+    }
+  ],
+  "stats": {
+    "clients": 250,
+    "since": 2016,
+    "employees": "1–7"
+  }
+}
