@@ -127,7 +127,7 @@
 /* ===== HERO SECTION ===== */
 .about .hero-section {
   padding-top: 140px;
-  padding-bottom: 60px;
+  padding-bottom: 100px;    
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -169,11 +169,10 @@
   margin: 40px auto 0;
 }
 
-/* ===== MISSION SECTION ===== */
 .about .mission-section {
   max-width: 1200px;
-  margin: 80px auto;
-  padding: 0 80px;
+  margin: 80px auto;        
+  padding: 60px 80px;       
   display: flex;
   align-items: flex-start;
   gap: 80px;

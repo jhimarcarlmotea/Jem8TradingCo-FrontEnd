@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
 import '../style/about.css';
 
+// Leader images
+import Shella from '../assets/Shella_Ricafrente-Acibar.png';
+import Jinkie from '../assets/Jinkie_Ricafrente-Malinag.png';
+import Akiko from '../assets/Akiko_Serrano.png';
+import Ruby from '../assets/Ruby_Ann_Castillo.png';
+import Charisse from '../assets/Charisse_Decano.png';
+import Adrian from '../assets/Adrian_Mallanao.png';
+import Vhernaldo from '../assets/Vhernaldo_Ricafrente.png';
+import Mark from '../assets/Mark_Edward_C_Malinag.png';
+import Daniel from '../assets/Daniel_Kian_Rodriguez_Cadena.png';
+import Kayla from '../assets/Kayla_R_Bacsafra.png';
+import Cristina from '../assets/Cristina_A_Saturnio.png';
+
 const About = () => {
   const [stats] = useState({
     since: 2016,
@@ -9,75 +22,19 @@ const About = () => {
   });
 
   const [leaders] = useState([
-    {
-      id: 1,
-      name: 'Ms. Shella R. Acibar',
-      role: 'Co-Owner of Jem 8 Circle',
-      image: '/img/Shella_Ricafrente-Acibar.png'
-    },
-    {
-      id: 2,
-      name: 'Ms. Jinkie Malinag',
-      role: 'Co-Owner of Jem 8 Circle',
-      image: '/img/Jinkie_Ricafrente-Malinag.png'
-    },
-    {
-      id: 3,
-      name: 'Ms. Akiko Serrano',
-      role: 'Sales Executive of Jem 8 Circle',
-      image: '/img/Akiko_Serrano.png'
-    },
-    {
-      id: 4,
-      name: 'Ms. Ruby Ann Castillo',
-      role: 'Sales Executive of Jem 8 Circle',
-      image: '/img/Ruby_Ann_Castillo.png'
-    },
-    {
-      id: 5,
-      name: 'Ms. Charisse Mae Decano',
-      role: 'Admin/HR Representative of Jem 8 Circle',
-      image: '/img/Charisse_Decano.png'
-    },
-    {
-      id: 6,
-      name: 'Mr. Adrian Mallanao',
-      role: 'Laison Head Officer of Jem 8 Circle',
-      image: '/img/Adrian_Mallanao.png'
-    },
-    {
-      id: 7,
-      name: 'Mr. Vhernaldo Ricafrente',
-      role: 'Marketing/Admin Assistant of Jem 8 Circle',
-      image: '/img/Vhernaldo_Ricafrente.png'
-    },
-    {
-      id: 8,
-      name: 'Mr. Mark Edward Malinag',
-      role: 'Marketing/Admin Assistant of Jem 8 Circle',
-      image: '/img/Mark_Edward_C_Malinag.png'
-    },
-    {
-      id: 9,
-      name: 'Mr. Daniel Kian Rodriguez Cadena',
-      role: 'Business Associate of Jem 8 Circle',
-      image: '/img/Daniel_Kian_Rodriguez_Cadena.png'
-    },
-    {
-      id: 10,
-      name: 'Ms. Kayla R. Bacsafra',
-      role: 'Sales Executive of Jem 8 Circle (South Luzon Area)',
-      image: '/img/Kayla_R_Bacsafra.png'
-    },
-    {
-      id: 11,
-      name: 'Ms. Cristina A. Saturnio',
-      role: 'Accounting and Finance of Jem 8 Circle',
-      image: '/img/Cristina_A_Saturnio.png'
-    }
+    { id: 1,  name: 'Ms. Shella R. Acibar',            role: 'Co-Owner of Jem 8 Circle',                           image: Shella    },
+    { id: 2,  name: 'Ms. Jinkie Malinag',               role: 'Co-Owner of Jem 8 Circle',                           image: Jinkie    },
+    { id: 3,  name: 'Ms. Akiko Serrano',                role: 'Sales Executive of Jem 8 Circle',                    image: Akiko     },
+    { id: 4,  name: 'Ms. Ruby Ann Castillo',            role: 'Sales Executive of Jem 8 Circle',                    image: Ruby      },
+    { id: 5,  name: 'Ms. Charisse Mae Decano',          role: 'Admin/HR Representative of Jem 8 Circle',            image: Charisse  },
+    { id: 6,  name: 'Mr. Adrian Mallanao',              role: 'Laison Head Officer of Jem 8 Circle',                image: Adrian    },
+    { id: 7,  name: 'Mr. Vhernaldo Ricafrente',         role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Vhernaldo },
+    { id: 8,  name: 'Mr. Mark Edward Malinag',          role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Mark      },
+    { id: 9,  name: 'Mr. Daniel Kian Rodriguez Cadena', role: 'Business Associate of Jem 8 Circle',                 image: Daniel    },
+    { id: 10, name: 'Ms. Kayla R. Bacsafra',            role: 'Sales Executive of Jem 8 Circle (South Luzon Area)', image: Kayla     },
+    { id: 11, name: 'Ms. Cristina A. Saturnio',         role: 'Accounting and Finance of Jem 8 Circle',             image: Cristina  },
   ]);
 
-  // Image error handler
   const handleImageError = (e) => {
     e.target.src = '/img/placeholder.png';
   };
@@ -88,7 +45,7 @@ const About = () => {
       <header className="header">
         <img 
           className="logo-jem-circle-2" 
-          src="/img/Logo — Jem 8 Circle Trading Co (1).png" 
+          src="/src/assets/Logo — Jem 8 Circle Trading Co (1).png" 
           alt="JEM 8 Circle Logo" 
         />
         <nav className="navigation">
