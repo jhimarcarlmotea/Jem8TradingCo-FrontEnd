@@ -57,7 +57,7 @@ export default function MyOrders() {
             )}
           </div>
         </div>
-        <Footer />
+        {/* <Footer /> */}
       </div>
     );
   }
@@ -147,10 +147,10 @@ export default function MyOrders() {
                       <span className="order-card__more">+{order.items.length - 3}</span>
                     )}
                   </div>
-                  <div className="order-card__footer">
+                  {/* <div className="order-card__footer">
                     <span className="order-card__pay">{order.paymentMethod}</span>
                     <span className="order-card__total">₱{order.total.toLocaleString()}</span>
-                  </div>
+                  </div> */}
                 </div>
               ))
             )}
@@ -276,7 +276,7 @@ export default function MyOrders() {
         </div>
       </section>
 
-      <Footer />
+      
     </div>
   );
 }

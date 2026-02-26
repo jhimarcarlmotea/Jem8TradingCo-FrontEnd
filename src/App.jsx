@@ -15,6 +15,7 @@ import MyOrders from "./pages/MyOrders";
 import AdminProducts from "./pages/adminProducts";
 import AdminDashboard from "./pages/adminDashboard";
 import AdminPanelSettings from "./pages/adminSettings";
+import AdminLeadership from "./pages/adminLeadership";
 
 // Layout for public pages (with main Header & Footer)
 function PublicLayout() {
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/adminDashboard" element={<AdminDashboard />} />
           <Route path="/adminProducts" element={<AdminProducts />} />
           <Route path="/adminSettings" element={<AdminPanelSettings />} />
+          <Route path="/adminLeadership" element={<AdminLeadership />} />
         </Route>
       </Routes>
     </CartProvider>
