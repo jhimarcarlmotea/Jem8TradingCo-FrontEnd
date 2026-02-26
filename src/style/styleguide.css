@@ -5,3 +5,317 @@
   --color-border-brand-default: var(--color-primitives-brand-800);
   --color-primitives-brand-800: rgba(44, 44, 44, 1);
 }
+
+
+:root {
+  --static-black100: rgba(0, 0, 0, 1);
+  --static-white100: rgba(255, 255, 255, 1);
+  --14-regular-font-family: "Inter", Helvetica;
+  --14-regular-font-weight: 400;
+  --14-regular-font-size: 14px;
+  --14-regular-letter-spacing: 0px;
+  --14-regular-line-height: 20px;
+  --14-regular-font-style: normal;
+  --24-semibold-font-family: "Inter", Helvetica;
+  --24-semibold-font-weight: 600;
+  --24-semibold-font-size: 24px;
+  --24-semibold-letter-spacing: 0px;
+  --24-semibold-line-height: 36px;
+  --24-semibold-font-style: normal;
+  --12-regular-font-family: "Inter", Helvetica;
+  --12-regular-font-weight: 400;
+  --12-regular-font-size: 12px;
+  --12-regular-letter-spacing: 0px;
+  --12-regular-line-height: 16px;
+  --12-regular-font-style: normal;
+  --14-semibold-font-family: "Inter", Helvetica;
+  --14-semibold-font-weight: 600;
+  --14-semibold-font-size: 14px;
+  --14-semibold-letter-spacing: 0px;
+  --14-semibold-line-height: 20px;
+  --14-semibold-font-style: normal;
+  --paragraph-1-medium-font-family: "Inter", Helvetica;
+  --paragraph-1-medium-font-weight: 500;
+  --paragraph-1-medium-font-size: 16px;
+  --paragraph-1-medium-letter-spacing: 0px;
+  --paragraph-1-medium-line-height: normal;
+  --paragraph-1-medium-font-style: normal;
+  --paragraph-2-regular-font-family: "Inter", Helvetica;
+  --paragraph-2-regular-font-weight: 400;
+  --paragraph-2-regular-font-size: 14px;
+  --paragraph-2-regular-letter-spacing: 0px;
+  --paragraph-2-regular-line-height: normal;
+  --paragraph-2-regular-font-style: normal;
+  --label-1-regular-font-family: "Inter", Helvetica;
+  --label-1-regular-font-weight: 400;
+  --label-1-regular-font-size: 12px;
+  --label-1-regular-letter-spacing: 0px;
+  --label-1-regular-line-height: normal;
+  --label-1-regular-font-style: normal;
+  --paragraph-2-medium-font-family: "Inter", Helvetica;
+  --paragraph-2-medium-font-weight: 500;
+  --paragraph-2-medium-font-size: 14px;
+  --paragraph-2-medium-letter-spacing: 0px;
+  --paragraph-2-medium-line-height: normal;
+  --paragraph-2-medium-font-style: normal;
+  --subheading-3-medium-font-family: "Poppins", Helvetica;
+  --subheading-3-medium-font-weight: 500;
+  --subheading-3-medium-font-size: 20px;
+  --subheading-3-medium-letter-spacing: 0px;
+  --subheading-3-medium-line-height: normal;
+  --subheading-3-medium-font-style: normal;
+  --spacing-4: 4px;
+  --spacing-16: 16px;
+  --spacing-24: 24px;
+  --spacing-28: 28px;
+  --spacing-40: 40px;
+  --spacing-8-duplicate: 8px;
+  --spacing-radius-8: 8px;
+  --spacing-12-duplicate: 12px;
+  --spacing-20-duplicate: 20px;
+  --corner-radius-8: 8px;
+  --corner-radius-12: 12px;
+  --corner-radius-20: 20px;
+  --corner-radius-80: 80px;
+  --corner-radius-16-duplicate: 16px;
+  --themes-black-100: rgba(28, 28, 28, 1);
+  --colors-primary: var(--colors-black-100-duplicate);
+  --colors-black-40: rgba(0, 0, 0, 0.4);
+  --colors-black-20: rgba(0, 0, 0, 0.2);
+  --colors-black-100-duplicate: rgba(0, 0, 0, 1);
+  --colors-secondary-indigo: rgba(173, 173, 251, 1);
+  --colors-secondary-cyan: rgba(160, 188, 232, 1);
+  --colors-secondary-mint: rgba(107, 230, 211, 1);
+  --colors-secondary-blue: rgba(125, 187, 255, 1);
+  --colors-secondary-purple: rgba(184, 153, 235, 1);
+  --colors-secondary-green: rgba(113, 221, 140, 1);
+  --colors-background-5: rgba(230, 241, 253, 1);
+  --colors-background-4: rgba(237, 238, 252, 1);
+  --colors-black-10: rgba(0, 0, 0, 0.1);
+  --colors-black-4: rgba(0, 0, 0, 0.04);
+  --colors-background-2: rgba(249, 249, 250, 1);
+  --visibility-1-visibility-1: initial;
+  --icon-size-28-duplicate: 28px;
+  --icon-size-24-duplicate: 24px;
+  --corner-radius-4-duplicate: 4px;
+}
+
+/*
+
+To enable a theme in your HTML, simply add one of the following data attributes to an HTML element, like so:
+
+<body data-spacing-mode="standard">
+    <!-- the rest of your content -->
+</body>
+
+You can apply the theme on any DOM node, not just the `body`
+
+*/
+
+[data-spacing-mode="standard"] {
+  --spacing-4: 4px;
+  --spacing-16: 16px;
+  --spacing-24: 24px;
+  --spacing-28: 28px;
+  --spacing-40: 40px;
+  --spacing-8-duplicate: 8px;
+  --spacing-12-duplicate: 12px;
+  --spacing-20-duplicate: 20px;
+}
+
+[data-spacing-mode="expanded-4"] {
+  --spacing-4: 8px;
+  --spacing-16: 20px;
+  --spacing-24: 28px;
+  --spacing-28: 32px;
+  --spacing-40: 44px;
+  --spacing-8-duplicate: 12px;
+  --spacing-12-duplicate: 16px;
+  --spacing-20-duplicate: 24px;
+}
+
+[data-spacing-mode="expanded-8"] {
+  --spacing-4: 12px;
+  --spacing-16: 24px;
+  --spacing-24: 32px;
+  --spacing-28: 36px;
+  --spacing-40: 48px;
+  --spacing-8-duplicate: 16px;
+  --spacing-12-duplicate: 20px;
+  --spacing-20-duplicate: 28px;
+}
+
+[data-spacing-mode="condensed-4"] {
+  --spacing-4: 0px;
+  --spacing-16: 12px;
+  --spacing-24: 20px;
+  --spacing-28: 24px;
+  --spacing-40: 36px;
+  --spacing-8-duplicate: 4px;
+  --spacing-12-duplicate: 8px;
+  --spacing-20-duplicate: 16px;
+}
+
+[data-corner-radius-mode="standard"] {
+  --corner-radius-8: 8px;
+  --corner-radius-12: 12px;
+  --corner-radius-20: 20px;
+  --corner-radius-80: 80px;
+  --corner-radius-16-duplicate: 16px;
+}
+
+[data-corner-radius-mode="expanded-4"] {
+  --corner-radius-8: 12px;
+  --corner-radius-12: 16px;
+  --corner-radius-20: 24px;
+  --corner-radius-80: 84px;
+  --corner-radius-16-duplicate: 20px;
+}
+
+[data-corner-radius-mode="expanded-8"] {
+  --corner-radius-8: 16px;
+  --corner-radius-12: 20px;
+  --corner-radius-20: 28px;
+  --corner-radius-80: 88px;
+  --corner-radius-16-duplicate: 24px;
+}
+
+[data-corner-radius-mode="condensed-4"] {
+  --corner-radius-8: 4px;
+  --corner-radius-12: 8px;
+  --corner-radius-20: 16px;
+  --corner-radius-80: 76px;
+  --corner-radius-16-duplicate: 12px;
+}
+
+[data-themes-mode="pastel-light"] {
+  --themes-black-100: rgba(28, 28, 28, 1);
+}
+
+[data-themes-mode="pastel-dark"] {
+  --themes-black-100: rgba(255, 255, 255, 1);
+}
+
+[data-themes-mode="bright-light"] {
+  --themes-black-100: rgba(46, 52, 62, 1);
+}
+
+[data-themes-mode="bright-dark"] {
+  --themes-black-100: rgba(255, 255, 255, 1);
+}
+
+[data-colors-mode="snowui-light"] {
+  --colors-primary: var(--colors-black-100-duplicate);
+  --colors-black-40: rgba(0, 0, 0, 0.4);
+  --colors-black-20: rgba(0, 0, 0, 0.2);
+  --colors-black-100-duplicate: rgba(0, 0, 0, 1);
+  --colors-secondary-indigo: rgba(173, 173, 251, 1);
+  --colors-secondary-cyan: rgba(160, 188, 232, 1);
+  --colors-secondary-mint: rgba(107, 230, 211, 1);
+  --colors-secondary-blue: rgba(125, 187, 255, 1);
+  --colors-secondary-purple: rgba(184, 153, 235, 1);
+  --colors-secondary-green: rgba(113, 221, 140, 1);
+  --colors-background-5: rgba(230, 241, 253, 1);
+  --colors-background-4: rgba(237, 238, 252, 1);
+  --colors-black-10: rgba(0, 0, 0, 0.1);
+  --colors-black-4: rgba(0, 0, 0, 0.04);
+  --colors-background-2: rgba(249, 249, 250, 1);
+}
+
+[data-colors-mode="snowui-dark"] {
+  --colors-primary: var(--colors-secondary-indigo);
+  --colors-black-40: rgba(255, 255, 255, 0.4);
+  --colors-black-20: rgba(255, 255, 255, 0.2);
+  --colors-black-100-duplicate: rgba(255, 255, 255, 1);
+  --colors-secondary-indigo: rgba(173, 173, 251, 1);
+  --colors-secondary-cyan: rgba(160, 188, 232, 1);
+  --colors-secondary-mint: rgba(107, 230, 211, 1);
+  --colors-secondary-blue: rgba(125, 187, 255, 1);
+  --colors-secondary-purple: rgba(184, 153, 235, 1);
+  --colors-secondary-green: rgba(113, 221, 140, 1);
+  --colors-background-5: rgba(230, 241, 253, 1);
+  --colors-background-4: rgba(237, 238, 252, 1);
+  --colors-black-10: rgba(255, 255, 255, 0.15);
+  --colors-black-4: rgba(255, 255, 255, 0.1);
+  --colors-background-2: rgba(255, 255, 255, 0.04);
+}
+
+[data-colors-mode="ios-light"] {
+  --colors-primary: var(--colors-secondary-blue);
+  --colors-black-40: rgba(0, 0, 0, 0.4);
+  --colors-black-20: rgba(0, 0, 0, 0.2);
+  --colors-black-100-duplicate: rgba(0, 0, 0, 1);
+  --colors-secondary-indigo: rgba(88, 86, 214, 1);
+  --colors-secondary-cyan: rgba(50, 173, 230, 1);
+  --colors-secondary-mint: rgba(0, 199, 190, 1);
+  --colors-secondary-blue: rgba(0, 122, 255, 1);
+  --colors-secondary-purple: rgba(175, 82, 222, 1);
+  --colors-secondary-green: rgba(52, 199, 89, 1);
+  --colors-background-5: rgba(255, 255, 255, 1);
+  --colors-background-4: rgba(0, 0, 0, 0.02);
+  --colors-black-10: rgba(0, 0, 0, 0.1);
+  --colors-black-4: rgba(0, 0, 0, 0.04);
+  --colors-background-2: rgba(255, 255, 255, 1);
+}
+
+[data-colors-mode="ios-dark"] {
+  --colors-primary: var(--colors-secondary-blue);
+  --colors-black-40: rgba(255, 255, 255, 0.4);
+  --colors-black-20: rgba(255, 255, 255, 0.2);
+  --colors-black-100-duplicate: rgba(255, 255, 255, 1);
+  --colors-secondary-indigo: rgba(94, 92, 230, 1);
+  --colors-secondary-cyan: rgba(100, 210, 255, 1);
+  --colors-secondary-mint: rgba(99, 230, 226, 1);
+  --colors-secondary-blue: rgba(10, 132, 255, 1);
+  --colors-secondary-purple: rgba(191, 90, 242, 1);
+  --colors-secondary-green: rgba(48, 209, 88, 1);
+  --colors-background-5: rgba(255, 255, 255, 0.8);
+  --colors-background-4: rgba(0, 0, 0, 0.1);
+  --colors-black-10: rgba(255, 255, 255, 0.15);
+  --colors-black-4: rgba(255, 255, 255, 0.1);
+  --colors-background-2: rgba(255, 255, 255, 0.04);
+}
+
+[data-visibility-1-mode="true"] {
+  --visibility-1-visibility-1: initial;
+}
+
+[data-visibility-1-mode="false"] {
+  --visibility-1-visibility-1: none;
+}
+
+[data-icon-size-mode="standard"] {
+  --icon-size-28-duplicate: 28px;
+  --icon-size-24-duplicate: 24px;
+}
+
+[data-icon-size-mode="expanded-4"] {
+  --icon-size-28-duplicate: 32px;
+  --icon-size-24-duplicate: 28px;
+}
+
+[data-icon-size-mode="expanded-8"] {
+  --icon-size-28-duplicate: 36px;
+  --icon-size-24-duplicate: 32px;
+}
+
+[data-icon-size-mode="condensed-4"] {
+  --icon-size-28-duplicate: 24px;
+  --icon-size-24-duplicate: 20px;
+}
+
+[data-corner-radius-mode="standard"] {
+  --corner-radius-4-duplicate: 4px;
+}
+
+[data-corner-radius-mode="expanded-4"] {
+  --corner-radius-4-duplicate: 8px;
+}
+
+[data-corner-radius-mode="expanded-8"] {
+  --corner-radius-4-duplicate: 12px;
+}
+
+[data-corner-radius-mode="condensed-4"] {
+  --corner-radius-4-duplicate: 0px;
+}
