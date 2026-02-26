@@ -11,6 +11,7 @@ const mainNavItems = [
   { label: "Leadership Management", icon: "🏆", href: "/adminLeadership" },
   { label: "Backup & Recovery", icon: "💾", href: "/adminBackup" },
   { label: "Activity Logs", icon: "📋", href: "/activity" },
+  { label: "Reviews", icon: "⭐", href: "/adminReviews" },
   { label: "Messages", icon: "✉️", href: "/messages" },
 ];
 
@@ -38,19 +39,6 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
     textDecoration: "none",
   });
 
-  const pStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    padding: "10px 12px",
-    borderRadius: "8px",
-    marginBottom: "2px",
-    color: "black",
-    fontSize: "13px",
-    fontWeight: 400,
-    cursor: "default",
-  };
-
   const NavContent = () => (
     <>
       {/* Logo Area */}
@@ -75,32 +63,8 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
 
       {/* Navigation Links */}
       <nav style={{ padding: "12px", flex: 1, overflowY: "auto" }}>
-        {/* I-loop hanggang Activity Logs lang */}
-        {mainNavItems.slice(0, 9).map((item) => {
-          const isActive = location.pathname === item.href;
-          return (
-            <Link
-              key={item.label}
-              to={item.href}
-              style={linkStyle(isActive)}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span style={{ fontSize: "15px", width: "20px", textAlign: "center" }}>
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-
-        {/* Reviews - p lang */}
-        <div style={pStyle}>
-          <span style={{ fontSize: "8px", width: "20px", textAlign: "center" }}></span>
-          <span>Reviews</span>
-        </div>
-
-        {/* Messages - hiwalay na link */}
-        {mainNavItems.slice(9, 10).map((item) => {
+        {/* Lahat ng mainNavItems, kasama na ang Reviews */}
+        {mainNavItems.map((item) => {
           const isActive = location.pathname === item.href;
           return (
             <Link
