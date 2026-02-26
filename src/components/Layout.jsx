@@ -1,89 +1,156 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 
-const NAV_LINKS = [
-  { label: "Home",       to: "/" },
-  { label: "Products",   to: "/products" },
-  { label: "Categories", to: "/categories" },
-  { label: "Blog",       to: "/blog" },
-  { label: "About",      to: "/about" },
-  { label: "Contact",    to: "/contact" },
-];
-
-const SOCIAL_ICONS = [
-  { label: "Facebook",  icon: "f" },
-  { label: "Instagram", icon: "📷" },
-  { label: "TikTok",    icon: "♪" },
-  { label: "Snapchat",  icon: "👻" },
-];
-
-const LEGAL_LINKS = ["Privacy Policy", "Terms", "Pricing", "Do not sell my personal info"];
-
+/* ══════════════════════════════════
+   HEADER
+══════════════════════════════════ */
 export function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled]     = useState(false);
+  const { totalItems }              = useCart();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Close mobile menu whenever route changes
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+
+  const isActive = (path) => location.pathname === path;
+
+  const NAV_LINKS = [
+    { to: "/",         label: "Home"      },
+    { to: "/products", label: "Products"  },
+    { to: "/about",    label: "About"     },
+    { to: "/contact",  label: "Contact"   },
+    { to: "/orders",   label: "My Orders" },
+  ];
 
   return (
     <>
-      <header className="site-header">
+      <header
+        className="site-header"
+        style={scrolled ? { boxShadow: "0 2px 24px rgba(0,0,0,0.10)" } : undefined}
+      >
         <div className="container site-header__inner">
+
+          {/* Logo */}
           <Link to="/" className="site-header__logo-wrap">
             <img
-              src="/img/Logo — Jem 8 Circle Trading Co (1).png"
-              alt="JEM 8 Circle"
+              src="/img/logo-jem-8-circle-trading-co-1.png"
+              alt="JEM 8 Circle Trading Co."
               className="site-header__logo-img"
               onError={(e) => {
                 e.target.style.display = "none";
-                e.target.nextSibling.style.display = "block";
+                if (e.target.nextSibling) e.target.nextSibling.style.display = "block";
               }}
             />
-            <span className="site-header__logo-text" style={{ display: "none" }}>JEM 8</span>
+            <span className="site-header__logo-text" style={{ display: "none" }}>
+              JEM 8 Circle
+            </span>
           </Link>
 
+          {/* Desktop nav */}
           <nav className="site-header__nav">
-            {NAV_LINKS.map(({ label, to }) => (
+            {NAV_LINKS.map(({ to, label }) => (
               <Link
                 key={to}
                 to={to}
-                className={`site-header__nav-link${location.pathname === to ? " active" : ""}`}
+                className={`site-header__nav-link${isActive(to) ? " active" : ""}`}
               >
                 {label}
               </Link>
             ))}
           </nav>
 
+          {/* Actions */}
           <div className="site-header__actions">
+
+            {/* Search */}
             <div className="site-header__search-wrap">
               <span className="site-header__search-icon">🔍</span>
-              <input className="site-header__search-input" type="text" placeholder="Search products..." />
+              <input
+                type="text"
+                className="site-header__search-input"
+                placeholder="Search products..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && e.target.value.trim()) {
+                    window.location.href = `/products`;
+                  }
+                }}
+              />
             </div>
-            <button className="site-header__cart-btn" aria-label="Cart">🛒</button>
-            <Link to="/login" className="site-header__login-btn">Login / Signup</Link>
-            <button className="site-header__hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
+
+            {/* Cart icon → cart page */}
+            <Link to="/cart" className="site-header__cart-btn" aria-label="View cart" style={{ position: "relative" }}>
+              🛒
+              {totalItems > 0 && (
+                <span style={{
+                  position: "absolute", top: "-6px", right: "-6px",
+                  background: "#ef4444", color: "#fff", borderRadius: "50%",
+                  width: "18px", height: "18px", fontSize: "10px", fontWeight: "700",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "var(--font-body)", lineHeight: 1,
+                }}>
+                  {totalItems > 9 ? "9+" : totalItems}
+                </span>
+              )}
+            </Link>
+
+            {/* Contact button */}
+            <Link to="/contact" className="site-header__login-btn">
+              Contact Us
+            </Link>
+
+            {/* Hamburger */}
+            <button
+              className="site-header__hamburger"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
               <span /><span /><span />
             </button>
           </div>
         </div>
       </header>
 
-      <div className={`mobile-menu${menuOpen ? " open" : ""}`} onClick={() => setMenuOpen(false)}>
-        <div className="mobile-menu__panel" onClick={(e) => e.stopPropagation()}>
-          <button className="mobile-menu__close" onClick={() => setMenuOpen(false)}>✕</button>
+      {/* ── MOBILE MENU ── */}
+      <div
+        className={`mobile-menu${mobileOpen ? " open" : ""}`}
+        onClick={(e) => { if (e.target === e.currentTarget) setMobileOpen(false); }}
+      >
+        <div className="mobile-menu__panel">
+          <button
+            className="mobile-menu__close"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+
           <div className="mobile-menu__logo">JEM 8 Circle</div>
-          {NAV_LINKS.map(({ label, to }) => (
+
+          {NAV_LINKS.map(({ to, label }) => (
             <Link
               key={to}
               to={to}
-              className={`mobile-menu__link${location.pathname === to ? " active" : ""}`}
-              onClick={() => setMenuOpen(false)}
+              className={`mobile-menu__link${isActive(to) ? " active" : ""}`}
             >
               {label}
             </Link>
           ))}
+
           <div className="mobile-menu__cta">
-            <Link to="/login" className="btn-primary" onClick={() => setMenuOpen(false)}
-              style={{ display: "flex", justifyContent: "center" }}>
-              Login / Signup
+            <Link
+              to="/contact"
+              className="btn-primary"
+              style={{ width: "100%", justifyContent: "center" }}
+            >
+              Get a Quote →
             </Link>
           </div>
         </div>
@@ -92,68 +159,112 @@ export function Header() {
   );
 }
 
+/* ══════════════════════════════════
+   FOOTER
+══════════════════════════════════ */
 export function Footer() {
-  const [email, setEmail] = useState("");
+  const QUICK_LINKS = [
+    { to: "/",         label: "Home"     },
+    { to: "/products", label: "Products" },
+    { to: "/about",    label: "About Us" },
+    { to: "/contact",  label: "Contact"  },
+  ];
 
-  const handleSubscribe = (e) => {
-    e.preventDefault();
-    if (email) { alert(`Subscribed: ${email}`); setEmail(""); }
-  };
+  const PRODUCT_LINKS = [
+    { to: "/products", label: "Office Supplies"     },
+    { to: "/products", label: "Pantry Supplies"     },
+    { to: "/products", label: "Janitorial Supplies" },
+    { to: "/products", label: "Health & Wellness"   },
+    { to: "/products", label: "Giveaways & Merch"   },
+    { to: "/products", label: "Personal Care"       },
+  ];
 
   return (
     <footer className="site-footer">
       <div className="container">
         <div className="site-footer__grid">
+
+          {/* Brand col */}
           <div>
-            <img src="/img/logo-jem-8-circle-trading-co-1-2.png" alt="JEM 8"
-              className="site-footer__brand-logo" onError={(e) => { e.target.style.display = "none"; }} />
-            <p className="site-footer__brand-name">JEM 8 Circle Trading Co.</p>
-            <p className="site-footer__brand-desc">Premium essentials, everyday must-haves, and exclusive finds — all in one place.</p>
-            <p className="site-footer__contact">☎ (02) 8805-1432 · (02) 8785-0587<br />Jem8 Circle Trading Co.</p>
+            <img
+              src="/img/logo-jem-8-circle-trading-co-1.png"
+              alt="JEM 8 Circle Trading Co."
+              className="site-footer__brand-logo"
+              onError={(e) => { e.target.style.display = "none"; }}
+            />
+            <span className="site-footer__brand-name">JEM 8 Circle Trading Co.</span>
+            <p className="site-footer__brand-desc">
+              Supply products with quality at the best price. Your trusted one-stop supplier
+              for office, pantry, janitorial, and wellness needs across Metro Manila and Laguna.
+            </p>
+            <div className="site-footer__contact">
+              📍 Unit 202P, Cityland 10 Tower 1, HV Dela Costa St., Makati City<br />
+              📞 (02) 8805-1432 · (02) 8785-0587<br />
+              📧 jem8circletrading@gmail.com
+            </div>
             <div className="site-footer__socials">
-              {SOCIAL_ICONS.map((s) => (
-                <button key={s.label} className="site-footer__social-btn" aria-label={s.label}>{s.icon}</button>
+              {["📘", "📸", "🎵", "💬"].map((icon, i) => (
+                <button key={i} className="site-footer__social-btn" aria-label="Social media">
+                  {icon}
+                </button>
               ))}
             </div>
           </div>
 
+          {/* Quick Links */}
           <div>
-            <h4 className="site-footer__col-title">Legal Pages</h4>
+            <div className="site-footer__col-title">Quick Links</div>
             <ul className="site-footer__col-links">
-              {["Terms and Conditions", "Privacy Policy", "Cookies", "Modern Slavery Statement"].map((l) => (
-                <li key={l}><a href="#">{l}</a></li>
+              {QUICK_LINKS.map(({ to, label }) => (
+                <li key={label}><Link to={to}>{label}</Link></li>
               ))}
             </ul>
           </div>
 
+          {/* Products */}
           <div>
-            <h4 className="site-footer__col-title">Important Links</h4>
+            <div className="site-footer__col-title">Our Products</div>
             <ul className="site-footer__col-links">
-              {["Get Help", "Sign Up to Deliver", "Careers", "Contact Us"].map((l) => (
-                <li key={l}><a href="#">{l}</a></li>
+              {PRODUCT_LINKS.map(({ to, label }) => (
+                <li key={label}><Link to={to}>{label}</Link></li>
               ))}
             </ul>
           </div>
 
+          {/* Newsletter */}
           <div>
-            <h4 className="site-footer__col-title">Stay Updated</h4>
-            <p className="site-footer__newsletter-text">Get exclusive deals delivered to your inbox.</p>
-            <form className="site-footer__subscribe-form" onSubmit={handleSubscribe}>
-              <input className="site-footer__subscribe-input" type="email" placeholder="your@email.com"
-                value={email} onChange={(e) => setEmail(e.target.value)} required />
-              <button type="submit" className="site-footer__subscribe-btn">Subscribe</button>
-            </form>
-            <p className="site-footer__no-spam">We won't spam. Read our <a href="#">email policy</a>.</p>
+            <div className="site-footer__col-title">Stay Updated</div>
+            <p className="site-footer__newsletter-text">
+              Get the latest product updates, promotions, and supply tips delivered to your inbox.
+            </p>
+            <div className="site-footer__subscribe-form">
+              <input
+                type="email"
+                className="site-footer__subscribe-input"
+                placeholder="your@email.com"
+              />
+              <button className="site-footer__subscribe-btn">Subscribe</button>
+            </div>
+            <p className="site-footer__no-spam">
+              We won't spam. Read our <Link to="/contact">email policy</Link>.
+            </p>
           </div>
+
         </div>
+      </div>
 
-        <div className="site-footer__divider" />
+      <div className="site-footer__divider" />
 
+      <div className="container">
         <div className="site-footer__bottom">
-          <span className="site-footer__rights">© Jem8 Circle Trading Co. {new Date().getFullYear()}. All Rights Reserved.</span>
-          <nav className="site-footer__legal-links">
-            {LEGAL_LINKS.map((l) => (<a key={l} href="#">{l}</a>))}
-          </nav>
+          <p className="site-footer__rights">
+            © 2026 JEM 8 Circle Trading Co. All rights reserved.
+          </p>
+          <div className="site-footer__legal-links">
+            <Link to="/contact">Privacy Policy</Link>
+            <Link to="/contact">Terms &amp; Conditions</Link>
+            <Link to="/contact">Cookie Policy</Link>
+          </div>
         </div>
       </div>
     </footer>
