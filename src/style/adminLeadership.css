@@ -1,0 +1,526 @@
+/* =============================================
+   LEADERSHIP MANAGEMENT — FULL SCREEN + RESPONSIVE
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+/* ── Outer shell ── */
+.lm-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #eaf2ed;
+}
+
+/* ── Scrollable content column ── */
+.lm-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #eaf2ed;
+  overflow-y: auto;
+}
+
+/* ── Mobile top bar ── */
+.lm-topbar {
+  display: none;
+}
+
+/* ── Inner page padding ── */
+.lm-page {
+  flex: 1;
+  padding: 32px 40px 60px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'Inter', Helvetica, sans-serif;
+  color: #1e1e1e;
+}
+
+/* ── Desktop page header ── */
+.lm-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.lm-page-header__title {
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-weight: 600;
+  font-size: 24px;
+  color: #000000;
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+
+.lm-page-header__sub {
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #6b6a6a;
+  margin: 0;
+}
+
+/* Mobile add button row — hidden on desktop */
+.lm-mobile-add {
+  display: none;
+  margin-bottom: 16px;
+}
+
+/* ── Buttons ── */
+.lm-btn {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.lm-btn:hover  { opacity: 0.88; }
+.lm-btn:active { transform: scale(0.97); }
+
+.lm-btn--add {
+  background-color: #14ae5c;
+  color: #ffffff;
+}
+
+.lm-btn--outline {
+  background: transparent;
+  border: 1px solid #cccccc;
+  color: #333333;
+}
+
+.lm-btn--outline:hover { background: #f5f5f5; opacity: 1; }
+
+.lm-btn--danger {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.lm-btn__plus {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Table wrapper ── */
+.lm-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #b0b0b0;
+}
+
+/* ── Table ── */
+.lm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-size: 14px;
+  min-width: 640px;
+}
+
+/* Header row */
+.lm-table thead tr {
+  background-color: #ffffff;
+  border-bottom: 1px solid #b0b0b0;
+  border-radius: 12px 12px 0 0;
+}
+
+.lm-th {
+  padding: 12px 14px;
+  font-weight: 500;
+  color: #000000;
+  text-align: left;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.lm-th--num  { width: 48px; }
+.lm-th--img  { width: 80px; }
+.lm-th--vis  { width: 110px; }
+.lm-th--act  { width: 110px; }
+
+/* Body rows */
+.lm-row {
+  border-bottom: 1px solid #b0b0b0;
+  transition: background-color 0.12s ease;
+}
+
+.lm-row:last-child {
+  border-bottom: none;
+}
+
+.lm-row:hover {
+  background-color: #f7faf8;
+}
+
+.lm-td {
+  padding: 10px 14px;
+  vertical-align: middle;
+  color: #111111;
+}
+
+.lm-td--num {
+  color: #555555;
+  font-size: 13px;
+}
+
+/* ── Avatar ── */
+.lm-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  color: #555555;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.lm-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lm-avatar--lg {
+  width: 80px;
+  height: 80px;
+  font-size: 24px;
+  margin: 0 auto;
+}
+
+/* ── Visible badge ── */
+.lm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+  font-family: 'Poppins', Helvetica, sans-serif;
+}
+
+.lm-badge:hover { opacity: 0.8; }
+
+.lm-badge--visible {
+  background-color: #e4f6f0;
+  border: 1px solid #baeada;
+  color: #059669;
+}
+
+.lm-badge--hidden {
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  color: #888888;
+}
+
+/* ── Action buttons ── */
+.lm-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lm-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+
+.lm-action-btn--view {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.lm-action-btn--view:hover { background-color: #dbeafe; }
+
+.lm-action-btn--edit {
+  background-color: #fefce8;
+  color: #ca8a04;
+}
+
+.lm-action-btn--edit:hover { background-color: #fef9c3; }
+
+.lm-action-btn--del {
+  background-color: #fef2f2;
+  color: #ef4444;
+}
+
+.lm-action-btn--del:hover { background-color: #fee2e2; }
+
+/* ── Modal overlay ── */
+.lm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* ── Modal box ── */
+.lm-modal {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 28px 28px 24px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.lm-modal--sm {
+  max-width: 360px;
+}
+
+.lm-modal__title {
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  color: #111111;
+  margin: 0 0 20px;
+}
+
+.lm-modal__label {
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #555555;
+  margin: 0 0 5px;
+  display: block;
+}
+
+.lm-modal__input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: 'Inter', Helvetica, sans-serif;
+  color: #1e1e1e;
+  background: #fafafa;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  margin-bottom: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lm-modal__input:focus {
+  border-color: #155dfc;
+  box-shadow: 0 0 0 3px rgba(21, 93, 252, 0.1);
+  background: #fff;
+}
+
+.lm-modal__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 8px 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.lm-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lm-modal__avatar-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.lm-modal__detail-name {
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  text-align: center;
+  margin: 0 0 4px;
+  color: #111111;
+}
+
+.lm-modal__detail-pos {
+  font-family: 'Poppins', Helvetica, sans-serif;
+  font-size: 13px;
+  color: #6b6a6a;
+  text-align: center;
+  margin: 0;
+}
+
+.lm-modal__body-text {
+  font-family: 'Inter', Helvetica, sans-serif;
+  font-size: 13px;
+  color: #555555;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+/* ── Toggle (reused from adminSettings) ── */
+.lm-toggle {
+  width: 46px;
+  height: 26px;
+  border-radius: 99px;
+  background: #d0d0d0;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  transition: background-color 0.25s ease;
+  flex-shrink: 0;
+}
+
+.lm-toggle--on {
+  background-color: #14ae5c;
+  justify-content: flex-end;
+}
+
+.lm-toggle__knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  display: block;
+}
+
+/* ── Focus styles ── */
+.lm-btn:focus-visible,
+.lm-action-btn:focus-visible,
+.lm-badge:focus-visible,
+.lm-modal__input:focus-visible,
+.lm-toggle:focus-visible {
+  outline: 2px solid #155dfc;
+  outline-offset: 2px;
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+
+/* Tablet */
+@media (max-width: 1023px) {
+  .lm-page {
+    padding: 24px 24px 60px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  /* Show mobile topbar */
+  .lm-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .lm-hamburger {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #374151;
+    padding: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lm-topbar__heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .lm-topbar__icon {
+    font-size: 18px;
+  }
+
+  .lm-topbar__label {
+    font-family: 'Poppins', Helvetica, sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #111827;
+  }
+
+  /* Hide desktop header title on mobile, show mobile add btn */
+  .lm-page-header {
+    display: none;
+  }
+
+  .lm-mobile-add {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .lm-page {
+    padding: 16px 12px 60px;
+  }
+
+  /* Make modal full-width on small screens */
+  .lm-modal {
+    padding: 20px 18px 18px;
+    max-width: 100%;
+  }
+
+  .lm-modal__actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
+  .lm-modal__actions .lm-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Desktop: hide hamburger */
+@media (min-width: 768px) {
+  .lm-topbar    { display: none; }
+  .lm-hamburger { display: none; }
+  .lm-page-header  { display: flex; }
+  .lm-mobile-add   { display: none; }
+}
