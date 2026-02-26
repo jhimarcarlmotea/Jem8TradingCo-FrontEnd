@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import '../style/about.css';
 import '../style/global.css';
 
-// Leader images
+// Leader images (from your version)
 import Shella from '../assets/Shella_Ricafrente-Acibar.png';
 import Jinkie from '../assets/Jinkie_Ricafrente-Malinag.png';
 import Akiko from '../assets/Akiko_Serrano.png';
@@ -15,21 +16,28 @@ import Daniel from '../assets/Daniel_Kian_Rodriguez_Cadena.png';
 import Kayla from '../assets/Kayla_R_Bacsafra.png';
 import Cristina from '../assets/Cristina_A_Saturnio.png';
 
+const STATS = [
+  { num: "2016", label: "Est. Year" },
+  { num: "250+", label: "Clients" },
+  { num: "6",    label: "Categories" },
+  { num: "1–7",  label: "Team Size" },
+];
+
 const About = () => {
   const [stats] = useState({ since: 2016, employees: '1–7', clients: 250 });
 
   const [leaders] = useState([
-    { id: 1,  name: 'Ms. Shella R. Acibar',            role: 'Co-Owner of Jem 8 Circle',                           image: Shella    },
-    { id: 2,  name: 'Ms. Jinkie Malinag',               role: 'Co-Owner of Jem 8 Circle',                           image: Jinkie    },
-    { id: 3,  name: 'Ms. Akiko Serrano',                role: 'Sales Executive of Jem 8 Circle',                    image: Akiko     },
-    { id: 4,  name: 'Ms. Ruby Ann Castillo',            role: 'Sales Executive of Jem 8 Circle',                    image: Ruby      },
-    { id: 5,  name: 'Ms. Charisse Mae Decano',          role: 'Admin/HR Representative of Jem 8 Circle',            image: Charisse  },
-    { id: 6,  name: 'Mr. Adrian Mallanao',              role: 'Laison Head Officer of Jem 8 Circle',                image: Adrian    },
-    { id: 7,  name: 'Mr. Vhernaldo Ricafrente',         role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Vhernaldo },
-    { id: 8,  name: 'Mr. Mark Edward Malinag',          role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Mark      },
-    { id: 9,  name: 'Mr. Daniel Kian Rodriguez Cadena', role: 'Business Associate of Jem 8 Circle',                 image: Daniel    },
-    { id: 10, name: 'Ms. Kayla R. Bacsafra',            role: 'Sales Executive of Jem 8 Circle (South Luzon Area)', image: Kayla     },
-    { id: 11, name: 'Ms. Cristina A. Saturnio',         role: 'Accounting and Finance of Jem 8 Circle',             image: Cristina  },
+    { id: 1,  name: 'Ms. Shella R. Acibar',            role: 'Co-Owner',                       image: Shella },
+    { id: 2,  name: 'Ms. Jinkie Malinag',              role: 'Co-Owner',                       image: Jinkie },
+    { id: 3,  name: 'Ms. Akiko Serrano',               role: 'Sales Executive',                image: Akiko },
+    { id: 4,  name: 'Ms. Ruby Ann Castillo',           role: 'Sales Executive',                image: Ruby },
+    { id: 5,  name: 'Ms. Charisse Mae Decano',         role: 'Admin / HR Representative',      image: Charisse },
+    { id: 6,  name: 'Mr. Adrian Mallanao',             role: 'Liaison Head Officer',           image: Adrian },
+    { id: 7,  name: 'Mr. Vhernaldo Ricafrente',        role: 'Marketing / Admin Assistant',    image: Vhernaldo },
+    { id: 8,  name: 'Mr. Mark Edward Malinag',         role: 'Marketing / Admin Assistant',    image: Mark },
+    { id: 9,  name: 'Mr. Daniel Kian Cadena',          role: 'Business Associate',             image: Daniel },
+    { id: 10, name: 'Ms. Kayla R. Bacsafra',           role: 'Sales Executive (South Luzon)',  image: Kayla },
+    { id: 11, name: 'Ms. Cristina A. Saturnio',        role: 'Accounting and Finance',         image: Cristina },
   ]);
 
   const getInitials = (name) =>
@@ -52,25 +60,19 @@ const About = () => {
               About Jem 8 Circle Trading Co.
             </div>
             <h1 className="about-hero__title">
-              "Your trusted source for<br/><em>equipment and supplies.</em>"
+              Your Trusted Source for <em>Equipment &amp; Supplies</em>
             </h1>
             <p className="about-hero__subtitle">
               We connect trading companies with the industrial equipment and supplies
               they need to operate at peak efficiency — reliably, seamlessly, at scale.
             </p>
             <div className="about-hero__stats">
-              <div className="about-hero__stat">
-                <span className="about-hero__stat-num">{stats.since}</span>
-                <span className="about-hero__stat-label">Est. Year</span>
-              </div>
-              <div className="about-hero__stat">
-                <span className="about-hero__stat-num">{stats.employees}</span>
-                <span className="about-hero__stat-label">Employees</span>
-              </div>
-              <div className="about-hero__stat">
-                <span className="about-hero__stat-num">{stats.clients}+</span>
-                <span className="about-hero__stat-label">Clients</span>
-              </div>
+              {STATS.map((s) => (
+                <div className="about-hero__stat" key={s.label}>
+                  <span className="about-hero__stat-num">{s.num}</span>
+                  <span className="about-hero__stat-label">{s.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -80,8 +82,6 @@ const About = () => {
       <section className="about-mv">
         <div className="container">
           <div className="about-mv__grid">
-
-            {/* Mission */}
             <div className="about-mv__card about-mv__card--mission">
               <div className="about-mv__card-deco"></div>
               <div className="about-mv__card-tag">Our Mission</div>
@@ -97,7 +97,6 @@ const About = () => {
               </div>
             </div>
 
-            {/* Vision */}
             <div className="about-mv__card about-mv__card--vision">
               <div className="about-mv__card-deco"></div>
               <div className="about-mv__card-tag">Our Vision</div>
@@ -107,7 +106,6 @@ const About = () => {
                 transforms lives through passion, integrity, and purpose-driven action.
               </p>
             </div>
-
           </div>
         </div>
       </section>
@@ -217,8 +215,8 @@ const About = () => {
         <div className="container">
           <div className="about-enterprise__inner">
             <div>
-              <div className="about-enterprise__label">Enterprise</div>
-              <h2 className="about-enterprise__title">Complete supply solutions for your business</h2>
+              <div className="about-enterprise__label">Enterprise Solutions</div>
+              <h2 className="about-enterprise__title">Built for Businesses of Every Size</h2>
               <p className="about-enterprise__desc">
                 We provide a complete range of office supplies, pantry and janitorial supplies, and health and
                 wellness products tailored to your business needs. Delivering quality at the best price —
@@ -228,6 +226,10 @@ const About = () => {
                 {['Reliable Supply', 'Consistent Quality', 'Timely Delivery'].map(f => (
                   <div className="about-enterprise__feature" key={f}>{f}</div>
                 ))}
+              </div>
+              <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
+                <Link to="/products" className="btn-primary">Browse Products →</Link>
+                <Link to="/contact"  className="btn-outline">Get a Quote</Link>
               </div>
             </div>
             <div className="about-enterprise__imgs">
@@ -247,7 +249,7 @@ const About = () => {
           <div className="about-cta__inner">
             <p className="about-cta__text">From our hands to your office.</p>
             <p className="about-cta__sub">Ready to work with a trusted supply partner?</p>
-            <a href="/contact" className="about-cta__btn">Get Started →</a>
+            <Link to="/contact" className="about-cta__btn">Get Started →</Link>
           </div>
         </div>
       </section>
