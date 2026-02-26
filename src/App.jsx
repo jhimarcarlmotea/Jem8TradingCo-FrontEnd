@@ -4,6 +4,7 @@ import { CartProvider } from "./context/CartContext";
 
 import Jem8HomePage from './Jem8HomePage'
 import About from './pages/About'
+import Profilepersonal from './pages/Profilepersonal'
 import Blog from './pages/Blog'
 import Products from "./pages/Products";
 import ProductView from "./pages/ProductView";
@@ -31,6 +32,7 @@ export default function App() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Jem8HomePage />} />
            <Route path="/About" element={<About />} />
+           <Route path="/Profilepersonal" element={<Profilepersonal />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/products" element={<Products />} />
           <Route path="/products/:id" element={<ProductView />} />

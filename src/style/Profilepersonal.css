@@ -1,0 +1,598 @@
+/* ============================================================
+   PROFILE PERSONAL — matched to JEM8 homepage design system
+   Uses the same CSS variables defined in global.css:
+   --green, --green-dark, --green-light, --green-border,
+   --dark, --gray, --border, --shadow-sm, --shadow-xl,
+   --r-lg, --r-md, --r-pill, --font-heading, --font-body, --font-sub
+   ============================================================ */
+
+/* ── PAGE WRAPPER ── */
+.profile-page {
+  background: linear-gradient(135deg, #f9fdf9 0%, #fff 50%, var(--green-light) 100%);
+  min-height: 100vh;
+  padding: 40px 0 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Same radial glow as hero::before */
+.profile-page::before {
+  content: "";
+  position: fixed;
+  top: -160px;
+  right: -160px;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(77, 123, 101, 0.09) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.profile-page__inner {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 28px;
+  align-items: start;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── BREADCRUMB PILL — matches .hero__badge ── */
+.profile-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+  border-radius: var(--r-pill);
+  padding: 7px 18px;
+  font-family: var(--font-sub);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--green);
+  margin-bottom: 20px;
+  align-self: flex-start;
+}
+
+.profile-breadcrumb__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse-dot 2s infinite;
+  flex-shrink: 0;
+}
+
+/* ── SIDEBAR ── */
+.profile-sidebar {
+  background: var(--white, #fff);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  position: sticky;
+  top: 100px;
+  transition: var(--ease);
+}
+
+.profile-sidebar:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+/* Avatar section — same gradient as hero */
+.profile-sidebar__avatar-wrap {
+  padding: 32px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(180deg, var(--green-light) 0%, #fff 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-sidebar__avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--green-border);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,.09));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green-border);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.profile-sidebar__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-sidebar__name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--dark);
+}
+
+.profile-sidebar__email,
+.profile-sidebar__phone {
+  font-family: var(--font-sub);
+  font-size: 12px;
+  color: var(--gray);
+}
+
+/* Nav section */
+.profile-sidebar__nav {
+  padding: 16px 12px 8px;
+}
+
+.profile-sidebar__nav-label {
+  font-family: var(--font-sub);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 8px 10px;
+  display: block;
+}
+
+/* Menu item — matches .why__card hover behavior */
+.profile-sidebar__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--r-md);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-sub);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--gray);
+  text-align: left;
+  transition: var(--ease);
+}
+
+.profile-sidebar__item:hover {
+  background: #f5f5f5;
+  color: var(--dark);
+  transform: translateX(2px);
+}
+
+.profile-sidebar__item.active {
+  background: var(--green-light);
+  border-left-color: var(--green);
+  color: var(--green-dark);
+  font-weight: 600;
+}
+
+.profile-sidebar__item.active svg {
+  stroke: var(--green);
+}
+
+.profile-sidebar__item.danger {
+  color: #c80000;
+}
+
+.profile-sidebar__item.danger:hover {
+  background: #fff5f5;
+}
+
+.profile-sidebar__item.danger svg {
+  stroke: #c80000;
+}
+
+.profile-sidebar__badge {
+  margin-left: auto;
+  background: var(--dark);
+  color: #fff;
+  border-radius: var(--r-pill);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 8px;
+  font-family: var(--font-body);
+}
+
+.profile-sidebar__divider {
+  margin: 8px 20px;
+  height: 1px;
+  background: var(--border);
+}
+
+.profile-sidebar__logout-wrap {
+  padding: 8px 12px 16px;
+}
+
+/* ── MAIN CONTENT ── */
+.profile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── CARD — matches .why__card / .product-card ── */
+.profile-card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: var(--ease);
+}
+
+.profile-card:hover {
+  box-shadow: var(--shadow-xl);
+  border-color: var(--green-border);
+}
+
+/* Card header row */
+.profile-card__header {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-card__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Icon box — same as .why__card-number style */
+.profile-card__icon-box {
+  width: 40px;
+  height: 40px;
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--green);
+}
+
+.profile-card__title {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--dark);
+}
+
+.profile-card__subtitle {
+  font-family: var(--font-sub);
+  font-size: 12px;
+  color: var(--gray);
+  margin-top: 2px;
+}
+
+/* User info strip inside profile card */
+.profile-card__user-strip {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-card__user-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--green-light);
+  border: 2px solid var(--green-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--green-border);
+  overflow: hidden;
+}
+
+.profile-card__user-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--dark);
+}
+
+.profile-card__user-meta {
+  font-family: var(--font-sub);
+  font-size: 12px;
+  color: var(--gray);
+  margin-top: 2px;
+}
+
+/* Fields grid */
+.profile-card__fields {
+  padding: 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px 28px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.profile-field--full {
+  grid-column: 1 / 2;
+}
+
+.profile-field__label {
+  font-family: var(--font-sub);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Input box — matches light card style */
+.profile-field__input {
+  height: 40px;
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+  border-radius: var(--r-md);
+  padding: 0 14px;
+  font-family: var(--font-sub);
+  font-size: 13px;
+  color: var(--dark);
+  outline: none;
+  transition: var(--ease);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-field__input::placeholder {
+  color: #bbb;
+  font-style: italic;
+}
+
+.profile-field__input:focus {
+  border-color: var(--green);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(77, 123, 101, 0.12);
+}
+
+/* ── ADDRESSES SECTION ── */
+.profile-addresses__grid {
+  padding: 24px 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Empty address — dashed like a ghost card */
+.profile-address-empty {
+  border: 2px dashed var(--green-border);
+  border-radius: var(--r-lg);
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--gray);
+  cursor: pointer;
+  transition: var(--ease);
+  padding: 24px;
+  text-align: center;
+  font-family: var(--font-sub);
+  font-size: 13px;
+}
+
+.profile-address-empty:hover {
+  border-color: var(--green);
+  background: var(--green-light);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,.09));
+}
+
+.profile-address-empty__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green);
+}
+
+/* Filled address card — same as .testimonial-card */
+.profile-address-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: var(--ease);
+}
+
+.profile-address-card:hover {
+  box-shadow: var(--shadow-xl);
+  border-color: var(--green-border);
+  transform: translateY(-3px);
+}
+
+.profile-address-card__title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.profile-address-card__text {
+  font-family: var(--font-sub);
+  font-size: 12px;
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+.profile-address-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── BUTTONS — mirrors home.css btn-primary / btn-outline ── */
+.btn-profile-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  background: var(--green);
+  color: #fff;
+  border: 2px solid var(--green);
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--ease);
+  box-shadow: 0 4px 20px rgba(77, 123, 101, 0.25);
+}
+
+.btn-profile-primary:hover {
+  background: var(--green-dark);
+  border-color: var(--green-dark);
+  transform: translateY(-2px);
+}
+
+.btn-profile-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  background: #fff;
+  color: var(--dark);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--ease);
+}
+
+.btn-profile-outline:hover {
+  border-color: var(--green-border);
+  color: var(--green);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-profile-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  background: #fff;
+  color: #c80000;
+  border: 1px solid #c80000;
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--ease);
+}
+
+.btn-profile-danger:hover {
+  background: #fff5f5;
+  transform: translateY(-1px);
+}
+
+.btn-profile-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  background: transparent;
+  color: var(--green);
+  border: 1px solid var(--green-border);
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--ease);
+}
+
+.btn-profile-ghost:hover {
+  background: var(--green-light);
+  transform: translateY(-1px);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .profile-page__inner {
+    grid-template-columns: 240px 1fr;
+    gap: 20px;
+    padding: 0 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-page__inner {
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+  }
+
+  .profile-sidebar {
+    position: static;
+  }
+
+  .profile-card__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-field--full {
+    grid-column: 1;
+  }
+
+  .profile-addresses__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-page {
+    padding: 20px 0 60px;
+  }
+
+  .profile-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-card__fields {
+    padding: 20px 16px;
+  }
+
+  .profile-addresses__grid {
+    padding: 16px;
+  }
+}

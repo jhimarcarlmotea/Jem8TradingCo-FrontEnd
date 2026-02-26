@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
 // Keep the Logo import from your version
 import Logo from '../assets/Logo — Jem 8 Circle Trading Co (1).png';
 
 export function Header() {
-  const location = useLocation();
+  const location    = useLocation();
+  const navigate    = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled]     = useState(false);
   const { totalItems }              = useCart();
@@ -22,15 +23,14 @@ export function Header() {
 
   const isActive = (path) => location.pathname === path;
 
-  // Combine both NAV_LINKS (remove duplicates)
   const NAV_LINKS = [
-    { to: "/",         label: "Home"      },
-    { to: "/products", label: "Products"  },
-    { to: "/categories", label: "Categories" }, // from miguel
-    { to: "/blog",     label: "Blog"      }, // from miguel
-    { to: "/about",    label: "About"     },
-    { to: "/contact",  label: "Contact"   },
-    { to: "/orders",   label: "My Orders" }, // from miguel
+    { to: "/",           label: "Home"       },
+    { to: "/products",   label: "Products"   },
+    { to: "/categories", label: "Categories" },
+    { to: "/blog",       label: "Blog"       },
+    { to: "/about",      label: "About"      },
+    { to: "/contact",    label: "Contact"    },
+    { to: "/orders",     label: "My Orders"  },
   ];
 
   return (
@@ -41,7 +41,7 @@ export function Header() {
       >
         <div className="container site-header__inner">
 
-          {/* Logo - use your Logo import */}
+          {/* Logo */}
           <Link to="/" className="site-header__logo-wrap">
             <img
               src={Logo}
@@ -89,7 +89,12 @@ export function Header() {
             </div>
 
             {/* Cart icon → cart page */}
-            <Link to="/cart" className="site-header__cart-btn" aria-label="View cart" style={{ position: "relative" }}>
+            <Link
+              to="/cart"
+              className="site-header__cart-btn"
+              aria-label="View cart"
+              style={{ position: "relative" }}
+            >
               🛒
               {totalItems > 0 && (
                 <span style={{
@@ -108,6 +113,52 @@ export function Header() {
             <Link to="/contact" className="site-header__login-btn">
               Contact Us
             </Link>
+
+            {/* ── Profile Avatar Button ─────────────────────────────────── */}
+            <button
+              onClick={() => navigate("/Profilepersonal")}
+              aria-label="My Profile"
+              title="My Profile"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                backgroundColor: "#2e6b45",
+                border: "2px solid #2e6b4530",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                flexShrink: 0,
+                boxShadow: "0 2px 8px #2e6b4530",
+                transition: "box-shadow 0.2s, transform 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = "0 4px 16px #2e6b4550";
+                e.currentTarget.style.transform = "scale(1.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = "0 2px 8px #2e6b4530";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              {/*
+                Tip: swap the "J" with the first letter of the logged-in
+                user's name. e.g. user?.name?.charAt(0).toUpperCase()
+              */}
+              <span style={{
+                color: "#ffffff",
+                fontSize: 14,
+                fontWeight: 700,
+                fontFamily: "'Poppins', Helvetica, sans-serif",
+                userSelect: "none",
+                lineHeight: 1,
+              }}>
+                J
+              </span>
+            </button>
+            {/* ─────────────────────────────────────────────────────────── */}
 
             {/* Hamburger */}
             <button
@@ -147,6 +198,14 @@ export function Header() {
             </Link>
           ))}
 
+          {/* Profile link in mobile menu */}
+          <Link
+            to="/profile"
+            className={`mobile-menu__link${isActive("/profile") ? " active" : ""}`}
+          >
+            👤 My Profile
+          </Link>
+
           <div className="mobile-menu__cta">
             <Link
               to="/contact"
@@ -163,7 +222,7 @@ export function Header() {
 }
 
 /* ══════════════════════════════════
-   FOOTER (keep as is from miguel's version)
+   FOOTER
 ══════════════════════════════════ */
 export function Footer() {
   const QUICK_LINKS = [
@@ -190,7 +249,7 @@ export function Footer() {
           {/* Brand col */}
           <div>
             <img
-              src={Logo}  // Use your Logo import
+              src={Logo}
               alt="JEM 8 Circle Trading Co."
               className="site-footer__brand-logo"
               onError={(e) => { e.target.style.display = "none"; }}
