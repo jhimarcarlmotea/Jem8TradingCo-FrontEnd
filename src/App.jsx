@@ -10,6 +10,7 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import MyOrders from "./pages/MyOrders";
 import AdminProducts from "./pages/adminProducts";
+import AdminPanelSettings from "./pages/adminSettings";
 
 // Layout component for public pages
 function PublicLayout() {  // <- Remove 'children' parameter
@@ -39,6 +40,7 @@ export default function App() {
         
         {/* Admin route - no layout */}
         <Route path="/adminProducts" element={<AdminProducts />} />
+        <Route path="/adminSettings" element={<AdminPanelSettings />} />
       </Routes>
     </CartProvider>
   )
