@@ -1,186 +1,217 @@
 /* ============================================================
    BLOG PAGE — blog.css
+   Matches the home page design system (CSS variables, spacing,
+   card patterns, typography, shimmer skeleton).
    ============================================================ */
 
-.blog {
-  background-color: #f3f3f3;
-  width: 100%;
+
+/* ─────────────────────────────────────────────────────────────
+   1. PAGE SHELL
+───────────────────────────────────────────────────────────── */
+
+.blog-page {
+  background: #fff;
+  padding-top: var(--header-h);
   min-height: 100vh;
-  padding-top: 81px; /* header height */
 }
 
-/* ── PAGE TITLE ── */
-.blog__title {
-  text-align: center;
-  padding: 30px 0 10px;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 30px;
-  opacity: 0.48;
-  line-height: 66px;
-}
 
-/* ── FILTER BUTTONS ── */
-.blog__filters {
+/* ─────────────────────────────────────────────────────────────
+   2. PAGE HEADER  (title + filter row)
+───────────────────────────────────────────────────────────── */
+
+.blog-page__top {
+  padding-top: clamp(28px, 4vw, 48px);
+  padding-bottom: 0;
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  padding: 0 0 30px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.blog-page__heading {
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 700;
+  color: var(--dark);
+  line-height: 1.15;
+  opacity: 0.5;
+}
+
+/* Filter pill buttons */
+.blog-page__filters {
+  display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 24px;
 }
 
-.blog__filter-btn {
-  display: flex;
+.blog-page__filter {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 18px;
-  height: 36px;
-  border-radius: 6.75px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background-color: #fff;
-  font-family: "Arial", sans-serif;
-  font-size: 12.2px;
-  color: #0a0a0a;
+  padding: 7px 18px;
+  height: 34px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: #fff;
+  font-family: var(--font-sub);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dark);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: var(--ease-fast);
+  white-space: nowrap;
 }
 
-.blog__filter-btn--active {
-  background-color: #030213;
+.blog-page__filter--active {
+  background: var(--dark);
   color: #fff;
-  border-color: #030213;
+  border-color: var(--dark);
 }
 
-.blog__filter-btn:hover:not(.blog__filter-btn--active) {
-  background-color: #f0f0f0;
+.blog-page__filter:hover:not(.blog-page__filter--active) {
+  background: var(--light-gray);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
-/* ── BANNER ── */
-.blog__banner {
-  margin: 0 auto 40px;
-  max-width: 1136px;
-  background-color: #000;
-  border-radius: 19px;
-  padding: 28px 48px;
+
+/* ─────────────────────────────────────────────────────────────
+   3. BANNER
+───────────────────────────────────────────────────────────── */
+
+.blog-banner {
+  background: var(--dark);
+  border-radius: var(--r-xl);
+  padding: clamp(20px, 3vw, 32px) clamp(24px, 4vw, 52px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+  margin-bottom: clamp(40px, 6vw, 64px);
+  position: relative;
+  overflow: hidden;
 }
 
-.blog__banner-desc {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 14px;
-  line-height: 1.6;
+/* Subtle radial glow — matches cta-banner */
+.blog-banner::before {
+  content: "";
+  position: absolute;
+  top: -60px;
+  left: -60px;
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(77, 123, 101, 0.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.blog-banner__text {
+  font-family: var(--font-sub);
+  font-size: clamp(13px, 1.3vw, 15px);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.7;
   flex: 1;
+  position: relative;
 }
 
-.blog__banner-btn {
+.blog-banner__btn {
   flex-shrink: 0;
-  padding: 6px 20px;
-  border: 1px solid #bebebe;
-  border-radius: 9px;
-  color: #fff;
-  font-family: "Poppins", sans-serif;
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 22px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--r-md);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-body);
+  font-size: 13px;
   font-weight: 600;
   background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
   text-decoration: none;
-  transition: background 0.2s;
+  white-space: nowrap;
+  transition: var(--ease-fast);
+  position: relative;
 }
 
-.blog__banner-btn:hover {
-  background: rgba(255,255,255,0.1);
+.blog-banner__btn:hover {
+  border-color: rgba(255, 255, 255, 0.75);
+  color: #fff;
 }
 
-/* ── SECTION LABEL ── */
-.blog__section-label {
-  font-family: "Poppins", sans-serif;
+
+/* ─────────────────────────────────────────────────────────────
+   4. SECTION WRAPPER  (shared by all content sections)
+───────────────────────────────────────────────────────────── */
+
+.blog-section {
+  margin-bottom: clamp(48px, 7vw, 88px);
+}
+
+.blog-section__label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+
+.blog-section__rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0 0 28px;
+}
+
+.blog-section__load-wrap {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.blog-section__load-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 36px;
+  height: 48px;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 13px;
   font-weight: 600;
-  color: #000;
-  font-size: 15px;
-  opacity: 0.69;
-  margin-bottom: 12px;
+  color: var(--gray);
+  letter-spacing: 0.5px;
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: var(--shadow-sm);
 }
 
-/* ── DIVIDER ── */
-.blog__divider {
-  width: 100%;
-  height: 4px;
-  object-fit: cover;
-  margin-bottom: 28px;
-  display: block;
-}
 
-/* ── SECTION WRAPPER ── */
-.blog__featured,
-.blog__announcements,
-.blog__travel,
-.blog__business,
-.blog__products {
-  max-width: 1143px;
-  margin: 0 auto 60px;
-  padding: 0 20px;
-}
+/* ─────────────────────────────────────────────────────────────
+   5. FEATURED SECTION
+───────────────────────────────────────────────────────────── */
 
-/* ── FEATURED ── */
 .blog__featured-grid {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 360px;
   gap: 24px;
 }
 
+/* Large gradient card */
 .blog__featured-main {
-  border-radius: 28px;
+  border-radius: var(--r-xl);
   overflow: hidden;
-  height: 365px;
-  background: linear-gradient(180deg, rgba(213,213,213,1) 17%, rgba(111,111,111,1) 100%);
+  height: 380px;
+  background: linear-gradient(160deg, #d5d5d5 20%, #6f6f6f 100%);
   position: relative;
   display: flex;
   align-items: flex-end;
 }
 
 .blog__featured-main-inner {
-  padding: 24px 32px;
+  padding: 28px 32px;
   width: 100%;
-}
-
-.blog__featured-tag {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 10px;
-  opacity: 0.48;
-  margin-bottom: 8px;
-}
-
-.blog__featured-badge {
-  width: 113px;
-  height: 19px;
-  border: 1px solid #bebebe;
-  border-radius: 9px;
-  margin-bottom: 8px;
-}
-
-.blog__featured-title {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 20px;
-  line-height: 1.4;
-}
-
-.blog__featured-meta {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 10px;
-  margin-top: 4px;
 }
 
 /* Sidebar */
@@ -194,433 +225,199 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  background: rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.31);
-  border-radius: 17px;
-  padding: 10px 12px;
-  min-height: 113px;
+  background: var(--light-gray);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  min-height: 110px;
+  transition: var(--ease);
 }
 
-.blog__sidebar-img {
-  width: 100px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: 10px;
+.blog__sidebar-item:hover {
+  border-color: var(--green-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.blog__sidebar-thumb {
+  width: 90px;
+  height: 80px;
+  border-radius: var(--r-md);
   flex-shrink: 0;
 }
 
 .blog__sidebar-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-.blog__sidebar-category {
-  font-size: 10px;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  opacity: 0.48;
-  margin-bottom: 4px;
-}
 
-.blog__sidebar-title {
-  font-size: 12px;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  margin-bottom: 4px;
-}
+/* ─────────────────────────────────────────────────────────────
+   6. ANNOUNCEMENTS SECTION
+───────────────────────────────────────────────────────────── */
 
-.blog__sidebar-date {
-  font-size: 7px;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  opacity: 0.39;
-}
-
-/* ── ANNOUNCEMENTS ── */
+/* Latest (dark) card */
 .blog__latest {
-  background-color: #000;
-  border-radius: 19px;
-  padding: 24px 30px;
+  background: var(--dark);
+  border-radius: var(--r-xl);
+  padding: clamp(24px, 3vw, 36px) clamp(24px, 3vw, 36px);
   margin-bottom: 28px;
   position: relative;
+  overflow: hidden;
+}
+
+.blog__latest::before {
+  content: "";
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(77, 123, 101, 0.18) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .blog__latest-badge {
   display: inline-block;
-  background-color: #2b2b2b;
-  border: 1px solid #bebebe;
-  border-radius: 9px;
-  padding: 2px 12px;
-  font-family: "Poppins", sans-serif;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--r-pill);
+  padding: 3px 14px;
+  font-family: var(--font-sub);
   font-weight: 600;
-  color: #fff;
-  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  letter-spacing: 1px;
   margin-bottom: 16px;
 }
 
-.blog__latest-title {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 24px;
-  margin-bottom: 10px;
-  line-height: 1.4;
+.blog__latest-btn-ghost {
+  width: 110px;
+  height: 34px;
+  border-radius: var(--r-md);
 }
 
-.blog__latest-content {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: rgba(255,255,255,0.73);
-  font-size: 13px;
-  line-height: 1.6;
-  margin-bottom: 16px;
-}
-
-.blog__latest-btn {
-  padding: 4px 20px;
-  border: 1px solid #bebebe;
-  border-radius: 9px;
-  background: transparent;
-  color: #fff;
-  font-family: "Poppins", sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.blog__latest-btn:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-.blog__announcements-grid {
+/* Announcement 2×2 grid */
+.blog__ann-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.blog__ann-card {
+  border-radius: var(--r-lg);
+  padding: clamp(20px, 2.5vw, 32px) clamp(16px, 2vw, 24px);
+  background: var(--light-gray);
+  border: 1px solid var(--border);
+  min-height: 200px;
+  transition: var(--ease);
+}
+
+.blog__ann-card:hover {
+  border-color: var(--green-border);
+  box-shadow: var(--shadow-sm);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   7. TWO TALL HERO CARDS  (travel / business top row)
+───────────────────────────────────────────────────────────── */
+
+.blog__two-col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.blog__hero-card {
+  height: 340px;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: linear-gradient(160deg, #d5d5d5 20%, #6f6f6f 100%);
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+}
+
+.blog__hero-card-inner {
+  padding: 24px 28px;
+  width: 100%;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   8. POST CARD GRID  (3 columns)
+───────────────────────────────────────────────────────────── */
+
+.blog__card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
 }
 
-.blog__announcement-card {
-  position: relative;
-  border-radius: 28px;
-  overflow: hidden;
-  min-height: 226px;
-  padding: 36px 17px 20px;
-  background: #d4d4d4;
-}
-
-.blog__announcement-bg {
-  position: absolute;
-  inset: 0;
-  opacity: 0.16;
-  background: #d4d4d4;
-  border-radius: 28px;
-  border: 1px solid #000;
-}
-
-.blog__announcement-line {
-  position: absolute;
-  bottom: 70px;
-  left: 17px;
-  width: calc(100% - 34px);
-  height: 2px;
-  object-fit: cover;
-}
-
-.blog__announcement-category {
-  position: relative;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 10px;
-  opacity: 0.61;
-  margin-bottom: 12px;
-}
-
-.blog__announcement-title {
-  position: relative;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 16px;
-  line-height: 1.4;
-  margin-bottom: 14px;
-}
-
-.blog__announcement-content {
-  position: relative;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 11px;
-  opacity: 0.43;
-  line-height: 1.5;
-  margin-bottom: 14px;
-}
-
-.blog__announcement-date {
-  position: relative;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 11px;
-  opacity: 0.43;
-}
-
-/* ── TRAVEL BLOGS ── */
-.blog__travel-top {
-  display: flex;
-  gap: 33px;
-  margin-bottom: 28px;
-}
-
-.blog__travel-featured-card {
-  flex: 1;
-  height: 359px;
-  border-radius: 28px;
-  overflow: hidden;
-  background: linear-gradient(180deg, rgba(213,213,213,1) 17%, rgba(111,111,111,1) 100%);
-  display: flex;
-  align-items: flex-end;
-}
-
-.blog__travel-featured-inner {
-  padding: 24px 28px;
-  width: 100%;
-}
-
-.blog__travel-tag,
-.blog__business-tag {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 10px;
-  opacity: 0.48;
-  margin-bottom: 6px;
-}
-
-.blog__travel-badge,
-.blog__business-badge {
-  width: 75px;
-  height: 18px;
-  background: #6f6f6f;
-  border: 1px solid #bebebe;
-  border-radius: 9px;
-  margin-bottom: 8px;
-}
-
-.blog__travel-featured-title,
-.blog__business-featured-title {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-.blog__travel-featured-meta,
-.blog__business-featured-meta {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #fff;
-  font-size: 10px;
-  margin-top: 4px;
-}
-
-.blog__travel-grid,
-.blog__business-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 31px;
-}
-
-.blog__travel-card,
-.blog__business-card {
-  position: relative;
-  border-radius: 28px;
-  overflow: hidden;
-  background: #dbdbdb;
-  min-height: 389px;
-}
-
-.blog__travel-card-bg,
-.blog__business-card-bg {
-  position: relative;
-}
-
-.blog__travel-card-img,
-.blog__business-card-img {
-  width: 100%;
-  height: 214px;
-  object-fit: cover;
-}
-
-.blog__travel-card-footer,
-.blog__business-card-footer {
-  height: 160px;
+.blog__post-card {
   background: #fff;
-  border-radius: 0 0 28px 28px;
-}
-
-.blog__travel-card-title,
-.blog__business-card-title {
-  position: absolute;
-  top: 215px;
-  left: 13px;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-.blog__travel-card-desc,
-.blog__business-card-desc {
-  position: absolute;
-  top: 260px;
-  left: 13px;
-  right: 13px;
-  font-family: "Poppins", sans-serif;
-  font-weight: 500;
-  color: #000;
-  font-size: 13px;
-  opacity: 0.51;
-  line-height: 1.4;
-}
-
-.blog__travel-card-date,
-.blog__business-card-date {
-  position: absolute;
-  bottom: 16px;
-  left: 19px;
-  font-family: "Poppins", sans-serif;
-  font-weight: 500;
-  color: #000;
-  font-size: 10px;
-  opacity: 0.51;
-}
-
-/* ── BUSINESS TRIPS ── */
-.blog__business-top {
-  display: flex;
-  gap: 33px;
-  margin-bottom: 28px;
-}
-
-.blog__business-featured-card {
-  flex: 1;
-  height: 359px;
-  border-radius: 28px;
+  border-radius: var(--r-lg);
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(213,213,213,1) 17%, rgba(111,111,111,1) 100%);
-  display: flex;
-  align-items: flex-end;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: var(--ease);
 }
 
-.blog__business-featured-inner {
-  padding: 24px 28px;
+.blog__post-card:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-5px);
+  border-color: var(--green-border);
+}
+
+.blog__post-card-img {
   width: 100%;
-}
-
-.blog__business-card-bg {
-  position: relative;
-  height: 220px;
-  background: #dbdbdb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.blog__business-card-img {
-  width: 220px;
-  height: 220px;
-  object-fit: cover;
-}
-
-.blog__business-card-footer {
-  height: 160px;
-  background: #fff;
-  border-radius: 0 0 28px 28px;
-  position: relative;
-}
-
-.blog__business-card-line {
-  position: absolute;
-  bottom: 56px;
-  left: 14px;
-  width: calc(100% - 28px);
-  height: 1px;
-  object-fit: cover;
-}
-
-.blog__business-card-title {
-  top: 228px;
-}
-
-.blog__business-bottom-line {
-  width: 100%;
-  height: 1px;
-  margin-top: 24px;
-  object-fit: cover;
+  height: 180px;
   display: block;
 }
 
-/* ── PRODUCT UPDATES ── */
-.blog__products-list {
-  background: #f7f7f7;
-  border: 1px solid #000;
-  border-radius: 9px;
+.blog__post-card-body {
+  padding: 18px 20px 22px;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   9. PRODUCT UPDATES LIST
+───────────────────────────────────────────────────────────── */
+
+.blog__product-list {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
   overflow: hidden;
-  opacity: 1;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
+  position: relative;
 }
 
 .blog__product-row {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 20px 28px;
+  gap: 20px;
+  padding: 20px 24px;
+  opacity: 0.3;
+  transition: var(--ease-fast);
 }
 
-.blog__product-img {
-  width: 135px;
-  height: 138px;
-  object-fit: cover;
+.blog__product-thumb {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--r-md);
   flex-shrink: 0;
-  border-radius: 8px;
 }
 
 .blog__product-info {
   flex: 1;
-}
-
-.blog__product-category {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 11px;
-  opacity: 0.69;
-  margin-bottom: 6px;
-}
-
-.blog__product-title {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  color: #000;
-  font-size: 16px;
-  line-height: 1.4;
-  margin-bottom: 8px;
-}
-
-.blog__product-desc {
-  font-family: "Poppins", sans-serif;
-  font-weight: 500;
-  color: #000;
-  font-size: 12px;
-  opacity: 0.51;
-  line-height: 1.5;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .blog__product-meta {
@@ -629,73 +426,149 @@
   align-items: flex-end;
   gap: 8px;
   flex-shrink: 0;
-}
-
-.blog__product-badge {
-  background: #000;
-  color: #fff;
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  font-size: 10px;
-  padding: 3px 14px;
-  border-radius: 9px;
-}
-
-.blog__product-date {
-  font-family: "Poppins", sans-serif;
-  font-weight: 500;
-  color: #000;
-  font-size: 10px;
-  opacity: 0.51;
+  min-width: 90px;
 }
 
 .blog__product-divider {
-  width: 100%;
   height: 1px;
-  object-fit: cover;
-  display: block;
+  background: var(--border);
+  margin: 0 24px;
 }
 
-.blog__load-more {
-  display: block;
-  margin: 0 auto;
-  width: 159px;
-  height: 48px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 9px;
-  font-family: "Poppins", sans-serif;
+/* Overlay over faded rows */
+.blog__product-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   10. "NO POST" BADGE  (on gradient cards)
+───────────────────────────────────────────────────────────── */
+
+.blog__no-post-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-sub);
   font-weight: 600;
-  color: rgba(0,0,0,0.3);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--r-pill);
+  padding: 7px 22px;
+  pointer-events: none;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   11. EMPTY STATE TEXT
+───────────────────────────────────────────────────────────── */
+
+.blog__empty-icon {
+  font-size: 36px;
+  opacity: 0.55;
+  margin-bottom: 4px;
+}
+
+.blog__empty-title {
+  font-family: var(--font-body);
+  font-weight: 700;
   font-size: 15px;
-  cursor: pointer;
-  transition: opacity 0.2s;
+  color: var(--dark);
+  margin: 0;
 }
 
-.blog__load-more:hover {
-  opacity: 0.7;
+.blog__empty-sub {
+  font-family: var(--font-sub);
+  font-size: 13px;
+  color: var(--gray);
+  margin: 0;
 }
 
-/* ── RESPONSIVE ── */
+
+/* ─────────────────────────────────────────────────────────────
+   12. SHIMMER SKELETON
+───────────────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.shimmer {
+  background-image: linear-gradient(90deg, #e8e8e8 25%, #f4f4f4 50%, #e8e8e8 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.5s infinite linear;
+  display: block;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   13. RESPONSIVE
+───────────────────────────────────────────────────────────── */
+
 @media (max-width: 1100px) {
-  .blog__featured-grid { grid-template-columns: 1fr; }
-  .blog__featured-sidebar { flex-direction: row; flex-wrap: wrap; }
-  .blog__sidebar-item { flex: 1; min-width: 200px; }
+  .blog__featured-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .blog__featured-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .blog__sidebar-item {
+    flex: 1;
+    min-width: 200px;
+  }
 }
 
 @media (max-width: 900px) {
-  .blog__announcements-grid { grid-template-columns: 1fr; }
-  .blog__travel-top,
-  .blog__business-top { flex-direction: column; }
-  .blog__travel-grid,
-  .blog__business-grid { grid-template-columns: 1fr 1fr; }
+  .blog__ann-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .blog__two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .blog__card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-@media (max-width: 600px) {
-  .blog__banner { flex-direction: column; text-align: center; }
-  .blog__travel-grid,
-  .blog__business-grid { grid-template-columns: 1fr; }
-  .blog__product-row { flex-direction: column; align-items: flex-start; }
-  .blog__product-meta { align-items: flex-start; }
-  .blog__filters { gap: 8px; }
+@media (max-width: 640px) {
+  .blog-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .blog-banner__btn {
+    align-self: center;
+  }
+
+  .blog__card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .blog__product-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .blog__product-meta {
+    align-items: flex-start;
+  }
 }
