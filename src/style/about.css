@@ -24,70 +24,18 @@
   padding: 7px 18px; font-family: var(--font-sub); font-size: 12px; font-weight: 600;
   color: var(--green); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 28px;
 }
-
-.about .btn-cart {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  cursor: pointer;
+.about-hero__label-dot {
+  width: 6px; height: 6px; background: var(--green); border-radius: 50%;
+  animation: about-pulse 2s infinite;
 }
-
-/* ===== HERO SECTION ===== */
-.about .hero-section {
-  padding-top: 140px;
-  padding-bottom: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  max-width: 1440px;
-  margin: 0 auto;
+@keyframes about-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.4); }
 }
-
-.about .txt-about {
-  font-size: 14px;
-  font-weight: 500;
-  color: #00000080;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-bottom: 20px;
-}
-
-.about .txt-about-big {
-  font-size: 48px;
-  font-weight: 500;
-  color: #000000;
-  line-height: 1.2;
-  margin-bottom: 24px;
-  max-width: 700px;
-}
-
-.about .txt-about-small {
-  font-size: 16px;
-  font-weight: 400;
-  color: #00000085;
-  max-width: 620px;
-  line-height: 1.6;
-}
-
-.about .hero-divider {
-  width: 80px;
-  height: 2px;
-  background-color: #00000020;
-  margin: 40px auto 0;
-}
-
-/* ===== MISSION SECTION ===== */
-.about .mission-section {
-  max-width: 1200px;
-  margin: 80px auto;
-  padding: 0 80px;
-  display: flex;
-  align-items: flex-start;
-  gap: 80px;
+.about-hero__title {
+  font-family: var(--font-heading); font-size: clamp(32px, 5vw, 60px);
+  font-weight: 700; color: var(--dark); line-height: 1.2;
+  margin-bottom: 20px; max-width: 700px; margin-left: auto; margin-right: auto;
 }
 .about-hero__title em { font-style: italic; color: var(--green); }
 .about-hero__subtitle {

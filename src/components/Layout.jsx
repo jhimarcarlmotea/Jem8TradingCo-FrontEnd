@@ -17,6 +17,7 @@ const SOCIAL_ICONS = [
   { label: "Snapchat",  icon: "👻" },
 ];
 
+import Logo from '../assets/Logo — Jem 8 Circle Trading Co (1).png';
 const LEGAL_LINKS = ["Privacy Policy", "Terms", "Pricing", "Do not sell my personal info"];
 
 export function Header() {
@@ -26,19 +27,19 @@ export function Header() {
   return (
     <>
       <header className="site-header">
-        <div className="container site-header__inner">
-          <Link to="/" className="site-header__logo-wrap">
-            <img
-              src="/img/Logo — Jem 8 Circle Trading Co (1).png"
-              alt="JEM 8 Circle"
-              className="site-header__logo-img"
-              onError={(e) => {
-                e.target.style.display = "none";
-                e.target.nextSibling.style.display = "block";
-              }}
-            />
-            <span className="site-header__logo-text" style={{ display: "none" }}>JEM 8</span>
-          </Link>
+  <div className="container site-header__inner">
+    <Link to="/" className="site-header__logo-wrap">
+      <img
+        src={Logo}  
+        alt="JEM 8 Circle"
+        className="site-header__logo-img"
+        onError={(e) => {
+          e.target.style.display = "none";
+          e.target.nextSibling.style.display = "block";
+        }}
+      />
+      <span className="site-header__logo-text" style={{ display: "none" }}>JEM 8</span>
+    </Link>
 
           <nav className="site-header__nav">
             {NAV_LINKS.map(({ label, to }) => (
