@@ -1,23 +1,30 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-const navItems = [
+// Main navigation items (lahat except Settings)
+const mainNavItems = [
   { label: "Dashboard", icon: "⊞", href: "/adminDashboard" },
   { label: "Products", icon: "📦", href: "/adminProducts" },
-  { label: "Orders", icon: "🛒", href: "/orders" },
+  { label: "Orders", icon: "🛒", href: "/adminOrders" },
   { label: "Blog Post", icon: "📝", href: "/blog" },
   { label: "Account Management", icon: "👤", href: "/account" },
   { label: "Customer Reports", icon: "📊", href: "/reports" },
   { label: "Leadership Management", icon: "🏆", href: "/leadership" },
   { label: "Backup & Recovery", icon: "💾", href: "/backup" },
   { label: "Activity Logs", icon: "📋", href: "/activity" },
+  // Reviews ay hindi ilalagay dito (p lang)
+  { label: "Messages", icon: "✉️", href: "/messages" },
+];
+
+// Settings
+const settingsItems = [
   { label: "Settings", icon: "⚙️", href: "/adminSettings" },
 ];
 
 export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
   const location = useLocation();
 
-  const navItemStyle = (active) => ({
+  const linkStyle = (active) => ({
     display: "flex",
     alignItems: "center",
     gap: "10px",
@@ -32,6 +39,19 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
     transition: "all 0.15s ease",
     textDecoration: "none",
   });
+
+  const pStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    marginBottom: "2px",
+    color: "black",
+    fontSize: "13px",
+    fontWeight: 400,
+    cursor: "default",
+  };
 
   const NavContent = () => (
     <>
@@ -57,13 +77,63 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
 
       {/* Navigation Links */}
       <nav style={{ padding: "12px", flex: 1, overflowY: "auto" }}>
-        {navItems.map((item) => {
+        {/* I-loop hanggang Activity Logs lang */}
+        {mainNavItems.slice(0, 9).map((item) => {
           const isActive = location.pathname === item.href;
           return (
             <Link
               key={item.label}
               to={item.href}
-              style={navItemStyle(isActive)}
+              style={linkStyle(isActive)}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <span style={{ fontSize: "15px", width: "20px", textAlign: "center" }}>
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+
+        {/* Reviews - p lang */}
+        <div style={pStyle}>
+          <span style={{ fontSize: "8px", width: "20px", textAlign: "center" }}></span>
+          <span>Reviews</span>
+        </div>
+
+        {/* Messages - hiwalay na link */}
+        {mainNavItems.slice(9, 10).map((item) => {
+          const isActive = location.pathname === item.href;
+          return (
+            <Link
+              key={item.label}
+              to={item.href}
+              style={linkStyle(isActive)}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <span style={{ fontSize: "15px", width: "20px", textAlign: "center" }}>
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+
+        {/* Divider before Settings */}
+        <div style={{ 
+          height: "1px", 
+          background: "#E5E7EB", 
+          margin: "12px 0 8px 0",
+        }} />
+
+        {/* Settings */}
+        {settingsItems.map((item) => {
+          const isActive = location.pathname === item.href;
+          return (
+            <Link
+              key={item.label}
+              to={item.href}
+              style={linkStyle(isActive)}
               onClick={() => setSidebarOpen(false)}
             >
               <span style={{ fontSize: "15px", width: "20px", textAlign: "center" }}>
@@ -102,7 +172,6 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
       <style>{`
         * { box-sizing: border-box; }
 
-        /* Desktop sidebar */
         .admin-desktop-sidebar {
           width: 242px;
           min-width: 242px;
@@ -116,7 +185,6 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
           overflow-y: auto;
         }
 
-        /* Mobile: overlay */
         .admin-overlay {
           display: none;
           position: fixed;
@@ -125,12 +193,11 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
           z-index: 40;
         }
 
-        /* Mobile: sliding sidebar */
         .admin-mobile-sidebar {
           display: none;
           position: fixed;
           top: 0;
-          left: ${sidebarOpen ? "0" : "-260px"};
+          left: -260px;
           width: 242px;
           height: 100vh;
           background: #fff;
@@ -138,8 +205,12 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
           flex-direction: column;
           z-index: 50;
           transition: left 0.3s ease;
-          box-shadow: ${sidebarOpen ? "4px 0 20px rgba(0,0,0,0.15)" : "none"};
           overflow-y: auto;
+        }
+
+        .admin-mobile-sidebar.open {
+          left: 0;
+          box-shadow: 4px 0 20px rgba(0,0,0,0.15);
         }
 
         @media (max-width: 767px) {
@@ -160,12 +231,12 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
       {/* Mobile overlay */}
       <div className="admin-overlay" onClick={() => setSidebarOpen(false)} />
 
-      {/* Mobile sliding sidebar */}
-      <aside className="admin-mobile-sidebar">
+      {/* Mobile sidebar */}
+      <aside className={`admin-mobile-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <NavContent />
       </aside>
 
-      {/* Desktop sticky sidebar */}
+      {/* Desktop sidebar */}
       <aside className="admin-desktop-sidebar">
         <NavContent />
       </aside>
