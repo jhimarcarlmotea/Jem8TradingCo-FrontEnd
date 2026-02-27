@@ -5,14 +5,14 @@ const mainNavItems = [
   { label: "Dashboard", icon: "⊞", href: "/adminDashboard" },
   { label: "Products", icon: "📦", href: "/adminProducts" },
   { label: "Orders", icon: "🛒", href: "/adminOrders" },
-  { label: "Blog Post", icon: "📝", href: "/blog" },
-  { label: "Account Management", icon: "👤", href: "/account" },
+  { label: "Blog Post", icon: "📝", href: "/adminBlogpost" },
+  { label: "Account Management", icon: "👤", href: "/adminAccountmanagement" },
   { label: "Customer Reports", icon: "📊", href: "/adminContact" },
   { label: "Leadership Management", icon: "🏆", href: "/adminLeadership" },
   { label: "Backup & Recovery", icon: "💾", href: "/adminBackup" },
-  { label: "Activity Logs", icon: "📋", href: "/activity" },
   { label: "Reviews", icon: "⭐", href: "/adminReviews" },
-  { label: "Messages", icon: "✉️", href: "/messages" },
+  { label: "Messages", icon: "✉️", href: "/adminMessage" },
+  { label: "Activity Log", icon: "📋", href: "/adminActivitylogs" },
 ];
 
 // Settings
@@ -44,9 +44,11 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
       {/* Logo Area */}
       <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #F3F4F6" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontWeight: 800, fontSize: "16px", color: "#155DFC", letterSpacing: "-0.5px" }}>
-            JEM 8 CIRCLE
-          </div>
+          <img
+            src="/src/assets/Logo — Jem 8 Circle Trading Co (1).png"
+            alt="JEM 8 CIRCLE"
+            style={{ height: "56px", width: "auto", objectFit: "contain" }}
+          />
           <button
             onClick={() => setSidebarOpen(false)}
             className="admin-close-btn"
