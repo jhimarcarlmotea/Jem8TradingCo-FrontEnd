@@ -19,7 +19,12 @@ import AdminOrders from './pages/adminOrders';
 import AdminBackup from './pages/adminBackup';
 import AdminContactMessages from './pages/adminContact';
 import AdminReviews from './pages/adminReviews';
-
+import Login from './pages/Login'
+import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import AccountVerification from './pages/AccountVerification'
+import PasswordReset from './pages/PasswordReset';
+import ForgotPasswordCode from './pages/ForgotPasswordCode';
 // Layout for public pages (with main Header & Footer)
 function PublicLayout() {
   return (
@@ -53,6 +58,14 @@ export default function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders" element={<MyOrders />} />
+
+          {/* Login and registration routes  */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/account-verification" element={<AccountVerification />} />
+          <Route path="/password-reset" element={<PasswordReset />} />
+          <Route path="/forgot-password-code" element={<ForgotPasswordCode />} />
         </Route>
 
         {/* Admin routes */}
@@ -66,6 +79,8 @@ export default function App() {
           <Route path="/adminContact" element={<AdminContactMessages />} />
           <Route path="/adminReviews" element={<AdminReviews />} />
         </Route>
+
+        
       </Routes>
     </CartProvider>
   );

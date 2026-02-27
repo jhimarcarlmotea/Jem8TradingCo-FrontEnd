@@ -1,0 +1,169 @@
+* {
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f2f2f2;
+}
+
+.auth-card {
+  width: 400px;
+  background: #eaeaea;
+  padding: 40px 35px;
+  border-radius: 35px;
+  border: 2px solid #000;
+}
+
+.title {
+  margin-bottom: 25px;
+  font-weight: 700;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  font-size: 13px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: #000;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper input {
+  padding-right: 40px;
+}
+
+.eye-icon,
+.mail-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.mail-icon {
+  left: 10px;
+  right: auto;
+}
+
+.mail-icon + input {
+  padding-left: 35px;
+}
+
+.small-text {
+  font-size: 12px;
+  margin: 15px 0;
+}
+
+.small-text a {
+  font-weight: bold;
+  text-decoration: none;
+  color: #000;
+}
+
+.center {
+  text-align: center;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #000;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
+
+.primary-btn:hover {
+  opacity: 0.9;
+}
+
+.divider {
+  text-align: center;
+  font-size: 12px;
+  margin: 15px 0;
+  color: #555;
+}
+
+.google-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  background: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.google-btn img {
+  width: 18px;
+  height: 18px;
+}
+
+.back-link {
+  font-size: 13px;
+  text-decoration: none;
+  color: #000;
+  display: inline-block;
+  margin-bottom: 15px;
+}
+
+.description {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.otp-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.otp-container input {
+  width: 45px;
+  height: 45px;
+  text-align: center;
+  font-size: 18px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.otp-container input:focus {
+  border-color: #000;
+  outline: none;
+}
