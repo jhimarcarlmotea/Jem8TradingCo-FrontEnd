@@ -15,6 +15,9 @@ import AdminProducts from "./pages/adminProducts";
 import AdminDashboard from "./pages/adminDashboard";
 import AdminPanelSettings from "./pages/adminSettings";
 import AdminLeadership from "./pages/adminLeadership";
+import AdminBlogpost from "./pages/adminBlogpost";
+import AdminActivitylogs from "./pages/adminActivitylogs";
+import AdminAccountManagement from "./pages/adminAccountmanagement";
 import AdminOrders from './pages/adminOrders';
 import AdminBackup from './pages/adminBackup';
 import AdminContactMessages from './pages/adminContact';
@@ -61,6 +64,9 @@ export default function App() {
           <Route path="/adminSettings" element={<AdminPanelSettings />} />
           <Route path="/adminLeadership" element={<AdminLeadership />} />
           <Route path="/adminOrders" element={<AdminOrders />} />
+          <Route path="/adminBlogpost" element={<AdminBlogpost />} />
+          <Route path="/adminActivitylogs" element={<AdminActivitylogs />} />
+          <Route path="/adminAccountmanagement" element={<AdminAccountManagement />} />
           <Route path="/adminBackup" element={<AdminBackup />} />
           <Route path="/adminContact" element={<AdminContactMessages />} />
         </Route>
