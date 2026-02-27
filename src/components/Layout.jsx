@@ -26,7 +26,6 @@ export function Header() {
   const NAV_LINKS = [
     { to: "/",           label: "Home"       },
     { to: "/products",   label: "Products"   },
-    { to: "/categories", label: "Categories" },
     { to: "/blog",       label: "Blog"       },
     { to: "/about",      label: "About"      },
     { to: "/contact",    label: "Contact"    },

@@ -1,0 +1,508 @@
+/* ===== ADMIN ACTIVITY LOG ===== */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg-base: #F0F7F2;
+  --bg-surface: #FFFFFF;
+  --bg-surface-2: #F8F9FC;
+  --border: #E4E8F0;
+  --border-light: #EEF1F7;
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-soft: #EFF6FF;
+  --accent-soft-border: #BFDBFE;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --text-white: #FFFFFF;
+  --danger: #EF4444;
+  --danger-soft: #FEF2F2;
+  --danger-border: #FECACA;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.14), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --font: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+/* ===== LAYOUT ===== */
+.actlog-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-base);
+  font-family: var(--font);
+  color: var(--text-primary);
+}
+
+.actlog-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 28px 48px;
+  overflow-x: hidden;
+}
+
+/* ===== TOP BAR ===== */
+.actlog-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.actlog-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.actlog-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.actlog-burger {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s;
+}
+
+.actlog-burger:hover {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+/* ===== SEARCH ===== */
+.actlog-search-wrapper {
+  position: relative;
+}
+
+.actlog-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.actlog-search-input {
+  padding: 9px 14px 9px 34px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  outline: none;
+  background: var(--bg-surface);
+  width: 240px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.actlog-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.actlog-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+/* ===== TABS ===== */
+.actlog-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.actlog-tab-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+
+.actlog-tab-btn.active {
+  background: var(--text-primary);
+  color: var(--text-white);
+  border-color: var(--text-primary);
+  font-weight: 600;
+}
+
+.actlog-tab-btn:hover:not(.active) {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  border-color: #CBD5E1;
+}
+
+/* ===== GROUPS ===== */
+.actlog-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.actlog-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 60px 0;
+}
+
+/* ===== DATE DIVIDER ===== */
+.actlog-date-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.actlog-date-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  letter-spacing: -0.1px;
+}
+
+.actlog-date-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ===== LOG ITEMS CONTAINER ===== */
+.actlog-items {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ===== SINGLE LOG ITEM ===== */
+.actlog-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.12s;
+  gap: 16px;
+}
+
+.actlog-item:last-child {
+  border-bottom: none;
+}
+
+.actlog-item:hover {
+  background: #F8FBFF;
+}
+
+.actlog-item-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Icon */
+.actlog-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Info */
+.actlog-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.actlog-info-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actlog-user {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.actlog-action {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* Badges */
+.actlog-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  border: 1px solid;
+}
+
+.badge-order {
+  background: #EFF6FF;
+  color: #2563EB;
+  border-color: #BFDBFE;
+}
+
+.badge-stock {
+  background: #F0FDF4;
+  color: #16A34A;
+  border-color: #BBF7D0;
+}
+
+.badge-blog {
+  background: #FFF7ED;
+  color: #C2410C;
+  border-color: #FED7AA;
+}
+
+.badge-backup {
+  background: #F5F3FF;
+  color: #7C3AED;
+  border-color: #DDD6FE;
+}
+
+.badge-payment {
+  background: #ECFDF5;
+  color: #059669;
+  border-color: #A7F3D0;
+}
+
+.badge-account {
+  background: #FFF1F2;
+  color: #E11D48;
+  border-color: #FECDD3;
+}
+
+.actlog-info-bottom {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.actlog-items-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.actlog-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.actlog-date-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.actlog-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--bg-surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  letter-spacing: 0.06em;
+}
+
+/* Right side */
+.actlog-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.actlog-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.actlog-delete-btn {
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.actlog-delete-btn:hover {
+  background: var(--danger);
+  color: var(--text-white);
+  border-color: var(--danger);
+}
+
+/* ===== DELETE MODAL ===== */
+.actlog-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: overlayIn 0.2s ease;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.actlog-delete-modal {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+  animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.actlog-delete-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 14px;
+}
+
+.actlog-delete-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.actlog-delete-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 24px;
+  line-height: 1.6;
+}
+
+.actlog-delete-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.actlog-cancel-btn {
+  padding: 9px 22px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.actlog-cancel-btn:hover {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+.actlog-confirm-btn {
+  padding: 9px 22px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--text-white);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  transition: all 0.15s;
+}
+
+.actlog-confirm-btn:hover {
+  background: #DC2626;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 767px) {
+  .actlog-burger { display: inline-flex !important; }
+  .actlog-main { padding: 20px 16px 40px; }
+  .actlog-search-input { width: 160px; }
+  .actlog-item { flex-direction: column; gap: 12px; }
+  .actlog-item-right { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+}
+
+@media (min-width: 768px) {
+  .actlog-burger { display: none !important; }
+}
