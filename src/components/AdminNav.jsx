@@ -12,7 +12,7 @@ const mainNavItems = [
   { label: "Backup & Recovery", icon: "💾", href: "/adminBackup" },
   { label: "Activity Logs", icon: "📋", href: "/activity" },
   { label: "Reviews", icon: "⭐", href: "/adminReviews" },
-  { label: "Messages", icon: "✉️", href: "/messages" },
+  { label: "Messages", icon: "✉️", href: "/adminMessage" },
 ];
 
 // Settings

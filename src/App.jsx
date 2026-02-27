@@ -25,6 +25,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import AccountVerification from './pages/AccountVerification'
 import PasswordReset from './pages/PasswordReset';
 import ForgotPasswordCode from './pages/ForgotPasswordCode';
+import AdminMessage from './pages/adminMessage'; 
 // Layout for public pages (with main Header & Footer)
 function PublicLayout() {
   return (
@@ -78,6 +79,8 @@ export default function App() {
           <Route path="/adminBackup" element={<AdminBackup />} />
           <Route path="/adminContact" element={<AdminContactMessages />} />
           <Route path="/adminReviews" element={<AdminReviews />} />
+          <Route path="/adminMessage" element={<AdminMessage />} />
+
         </Route>
 
         
