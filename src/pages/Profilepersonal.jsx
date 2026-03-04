@@ -3,10 +3,11 @@ import '../style/Profilepersonal.css';
 import "../style/OrdersOverview.css";
 import '../style/PasswordSecurity.css';
 import '../style/Notification.css';
-
+import { logout } from "../api/auth";
 import OrdersOverview from './OrdersOverview';
 import PasswordSecurity from './PasswordSecurity';
 import Notification     from './Notification';
+import { useNavigate } from "react-router-dom";
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 const UserIcon = () => (
@@ -176,6 +177,15 @@ export default function ProfilePersonal() {
     }
   };
 
+    const navigate = useNavigate();
+  const Logout = async () => {
+    console.log("logging out");
+    const data = await logout();
+    if(data){
+      navigate("/login")
+    }
+  }
+
   return (
     <div className="profile-page">
       <div className="profile-page__inner">
@@ -210,7 +220,7 @@ export default function ProfilePersonal() {
           <div className="profile-sidebar__divider" />
 
           <div className="profile-sidebar__logout-wrap">
-            <button className="profile-sidebar__item danger">
+            <button className="profile-sidebar__item danger" onClick={Logout}>
               <LogoutIcon />
               Logout
             </button>

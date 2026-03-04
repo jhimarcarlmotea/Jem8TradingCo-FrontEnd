@@ -1,7 +1,7 @@
 import api from "./axios";
 import axios from "axios";
 import { toast } from "react-toastify";
-
+const API_URL = "http://127.0.0.1:8000/api";
 // Ensure CSRF cookie is present for Sanctum (calls host root `/sanctum/csrf-cookie`).
 const ensureCsrf = async () => {
   try {
@@ -13,6 +13,18 @@ const ensureCsrf = async () => {
     // ignore - backend might not need CSRF (token flows)
   }
 };
+export const me = async () => {
+  try{
+    const response = await axios.get(API_URL + "/me",{withCredentials:true});
+    console.log(response)
+    if(response.status === 200){
+      return true;
+    }
+  }catch(e) {
+    console.error(e);
+    return false;
+  }
+}
 
 export const loginUser = async (data) => {
   try {
@@ -59,3 +71,12 @@ export const sendResetLink = async (data) => {
     throw error.response?.data || { message: "Network error. Please try again." };
   }
 };
+
+export const logout = async () => {
+  try{
+    const response = await api.post("/logout",{},{withCredentials:true});
+    return response.data;
+  }catch(er){
+    throw error.response?.data || { message: "Login Failed!" };
+  }
+}
