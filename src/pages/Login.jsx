@@ -26,8 +26,8 @@ const Login = () => {
 
       // Save token if using JWT
       // if (data.token) {
-      //   localStorage.setItem("token", data.token);
-      // }
+       //  localStorage.setItem("token", data.token);
+       //}
 
       navigate("/");
     } catch (err) {
