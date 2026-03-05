@@ -57,6 +57,13 @@
   align-self: flex-start;
 }
 
+.profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
 .profile-breadcrumb__dot {
   width: 6px;
   height: 6px;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import '../style/Profilepersonal.css';
 import "../style/OrdersOverview.css";
 import '../style/PasswordSecurity.css';
@@ -167,6 +167,38 @@ const MENU_ITEMS = [
 
 export default function ProfilePersonal() {
   const [activeMenu, setActiveMenu] = useState("personal");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load /me on page load
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const response = await me();
+
+        // IMPORTANT: adjust depending on your backend structure
+        if (response?.status === "success") {
+          setUser(response.data);
+        } else {
+          navigate("/login");
+        }
+      } catch (error) {
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUser();
+  }, [navigate]);
+
+  const refreshUser = async () => {
+    const response = await me();
+    if (response?.status === "success") {
+      setUser(response.data);
+    }
+  };
+
 
   const renderContent = () => {
     switch (activeMenu) {
@@ -177,7 +209,15 @@ export default function ProfilePersonal() {
     }
   };
 
-    const navigate = useNavigate();
+  if (loading) {
+    return (
+      <div className="profile-loading">
+        Loading profile...
+      </div>
+    );
+  }
+
+  const navigate = useNavigate();
   const Logout = async () => {
     console.log("logging out");
     const data = await logout();
