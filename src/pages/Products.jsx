@@ -1,79 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Header, Footer } from "../components/Layout";
 import { useCart } from "../context/CartContext";
+import axios from "axios";
 import "../style/global.css";
 import "../style/products.css";
 
+const BASE = "http://127.0.0.1:8000";
+
 const ph = (w, h, label = "") =>
   `https://placehold.co/${w}x${h}/edf4f0/4d7b65?text=${encodeURIComponent(label)}`;
-
-/* ── Star Rating ── */
-function StarRating({ rating }) {
-  return (
-    <div className="pcard__stars">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <span key={s} className={s <= Math.round(rating) ? "pcard__star" : "pcard__star--empty"}>★</span>
-      ))}
-      <span className="pcard__rating">({rating})</span>
-    </div>
-  );
-}
-
-/* ── Data ── */
-const CATEGORIES = [
-  { id: "all",        label: "All Products",        icon: "🛒", count: 30 },
-  { id: "office",     label: "Office Supplies",      icon: "🖊️", count: 10 },
-  { id: "pantry",     label: "Pantry Supplies",      icon: "☕", count: 5  },
-  { id: "janitorial", label: "Janitorial Supplies",  icon: "🧹", count: 5  },
-  { id: "personal",   label: "Personal & Home Care", icon: "🧴", count: 4  },
-  { id: "giveaways",  label: "Customized Giveaways", icon: "🎁", count: 3  },
-  { id: "wellness",   label: "Health & Wellness",    icon: "🌿", count: 3  },
-];
-
-const CAT_LABEL = {
-  office: "Office", pantry: "Pantry", janitorial: "Janitorial",
-  personal: "Personal Care", giveaways: "Giveaways", wellness: "Wellness",
-};
-
-const PRODUCTS = [
-  /* OFFICE */
-  { id: 1,  cat: "office",     name: "Dollar Executive Diary 2024",                price: "₱450",   oldPrice: "₱560",   badge: "sale", discount: "-20%", rating: 4.8, image: "/img/image-dollar-executive-diary-2024-2.png" },
-  { id: 2,  cat: "office",     name: "Piano Premium Gel Pen Set (12 Pcs)",         price: "₱180",   oldPrice: "₱235",   badge: "new",  discount: "-23%", rating: 4.9, image: "/img/image.png" },
-  { id: 3,  cat: "office",     name: "Oro Desktop File Organizer",                 price: "₱950",   oldPrice: null,     badge: null,   discount: null,   rating: 4.7, image: "/img/image-oro-desktop-file-organizer-2.png" },
-  { id: 4,  cat: "office",     name: "Master Permanent Markers (24 Colors)",       price: "₱160",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.6, image: "/img/image-master-permanent-markers-24-colors.png" },
-  { id: 5,  cat: "office",     name: "Dollar Student Spiral Notebook (200 Pages)", price: "₱120",   oldPrice: "₱150",   badge: "sale", discount: "-20%", rating: 4.5, image: "/img/image-dollar-student-spiral-notebook-200-pages.png" },
-  { id: 6,  cat: "office",     name: "Master Art Sketch Pad A4 (100 GSM)",         price: "₱245",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.7, image: "/img/image-master-art-sketch-pad-a4-100-GSM.png" },
-  { id: 7,  cat: "office",     name: "Piano Weekly Planner 2024",                  price: "₱360",   oldPrice: null,     badge: null,   discount: null,   rating: 4.6, image: "/img/image-piano-weekly-planner-2024.png" },
-  { id: 8,  cat: "office",     name: "Dollar A4 Exercise Book (100 Pages)",        price: "₱105",   oldPrice: null,     badge: null,   discount: null,   rating: 4.3, image: "/img/image-dollar-a4-exercise-book-100-pages.png" },
-  { id: 9,  cat: "office",     name: "Oro Premium Hardcover Notebook",             price: "₱680",   oldPrice: "₱830",   badge: "new",  discount: "-18%", rating: 4.8, image: "/img/image-oro-premium-hardcover-notebook.png" },
-  { id: 10, cat: "office",     name: "Dollar Heavy Duty Stapler",                  price: "₱320",   oldPrice: null,     badge: null,   discount: null,   rating: 4.4, image: "/img/image-dollar-heavy-duty-stapler.png" },
-  /* PANTRY */
-  { id: 11, cat: "pantry",     name: "Premium Arabica Ground Coffee (500g)",       price: "₱280",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.8, image: ph(400, 300, "Coffee") },
-  { id: 12, cat: "pantry",     name: "Assorted Office Snack Bundle (10 pcs)",      price: "₱195",   oldPrice: "₱240",   badge: "sale", discount: "-19%", rating: 4.5, image: ph(400, 300, "Snacks") },
-  { id: 13, cat: "pantry",     name: "Green Tea Sachets Box (25 bags)",            price: "₱120",   oldPrice: null,     badge: null,   discount: null,   rating: 4.4, image: ph(400, 300, "Green+Tea") },
-  { id: 14, cat: "pantry",     name: "Creamer & Sugar Condiment Set",              price: "₱85",    oldPrice: null,     badge: null,   discount: null,   rating: 4.2, image: ph(400, 300, "Condiments") },
-  { id: 15, cat: "pantry",     name: "Drinking Water Dispenser Bottle (18L)",      price: "₱340",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.6, image: ph(400, 300, "Water+Jug") },
-  /* JANITORIAL */
-  { id: 16, cat: "janitorial", name: "Industrial Floor Mop & Bucket Set",          price: "₱520",   oldPrice: "₱640",   badge: "sale", discount: "-19%", rating: 4.7, image: ph(400, 300, "Mop+Set") },
-  { id: 17, cat: "janitorial", name: "Multi-Surface Disinfectant Spray (1L)",      price: "₱145",   oldPrice: null,     badge: null,   discount: null,   rating: 4.5, image: ph(400, 300, "Disinfectant") },
-  { id: 18, cat: "janitorial", name: "Microfiber Cleaning Cloths (10-Pack)",       price: "₱210",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.6, image: ph(400, 300, "Microfiber") },
-  { id: 19, cat: "janitorial", name: "Heavy Duty Trash Bags (50 pcs)",             price: "₱130",   oldPrice: null,     badge: null,   discount: null,   rating: 4.3, image: ph(400, 300, "Trash+Bags") },
-  { id: 20, cat: "janitorial", name: "Toilet Bowl Cleaner & Brush Kit",            price: "₱175",   oldPrice: "₱210",   badge: "sale", discount: "-17%", rating: 4.4, image: ph(400, 300, "Cleaner+Kit") },
-  /* PERSONAL */
-  { id: 21, cat: "personal",   name: "Antibacterial Hand Soap (500ml)",            price: "₱95",    oldPrice: null,     badge: null,   discount: null,   rating: 4.5, image: ph(400, 300, "Hand+Soap") },
-  { id: 22, cat: "personal",   name: "Facial Tissue Box Set (3 boxes)",            price: "₱120",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.3, image: ph(400, 300, "Tissue") },
-  { id: 23, cat: "personal",   name: "Alcohol Gel Sanitizer (250ml)",              price: "₱75",    oldPrice: "₱95",    badge: "sale", discount: "-21%", rating: 4.6, image: ph(400, 300, "Sanitizer") },
-  { id: 24, cat: "personal",   name: "Premium Laundry Powder (1kg)",               price: "₱165",   oldPrice: null,     badge: null,   discount: null,   rating: 4.2, image: ph(400, 300, "Laundry") },
-  /* GIVEAWAYS */
-  { id: 25, cat: "giveaways",  name: "Custom Embroidered Polo Shirt",              price: "₱480",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.9, image: ph(400, 300, "Polo+Shirt") },
-  { id: 26, cat: "giveaways",  name: "Corporate Tote Bag w/ Logo Print",           price: "₱220",   oldPrice: "₱280",   badge: "sale", discount: "-21%", rating: 4.7, image: ph(400, 300, "Tote+Bag") },
-  { id: 27, cat: "giveaways",  name: "Personalized Tumbler (500ml)",               price: "₱350",   oldPrice: null,     badge: null,   discount: null,   rating: 4.8, image: ph(400, 300, "Tumbler") },
-  /* WELLNESS */
-  { id: 28, cat: "wellness",   name: "IAM Amazing Pure Organic Barley (250g)",     price: "₱850",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.9, image: "/img/download-2-3.png" },
-  { id: 29, cat: "wellness",   name: "Organic Barley Starter Pack (3 pouches)",    price: "₱2,200", oldPrice: "₱2,550", badge: "sale", discount: "-14%", rating: 4.8, image: "/img/download-1.png" },
-  { id: 30, cat: "wellness",   name: "Barley Wellness Bundle + Shaker",            price: "₱1,450", oldPrice: null,     badge: null,   discount: null,   rating: 4.7, image: "/img/download-1-2.png" },
-];
 
 const HERO_STATS = [
   { icon: "📦", num: "250+", label: "Products Listed" },
@@ -82,11 +18,64 @@ const HERO_STATS = [
   { icon: "🚚", num: "Fast", label: "Direct Delivery" },
 ];
 
+/* ── Star Rating ── */
+function StarRating({ rating }) {
+  const r = parseFloat(rating) || 0;
+  return (
+    <div className="pcard__stars">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span key={s} className={s <= Math.round(r) ? "pcard__star" : "pcard__star--empty"}>★</span>
+      ))}
+      <span className="pcard__rating">({r.toFixed(1)})</span>
+    </div>
+  );
+}
+
+/* ── Skeleton Card ── */
+function SkeletonCard() {
+  return (
+    <div className="pcard" style={{ pointerEvents: "none" }}>
+      <div className="pcard__img-wrap" style={{ background: "#e5ede9", borderRadius: "12px 12px 0 0" }}>
+        <div style={{ width: "100%", aspectRatio: "4/3", background: "linear-gradient(90deg,#e5ede9 25%,#d0ddd6 50%,#e5ede9 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+      </div>
+      <div className="pcard__body">
+        <div style={{ height: "10px", width: "50%", background: "#e5ede9", borderRadius: "6px", marginBottom: "8px" }} />
+        <div style={{ height: "14px", width: "85%", background: "#e5ede9", borderRadius: "6px", marginBottom: "6px" }} />
+        <div style={{ height: "14px", width: "60%", background: "#e5ede9", borderRadius: "6px", marginBottom: "12px" }} />
+        <div style={{ height: "10px", width: "40%", background: "#e5ede9", borderRadius: "6px", marginBottom: "14px" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ height: "18px", width: "30%", background: "#e5ede9", borderRadius: "6px" }} />
+          <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#e5ede9" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Product Card ── */
 function ProductCard({ product }) {
   const [imgError, setImgError] = useState(false);
   const [added, setAdded]       = useState(false);
   const { addToCart }           = useCart();
+
+  // Normalise fields from API response
+  const productId = product.id ?? product.product_id;
+  const name      = product.product_name ?? product.name ?? "Product";
+  const priceRaw = parseFloat(product.price ?? 0);
+  const price    = `₱${priceRaw.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+  const isOnSale = product.isSale == 1;
+  const catRaw   = product.category;
+  const catLabel = typeof catRaw === "object" && catRaw !== null
+    ? (catRaw.name ?? catRaw.category_name ?? "")
+    : (catRaw ?? product.category_name ?? "");
+  const rating   = parseFloat(product.rating ?? 4.5);
+  const stock    = Number(product.product_stocks ?? product.stock ?? 0);
+
+  // Resolve image
+  const rawImg = product.images?.[0]?.image_path;
+  const imgSrc = imgError || !rawImg
+    ? ph(400, 300, name)
+    : `${BASE}/storage/${rawImg}`;
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -96,33 +85,35 @@ function ProductCard({ product }) {
   };
 
   return (
-    <Link to={`/products/${product.id}`} className="pcard" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+    <Link to={`/products/${productId}`} className="pcard" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <div className="pcard__img-wrap">
         <img
-          src={imgError ? ph(400, 300, product.name) : product.image}
-          alt={product.name}
+          src={imgSrc}
+          alt={name}
           className="pcard__img"
           onError={() => setImgError(true)}
         />
         <div className="pcard__badges">
-          {product.badge === "new"  && <span className="pcard__badge pcard__badge--new">New</span>}
-          {product.badge === "sale" && <span className="pcard__badge pcard__badge--sale">{product.discount}</span>}
+          {isOnSale && <span className="pcard__badge pcard__badge--sale">Sale</span>}
+          {stock === 0 && <span className="pcard__badge" style={{ background: "#DC2626", color: "#fff" }}>Out of Stock</span>}
+          {stock > 0 && stock <= 10 && <span className="pcard__badge" style={{ background: "#D97706", color: "#fff" }}>Low Stock</span>}
         </div>
         <button className="pcard__wishlist" aria-label="Add to wishlist">🤍</button>
       </div>
       <div className="pcard__body">
-        <div className="pcard__cat">{CAT_LABEL[product.cat] || product.cat}</div>
-        <div className="pcard__name">{product.name}</div>
-        <StarRating rating={product.rating} />
+        {catLabel && <div className="pcard__cat">{catLabel}</div>}
+        <div className="pcard__name">{name}</div>
+        <StarRating rating={rating} />
         <div className="pcard__footer">
           <div className="pcard__price-group">
-            <span className="pcard__price">{product.price}</span>
-            {product.oldPrice && <span className="pcard__price-old">{product.oldPrice}</span>}
+            <span className="pcard__price">{price}</span>
           </div>
           <button
             className={`pcard__add-btn${added ? " pcard__add-btn--added" : ""}`}
             aria-label="Add to cart"
             onClick={handleAdd}
+            disabled={stock === 0}
+            style={stock === 0 ? { opacity: 0.4, cursor: "not-allowed" } : {}}
           >
             {added ? "✓" : "+"}
           </button>
@@ -134,20 +125,86 @@ function ProductCard({ product }) {
 
 /* ── Page ── */
 export default function Products() {
+  const [products, setProducts]             = useState([]);
+  const [categories, setCategories]         = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState(null);
   const [activeCategory, setActiveCategory] = useState("all");
-  const [searchQuery,    setSearchQuery]    = useState("");
+  const [searchQuery, setSearchQuery]       = useState("");
+  const [sortBy, setSortBy]                 = useState("default");
 
-  const filtered = useMemo(() => PRODUCTS.filter((p) => {
-    const matchCat    = activeCategory === "all" || p.cat === activeCategory;
-    const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCat && matchSearch;
-  }), [activeCategory, searchQuery]);
+  // ── Fetch products & categories ──
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [prodRes, catRes] = await Promise.all([
+          axios.get(`${BASE}/api/admin/products`, { withCredentials: true }),
+          axios.get(`${BASE}/api/categories`, { withCredentials: true }),
+        ]);
 
-  const activeCatLabel = CATEGORIES.find((c) => c.id === activeCategory)?.label || "All Products";
+        const prodData = prodRes.data?.data ?? prodRes.data?.products ?? prodRes.data;
+        const catData  = catRes.data?.categories ?? catRes.data?.data ?? catRes.data;
+
+        setProducts(Array.isArray(prodData) ? prodData : []);
+        setCategories(Array.isArray(catData) ? catData : []);
+      } catch (err) {
+        console.error("Failed to fetch:", err);
+        setError("Failed to load products. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
+  }, []);
+
+  // ── Build category tabs from API ──
+  const categoryTabs = useMemo(() => {
+    const all = { id: "all", label: "All Products", icon: "🛒", count: products.length };
+    const tabs = categories.map(cat => {
+      const catId   = String(cat.id ?? cat.category_id);
+      const label   = cat.name ?? cat.category_name ?? cat.title ?? "Other";
+      const count   = products.filter(p => {
+        const pCatId = String(p.category_id ?? p.category?.id ?? "");
+        return pCatId === catId;
+      }).length;
+      return { id: catId, label, icon: resolveCatIcon(label), count };
+    });
+    return [all, ...tabs];
+  }, [categories, products]);
+
+  // ── Filter + sort ──
+  const filtered = useMemo(() => {
+    let list = products.filter(p => {
+      const name     = (p.product_name ?? p.name ?? "").toLowerCase();
+      const catId    = String(p.category_id ?? p.category?.id ?? p.category?.category_id ?? "");
+      const matchCat = activeCategory === "all" || catId === activeCategory;
+      const matchQ   = name.includes(searchQuery.toLowerCase());
+      return matchCat && matchQ;
+    });
+
+    if (sortBy === "price-asc")  list = [...list].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    if (sortBy === "price-desc") list = [...list].sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+    if (sortBy === "name-az")    list = [...list].sort((a, b) => (a.product_name ?? a.name ?? "").localeCompare(b.product_name ?? b.name ?? ""));
+    if (sortBy === "name-za")    list = [...list].sort((a, b) => (b.product_name ?? b.name ?? "").localeCompare(a.product_name ?? a.name ?? ""));
+    if (sortBy === "sale")       list = [...list].sort((a, b) => (b.isSale == 1 ? 1 : 0) - (a.isSale == 1 ? 1 : 0));
+
+    return list;
+  }, [products, activeCategory, searchQuery, sortBy]);
+
+  const activeCatLabel = categoryTabs.find(c => c.id === activeCategory)?.label ?? "All Products";
 
   return (
     <div className="products-page">
       <Header />
+
+      <style>{`
+        @keyframes shimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position:  200% 0; }
+        }
+      `}</style>
 
       {/* ── HERO ── */}
       <section className="products-hero">
@@ -190,17 +247,23 @@ export default function Products() {
       <div className="products-filter">
         <div className="container">
           <div className="products-filter__inner">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                className={`products-filter__btn${activeCategory === cat.id ? " active" : ""}`}
-                onClick={() => { setActiveCategory(cat.id); setSearchQuery(""); }}
-              >
-                <span className="products-filter__btn-icon">{cat.icon}</span>
-                {cat.label}
-                <span className="products-filter__count">{cat.count}</span>
-              </button>
-            ))}
+            {loading
+              ? /* skeleton tabs */
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} style={{ height: "38px", width: `${80 + i * 20}px`, borderRadius: "24px", background: "#e5ede9", flexShrink: 0 }} />
+                ))
+              : categoryTabs.map((cat) => (
+                  <button
+                    key={cat.id}
+                    className={`products-filter__btn${activeCategory === cat.id ? " active" : ""}`}
+                    onClick={() => { setActiveCategory(cat.id); setSearchQuery(""); }}
+                  >
+                    <span className="products-filter__btn-icon">{cat.icon}</span>
+                    {cat.label}
+                    <span className="products-filter__count">{cat.count}</span>
+                  </button>
+                ))
+            }
           </div>
         </div>
       </div>
@@ -208,6 +271,7 @@ export default function Products() {
       {/* ── MAIN CONTENT ── */}
       <section className="products-main">
         <div className="container">
+
           {/* Toolbar */}
           <div className="products-toolbar">
             <div className="products-toolbar__inner">
@@ -221,29 +285,88 @@ export default function Products() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: "14px", padding: "0 6px" }}
+                    >✕</button>
+                  )}
+                </div>
+
+                {/* Sort */}
+                <div style={{ position: "relative" }}>
+                  <select
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value)}
+                    style={{
+                      padding: "8px 32px 8px 12px", border: "1px solid #D1FAE5",
+                      borderRadius: "8px", background: "#fff", fontSize: "13px",
+                      color: "#374151", cursor: "pointer", outline: "none",
+                      appearance: "none", WebkitAppearance: "none"
+                    }}
+                  >
+                    <option value="default">Sort: Default</option>
+                    <option value="price-asc">Price: Low → High</option>
+                    <option value="price-desc">Price: High → Low</option>
+                    <option value="name-az">Name: A → Z</option>
+                    <option value="name-za">Name: Z → A</option>
+                    <option value="sale">On Sale First</option>
+                  </select>
+                  <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#94A3B8", fontSize: "11px" }}>▾</div>
                 </div>
               </div>
+
               <div className="products-toolbar__results">
-                Showing <strong>{filtered.length}</strong> results
-                {activeCategory !== "all" && <> in <strong>{activeCatLabel}</strong></>}
-                {searchQuery && <> for <strong>"{searchQuery}"</strong></>}
+                {loading
+                  ? "Loading products…"
+                  : <>Showing <strong>{filtered.length}</strong> result{filtered.length !== 1 ? "s" : ""}
+                    {activeCategory !== "all" && <> in <strong>{activeCatLabel}</strong></>}
+                    {searchQuery && <> for <strong>"{searchQuery}"</strong></>}
+                  </>
+                }
               </div>
             </div>
           </div>
 
+          {/* Error state */}
+          {error && (
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "#DC2626" }}>
+              <div style={{ fontSize: "40px", marginBottom: "12px" }}>⚠️</div>
+              <p style={{ fontSize: "15px", fontWeight: 500 }}>{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                style={{ marginTop: "12px", padding: "9px 20px", background: "#155DFC", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
           {/* Grid */}
-          <div className="products-grid">
-            {filtered.length > 0
-              ? filtered.map((p) => <ProductCard key={p.id} product={p} />)
-              : (
-                <div className="products-empty">
-                  <div className="products-empty__icon">🔍</div>
-                  <div className="products-empty__title">No products found</div>
-                  <p className="products-empty__desc">Try adjusting your search or browsing a different category.</p>
-                </div>
-              )
-            }
-          </div>
+          {!error && (
+            <div className="products-grid">
+              {loading
+                ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
+                : filtered.length > 0
+                  ? filtered.map((p, i) => <ProductCard key={(p.id ?? p.product_id) ?? i} product={p} />)
+                  : (
+                    <div className="products-empty">
+                      <div className="products-empty__icon">🔍</div>
+                      <div className="products-empty__title">No products found</div>
+                      <p className="products-empty__desc">
+                        Try adjusting your search or browsing a different category.
+                      </p>
+                      <button
+                        onClick={() => { setActiveCategory("all"); setSearchQuery(""); setSortBy("default"); }}
+                        style={{ marginTop: "14px", padding: "9px 20px", background: "#155DFC", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  )
+              }
+            </div>
+          )}
         </div>
       </section>
 
@@ -264,7 +387,16 @@ export default function Products() {
             <div className="products-featured__actions">
               <button
                 className="btn-primary"
-                onClick={() => { setActiveCategory("wellness"); setSearchQuery(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                onClick={() => {
+                  // find wellness category id from fetched data
+                  const wellnessCat = categories.find(c =>
+                    (c.name ?? c.category_name ?? "").toLowerCase().includes("wellness") ||
+                    (c.name ?? c.category_name ?? "").toLowerCase().includes("health")
+                  );
+                  if (wellnessCat) setActiveCategory(String(wellnessCat.id ?? wellnessCat.category_id));
+                  setSearchQuery("");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
               >
                 Shop Wellness →
               </button>
@@ -285,6 +417,20 @@ export default function Products() {
         </div>
       </section>
 
+      <Footer />
     </div>
   );
+}
+
+/* ── Icon mapper based on category name keywords ── */
+function resolveCatIcon(label = "") {
+  const l = label.toLowerCase();
+  if (l.includes("office"))     return "🖊️";
+  if (l.includes("pantry") || l.includes("food") || l.includes("coffee")) return "☕";
+  if (l.includes("janitor") || l.includes("clean")) return "🧹";
+  if (l.includes("personal") || l.includes("care") || l.includes("home")) return "🧴";
+  if (l.includes("giveaway") || l.includes("custom") || l.includes("promo")) return "🎁";
+  if (l.includes("wellness") || l.includes("health")) return "🌿";
+  if (l.includes("paper") || l.includes("bond"))  return "📄";
+  return "📦";
 }
