@@ -38,7 +38,7 @@ import AdminBackup from './pages/adminBackup';
 import AdminContactMessages from './pages/adminContact';
 import AdminReviews from './pages/adminReviews';
 import AdminMessage from './pages/adminMessage';
-
+import AdminProductView from './components/Adminproductview';
 // Layout for public pages (with main Header & Footer)
 function PublicLayout() {
   return (
@@ -82,7 +82,11 @@ export default function App() {
           <Route path="/account-verification" element={<AccountVerification />} />
           <Route path="/password-reset" element={<PasswordReset />} />
           <Route path="/forgot-password-code" element={<ForgotPasswordCode />} />
+
+          
         </Route>
+
+        
 
         {/* ── ADMIN ROUTES ── */}
         <Route element={<AdminLayout />}>
@@ -98,6 +102,9 @@ export default function App() {
           <Route path="/adminContact" element={<AdminContactMessages />} />
           <Route path="/adminReviews" element={<AdminReviews />} />
           <Route path="/adminMessage" element={<AdminMessage />} />
+          <Route path="/admin/products"        element={<AdminProducts />} />
+          <Route path="/admin/products/:id"    element={<AdminProductView />} />
+          <Route path="/admin/products/:id/edit" element={<AdminProductView />} />
         </Route>
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />

@@ -1,79 +1,172 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Header, Footer } from "../components/Layout";
 import { useCart } from "../context/CartContext";
+import axios from "axios";
 import "../style/global.css";
 import "../style/product-view.css";
+
+const BASE = "http://127.0.0.1:8000";
 
 const ph = (w, h, label = "") =>
   `https://placehold.co/${w}x${h}/edf4f0/4d7b65?text=${encodeURIComponent(label)}`;
 
-/* ── All products data (same as Products.jsx) ── */
-export const ALL_PRODUCTS = [
-  { id: 1,  cat: "office",     name: "Dollar Executive Diary 2024",                rawPrice: 450,   price: "₱450",   oldPrice: "₱560",   badge: "sale", discount: "-20%", rating: 4.8, reviews: 124, image: "/img/image-dollar-executive-diary-2024-2.png",           desc: "Stay organized and professional all year with the Dollar Executive Diary 2024. Features daily planner pages, notes sections, and a durable hardcover binding perfect for business use." },
-  { id: 2,  cat: "office",     name: "Piano Premium Gel Pen Set (12 Pcs)",         rawPrice: 180,   price: "₱180",   oldPrice: "₱235",   badge: "new",  discount: "-23%", rating: 4.9, reviews: 89,  image: "/img/image.png",                                         desc: "Smooth, consistent ink flow for every writing task. This set of 12 gel pens includes assorted colors perfect for office use, note-taking, and creative projects." },
-  { id: 3,  cat: "office",     name: "Oro Desktop File Organizer",                 rawPrice: 950,   price: "₱950",   oldPrice: null,     badge: null,   discount: null,   rating: 4.7, reviews: 56,  image: "/img/image-oro-desktop-file-organizer-2.png",            desc: "Keep your desk clutter-free with this multi-compartment desktop organizer. Ideal for storing files, folders, and documents in an easily accessible layout." },
-  { id: 4,  cat: "office",     name: "Master Permanent Markers (24 Colors)",       rawPrice: 160,   price: "₱160",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.6, reviews: 43,  image: "/img/image-master-permanent-markers-24-colors.png",      desc: "Vibrant, long-lasting permanent markers in 24 bold colors. Quick-drying, water-resistant ink suitable for paper, plastic, glass, and more." },
-  { id: 5,  cat: "office",     name: "Dollar Student Spiral Notebook (200 Pages)", rawPrice: 120,   price: "₱120",   oldPrice: "₱150",   badge: "sale", discount: "-20%", rating: 4.5, reviews: 201, image: "/img/image-dollar-student-spiral-notebook-200-pages.png", desc: "200 pages of smooth, ruled paper in a durable spiral-bound notebook. Perfect for students and professionals who need reliable daily notes." },
-  { id: 6,  cat: "office",     name: "Master Art Sketch Pad A4 (100 GSM)",         rawPrice: 245,   price: "₱245",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.7, reviews: 38,  image: "/img/image-master-art-sketch-pad-a4-100-GSM.png",        desc: "Heavy 100 GSM acid-free paper ideal for sketching, drawing, and mixed media. 50 sheets per pad in convenient A4 size." },
-  { id: 7,  cat: "office",     name: "Piano Weekly Planner 2024",                  rawPrice: 360,   price: "₱360",   oldPrice: null,     badge: null,   discount: null,   rating: 4.6, reviews: 67,  image: "/img/image-piano-weekly-planner-2024.png",               desc: "Plan your week with clarity. Features weekly spreads, monthly overviews, goal tracking, and a notes section — all in a sleek, compact design." },
-  { id: 8,  cat: "office",     name: "Dollar A4 Exercise Book (100 Pages)",        rawPrice: 105,   price: "₱105",   oldPrice: null,     badge: null,   discount: null,   rating: 4.3, reviews: 155, image: "/img/image-dollar-a4-exercise-book-100-pages.png",       desc: "100-page ruled exercise book in A4 format. Great value for schools, offices, and everyday note-taking." },
-  { id: 9,  cat: "office",     name: "Oro Premium Hardcover Notebook",             rawPrice: 680,   price: "₱680",   oldPrice: "₱830",   badge: "new",  discount: "-18%", rating: 4.8, reviews: 92,  image: "/img/image-oro-premium-hardcover-notebook.png",          desc: "Luxurious hardcover notebook with 192 ivory pages, ribbon bookmark, and elastic closure. A sophisticated companion for professionals." },
-  { id: 10, cat: "office",     name: "Dollar Heavy Duty Stapler",                  rawPrice: 320,   price: "₱320",   oldPrice: null,     badge: null,   discount: null,   rating: 4.4, reviews: 78,  image: "/img/image-dollar-heavy-duty-stapler.png",               desc: "Staples up to 50 sheets at once with precision. Built with a durable metal body for long-lasting everyday office use." },
-  { id: 11, cat: "pantry",     name: "Premium Arabica Ground Coffee (500g)",       rawPrice: 280,   price: "₱280",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.8, reviews: 310, image: ph(400,300,"Coffee"),     desc: "Rich, aromatic 100% Arabica ground coffee. Medium roast for a smooth, balanced cup — ideal for your office pantry or home kitchen." },
-  { id: 12, cat: "pantry",     name: "Assorted Office Snack Bundle (10 pcs)",      rawPrice: 195,   price: "₱195",   oldPrice: "₱240",   badge: "sale", discount: "-19%", rating: 4.5, reviews: 187, image: ph(400,300,"Snacks"),     desc: "10-piece assorted snack bundle including biscuits, chips, and energy bars. Perfect for the office pantry to keep your team energized." },
-  { id: 13, cat: "pantry",     name: "Green Tea Sachets Box (25 bags)",            rawPrice: 120,   price: "₱120",   oldPrice: null,     badge: null,   discount: null,   rating: 4.4, reviews: 95,  image: ph(400,300,"Green+Tea"),  desc: "Premium green tea in individually wrapped sachets. Antioxidant-rich and refreshing — a healthy beverage option for your team." },
-  { id: 14, cat: "pantry",     name: "Creamer & Sugar Condiment Set",              rawPrice: 85,    price: "₱85",    oldPrice: null,     badge: null,   discount: null,   rating: 4.2, reviews: 44,  image: ph(400,300,"Condiments"), desc: "Complete coffee condiment set with individual creamer and sugar sachets. Convenient and hygienic for office use." },
-  { id: 15, cat: "pantry",     name: "Drinking Water Dispenser Bottle (18L)",      rawPrice: 340,   price: "₱340",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.6, reviews: 72,  image: ph(400,300,"Water+Jug"),  desc: "18-liter round dispenser bottle compatible with standard water dispensers. BPA-free and reusable." },
-  { id: 16, cat: "janitorial", name: "Industrial Floor Mop & Bucket Set",          rawPrice: 520,   price: "₱520",   oldPrice: "₱640",   badge: "sale", discount: "-19%", rating: 4.7, reviews: 63,  image: ph(400,300,"Mop+Set"),        desc: "Heavy-duty mop with wringer bucket for efficient floor cleaning. Suitable for large office spaces, corridors, and commercial areas." },
-  { id: 17, cat: "janitorial", name: "Multi-Surface Disinfectant Spray (1L)",      rawPrice: 145,   price: "₱145",   oldPrice: null,     badge: null,   discount: null,   rating: 4.5, reviews: 128, image: ph(400,300,"Disinfectant"),   desc: "Hospital-grade disinfectant spray effective against bacteria and viruses. Safe for use on desks, doorknobs, and commonly touched surfaces." },
-  { id: 18, cat: "janitorial", name: "Microfiber Cleaning Cloths (10-Pack)",       rawPrice: 210,   price: "₱210",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.6, reviews: 84,  image: ph(400,300,"Microfiber"),     desc: "Ultra-absorbent microfiber cloths that trap dust and bacteria without chemicals. Machine washable and reusable up to 500 times." },
-  { id: 19, cat: "janitorial", name: "Heavy Duty Trash Bags (50 pcs)",             rawPrice: 130,   price: "₱130",   oldPrice: null,     badge: null,   discount: null,   rating: 4.3, reviews: 211, image: ph(400,300,"Trash+Bags"),     desc: "Extra-strong 60-liter trash bags with tie handles. Puncture and leak-resistant for heavy office waste." },
-  { id: 20, cat: "janitorial", name: "Toilet Bowl Cleaner & Brush Kit",            rawPrice: 175,   price: "₱175",   oldPrice: "₱210",   badge: "sale", discount: "-17%", rating: 4.4, reviews: 57,  image: ph(400,300,"Cleaner+Kit"),    desc: "Complete toilet cleaning kit with angled brush and powerful cleaner. Removes stains and eliminates odors effectively." },
-  { id: 21, cat: "personal",   name: "Antibacterial Hand Soap (500ml)",            rawPrice: 95,    price: "₱95",    oldPrice: null,     badge: null,   discount: null,   rating: 4.5, reviews: 334, image: ph(400,300,"Hand+Soap"),   desc: "Gentle yet effective antibacterial hand soap. Moisturizing formula with aloe vera — kills 99.9% of germs without drying skin." },
-  { id: 22, cat: "personal",   name: "Facial Tissue Box Set (3 boxes)",            rawPrice: 120,   price: "₱120",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.3, reviews: 176, image: ph(400,300,"Tissue"),      desc: "Soft, 3-ply facial tissues in a pack of 3 boxes. Gentle on skin, ideal for office and personal use." },
-  { id: 23, cat: "personal",   name: "Alcohol Gel Sanitizer (250ml)",              rawPrice: 75,    price: "₱75",    oldPrice: "₱95",    badge: "sale", discount: "-21%", rating: 4.6, reviews: 289, image: ph(400,300,"Sanitizer"),   desc: "70% isopropyl alcohol gel sanitizer. Fast-drying, fragrance-free formula that keeps hands clean and germ-free throughout the day." },
-  { id: 24, cat: "personal",   name: "Premium Laundry Powder (1kg)",               rawPrice: 165,   price: "₱165",   oldPrice: null,     badge: null,   discount: null,   rating: 4.2, reviews: 88,  image: ph(400,300,"Laundry"),     desc: "Concentrated laundry powder with stain-lifting enzymes. Works on both handwash and machine wash for brilliant clean results." },
-  { id: 25, cat: "giveaways",  name: "Custom Embroidered Polo Shirt",              rawPrice: 480,   price: "₱480",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.9, reviews: 145, image: ph(400,300,"Polo+Shirt"),  desc: "High-quality polo shirt with custom in-house embroidery of your company logo. Available in various colors and sizes — minimum order applies." },
-  { id: 26, cat: "giveaways",  name: "Corporate Tote Bag w/ Logo Print",           rawPrice: 220,   price: "₱220",   oldPrice: "₱280",   badge: "sale", discount: "-21%", rating: 4.7, reviews: 98,  image: ph(400,300,"Tote+Bag"),    desc: "Durable canvas tote bag with full-color screen printing of your brand. Eco-friendly and functional — perfect for events and corporate giveaways." },
-  { id: 27, cat: "giveaways",  name: "Personalized Tumbler (500ml)",               rawPrice: 350,   price: "₱350",   oldPrice: null,     badge: null,   discount: null,   rating: 4.8, reviews: 112, image: ph(400,300,"Tumbler"),     desc: "Stainless steel double-walled tumbler with laser-engraved personalization. Keeps drinks hot for 12 hours and cold for 24 hours." },
-  { id: 28, cat: "wellness",   name: "IAM Amazing Pure Organic Barley (250g)",     rawPrice: 850,   price: "₱850",   oldPrice: null,     badge: "new",  discount: null,   rating: 4.9, reviews: 523, image: "/img/download-2-3.png",  desc: "100% pure organic barley grass powder packed with vitamins, minerals, and antioxidants. Supports immunity, digestion, and energy levels. Our flagship wellness product." },
-  { id: 29, cat: "wellness",   name: "Organic Barley Starter Pack (3 pouches)",    rawPrice: 2200,  price: "₱2,200", oldPrice: "₱2,550", badge: "sale", discount: "-14%", rating: 4.8, reviews: 234, image: "/img/download-1.png",    desc: "Three-pouch starter set perfect for trying the full IAM Amazing Barley lineup. Includes Original, Lemon, and Moringa variants." },
-  { id: 30, cat: "wellness",   name: "Barley Wellness Bundle + Shaker",            rawPrice: 1450,  price: "₱1,450", oldPrice: null,     badge: null,   discount: null,   rating: 4.7, reviews: 167, image: "/img/download-1-2.png",  desc: "Complete wellness kit: 2 pouches of Organic Barley + premium shaker bottle. Everything you need to start your health journey." },
-];
+/* ── Helpers ── */
+const resolveName  = (p) => p?.product_name ?? p?.name ?? "Product";
+const resolvePrice = (p) => parseFloat(p?.price ?? 0);
+const resolveCat   = (p) => {
+  const raw = p?.category;
+  if (typeof raw === "object" && raw !== null)
+    return raw.name ?? raw.category_name ?? "";
+  return raw ?? p?.category_name ?? "";
+};
+const resolveStock = (p) => Number(p?.product_stocks ?? p?.stock ?? 0);
+const resolveImg   = (img, fallback = "") =>
+  img?.image_path ? `${BASE}/storage/${img.image_path}` : fallback;
 
-const RELATED_COUNT = 4;
-
+/* ── Star Rating ── */
 function StarRating({ rating, count }) {
+  const r = parseFloat(rating) || 0;
   return (
     <div className="pv-stars">
       {[1,2,3,4,5].map((s) => (
-        <span key={s} className={s <= Math.round(rating) ? "pv-star" : "pv-star pv-star--empty"}>★</span>
+        <span key={s} className={s <= Math.round(r) ? "pv-star" : "pv-star pv-star--empty"}>★</span>
       ))}
-      <span className="pv-stars__score">{rating}</span>
+      <span className="pv-stars__score">{r.toFixed(1)}</span>
       {count !== undefined && <span className="pv-stars__count">({count} reviews)</span>}
     </div>
   );
 }
 
+/* ── Skeleton ── */
+function Skeleton() {
+  return (
+    <div className="pv-page">
+      <Header />
+      <div className="pv-breadcrumb">
+        <div className="container pv-breadcrumb__inner">
+          <Link to="/">Home</Link>
+          <span className="pv-breadcrumb__sep">›</span>
+          <Link to="/products">Products</Link>
+          <span className="pv-breadcrumb__sep">›</span>
+          <span style={{ display:"inline-block", width:"140px", height:"12px", background:"#e5ede9", borderRadius:"6px", verticalAlign:"middle" }} />
+        </div>
+      </div>
+      <section className="pv-main">
+        <div className="container pv-main__grid">
+          <div className="pv-image-col">
+            <div className="pv-image-wrap" style={{ background:"#e5ede9", minHeight:"360px", borderRadius:"16px",
+              animation:"shimmer 1.4s infinite", backgroundSize:"200% 100%",
+              backgroundImage:"linear-gradient(90deg,#e5ede9 25%,#d0ddd6 50%,#e5ede9 75%)" }} />
+          </div>
+          <div className="pv-info-col" style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+            {[80,200,60,100,40].map((w,i) => (
+              <div key={i} style={{ height: i===1 ? "28px" : "14px", width:`${w}%`.replace("200%","100%"),
+                background:"#e5ede9", borderRadius:"6px",
+                animation:"shimmer 1.4s infinite", backgroundSize:"200% 100%",
+                backgroundImage:"linear-gradient(90deg,#e5ede9 25%,#d0ddd6 50%,#e5ede9 75%)" }} />
+            ))}
+          </div>
+        </div>
+      </section>
+      <style>{`
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+      `}</style>
+      <Footer />
+    </div>
+  );
+}
+
+/* ── Related Card ── */
+function RelatedCard({ product }) {
+  const name  = resolveName(product);
+  const price = resolvePrice(product);
+  const thumb = resolveImg(product.images?.[0], ph(300, 300, name));
+  return (
+    <Link to={`/products/${product.id ?? product.product_id}`} className="pv-related-card">
+      <div className="pv-related-card__img">
+        <img src={thumb} alt={name} onError={(e) => { e.target.src = ph(300,300,name); }} />
+      </div>
+      <div className="pv-related-card__body">
+        <div className="pv-related-card__name">{name}</div>
+        <div className="pv-related-card__price">
+          ₱{price.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ── Main Page ── */
 export default function ProductView() {
-  const { id }       = useParams();
-  const navigate     = useNavigate();
+  const { id }                    = useParams();
+  const navigate                  = useNavigate();
   const { addToCart, totalItems } = useCart();
 
-  const product = ALL_PRODUCTS.find((p) => p.id === Number(id));
-  const related = ALL_PRODUCTS.filter((p) => p.id !== Number(id) && p.cat === product?.cat).slice(0, RELATED_COUNT);
-
-  const [qty, setQty]           = useState(1);
-  const [added, setAdded]       = useState(false);
+  const [product, setProduct]     = useState(null);
+  const [related, setRelated]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [activeImg, setActiveImg] = useState(0);
+  const [qty, setQty]             = useState(1);
+  const [added, setAdded]         = useState(false);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartError, setCartError]     = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
 
-  if (!product) {
+  // ── Fetch product ──
+  useEffect(() => {
+    if (!id) return;
+    const fetch = async () => {
+      setLoading(true);
+      setError(null);
+      setActiveImg(0);
+      setQty(1);
+      setActiveTab("overview");
+      try {
+        const res  = await axios.get(`${BASE}/api/products/${id}`, { withCredentials: true });
+        const data = res.data?.product ?? res.data?.data ?? res.data;
+        console.log("Product API response:", data); // debug — check which id field is used
+        setProduct(data);
+
+        // fetch related from same category
+        const catId = data?.category_id ?? data?.category?.id ?? data?.category?.category_id;
+        const pid   = data?.id ?? data?.product_id;
+        if (catId) {
+          try {
+            const all  = await axios.get(`${BASE}/api/admin/products`, { withCredentials: true }); // admin list for related
+            const list = all.data?.data ?? all.data?.products ?? all.data;
+            const rel  = (Array.isArray(list) ? list : [])
+              .filter(p => {
+                const pCat = p.category_id ?? p.category?.id ?? p.category?.category_id;
+                const pId  = p.id ?? p.product_id;
+                return String(pCat) === String(catId) && String(pId) !== String(id);
+              })
+              .slice(0, 4);
+            setRelated(rel);
+          } catch { setRelated([]); }
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Product not found or failed to load.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [id]);
+
+  if (loading) return <Skeleton />;
+
+  if (error || !product) {
     return (
       <div className="pv-page">
         <Header />
-        <div className="container" style={{ padding: "120px 0", textAlign: "center" }}>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 32, marginBottom: 16 }}>Product not found</h2>
+        <div className="container" style={{ padding:"120px 0", textAlign:"center" }}>
+          <div style={{ fontSize:"48px", marginBottom:"16px" }}>😕</div>
+          <h2 style={{ fontSize:"24px", marginBottom:"12px", color:"#0F172A" }}>Product not found</h2>
+          <p style={{ color:"#64748B", marginBottom:"24px" }}>{error}</p>
           <Link to="/products" className="btn-primary">← Back to Products</Link>
         </div>
         <Footer />
@@ -81,20 +174,85 @@ export default function ProductView() {
     );
   }
 
-  const handleAdd = () => {
-    addToCart(product, qty);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+  // ── Normalise fields ──
+  const name     = resolveName(product);
+  const price    = resolvePrice(product);
+  const catLabel = resolveCat(product);
+  const stock    = resolveStock(product);
+  const isOnSale = product.isSale == 1;
+  const desc     = product.description ?? "";
+  const images   = product.images ?? [];
+  const mainSrc  = images[activeImg]?.image_path
+    ? `${BASE}/storage/${images[activeImg].image_path}`
+    : ph(600, 600, name);
+  const rating   = parseFloat(product.rating ?? 4.5);
+  const reviews  = product.reviews ?? product.reviews_count ?? 0;
+
+  // ── Shared cart API call (session cookie auth) ──
+  const callAddToCart = async () => {
+    const productId = product.product_id ?? product.id;
+    const data = { product_id: productId, quantity: qty };
+    console.log(data)
+    return axios.post(
+      `${BASE}/api/cart/add`,
+      data,
+      {
+        withCredentials: true,
+      }
+    );
   };
 
-  const handleBuyNow = () => {
-    addToCart(product, qty);
-    navigate("/cart");
+  const handleAdd = async () => {
+    if (cartLoading || stock === 0) return;
+    setCartLoading(true);
+    setCartError(null);
+    try {
+      await callAddToCart();
+      addToCart(product, qty); // keep local CartContext in sync
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2500);
+    } catch (err) {
+      const status = err.response?.status;
+      const msg    = err.response?.data?.message ?? err.response?.data?.error ?? "Failed to add to cart.";
+      setCartError(status === 401 ? "You must be logged in to add items to cart." : msg);
+      setTimeout(() => setCartError(null), 4000);
+    } finally {
+      setCartLoading(false);
+    }
   };
+
+  const handleBuyNow = async () => {
+    if (cartLoading || stock === 0) return;
+    setCartLoading(true);
+    setCartError(null);
+    try {
+      await callAddToCart();
+      addToCart(product, qty);
+      navigate("/cart");
+    } catch (err) {
+      const status = err.response?.status;
+      const msg    = err.response?.data?.message ?? err.response?.data?.error ?? "Failed to add to cart.";
+      setCartError(status === 401 ? "You must be logged in to add items to cart." : msg);
+      setTimeout(() => setCartError(null), 4000);
+      setCartLoading(false);
+    }
+  };
+
+  const deriveStatus = () => {
+    if (stock === 0) return { label:"Out of Stock", color:"#DC2626", bg:"#FEE2E2" };
+    if (stock <= 10) return { label:"Low Stock",    color:"#D97706", bg:"#FEF3C7" };
+    return              { label:"In Stock",         color:"#059669", bg:"#D1FAE5" };
+  };
+  const stockStatus = deriveStatus();
 
   return (
     <div className="pv-page">
       <Header />
+
+      <style>{`
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+      `}</style>
 
       {/* ── BREADCRUMB ── */}
       <div className="pv-breadcrumb">
@@ -103,74 +261,136 @@ export default function ProductView() {
           <span className="pv-breadcrumb__sep">›</span>
           <Link to="/products">Products</Link>
           <span className="pv-breadcrumb__sep">›</span>
-          <span>{product.name}</span>
+          {catLabel && <><Link to={`/products`}>{catLabel}</Link><span className="pv-breadcrumb__sep">›</span></>}
+          <span>{name}</span>
         </div>
       </div>
 
-      {/* ── MAIN PRODUCT ── */}
+      {/* ── MAIN ── */}
       <section className="pv-main">
         <div className="container pv-main__grid">
 
-          {/* Image */}
+          {/* Image column */}
           <div className="pv-image-col">
             <div className="pv-image-wrap">
               <img
-                src={product.image}
-                alt={product.name}
+                src={mainSrc}
+                alt={name}
                 className="pv-image"
-                onError={(e) => { e.target.src = ph(600, 600, product.name); }}
+                onError={(e) => { e.target.src = ph(600, 600, name); }}
               />
-              {product.badge === "sale" && (
-                <span className="pv-image-badge pv-image-badge--sale">{product.discount}</span>
-              )}
-              {product.badge === "new" && (
-                <span className="pv-image-badge pv-image-badge--new">New</span>
-              )}
+              {isOnSale && <span className="pv-image-badge pv-image-badge--sale">Sale</span>}
+              {stock === 0 && <span className="pv-image-badge" style={{ background:"#DC2626", color:"#fff", right:"12px", top:"12px" }}>Out of Stock</span>}
             </div>
+
+            {/* Thumbnail strip */}
+            {images.length > 1 && (
+              <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", marginTop:"12px" }}>
+                {images.map((img, i) => (
+                  <button key={img.id ?? i} onClick={() => setActiveImg(i)}
+                    style={{ width:"60px", height:"60px", borderRadius:"8px", overflow:"hidden", padding:0, cursor:"pointer",
+                      border: i===activeImg ? "2px solid #4d7b65" : "2px solid #e2e8f0",
+                      background:"#f8fafc", transition:"border-color 0.15s", flexShrink:0 }}>
+                    <img
+                      src={`${BASE}/storage/${img.image_path}`}
+                      alt={`thumb-${i+1}`}
+                      style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+                      onError={(e) => { e.target.src = ph(60,60,""); }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Info */}
+          {/* Info column */}
           <div className="pv-info-col">
-            <span className="pv-cat">{product.cat.toUpperCase()}</span>
-            <h1 className="pv-name">{product.name}</h1>
+            {catLabel && <span className="pv-cat">{catLabel.toUpperCase()}</span>}
+            <h1 className="pv-name">{name}</h1>
 
-            <StarRating rating={product.rating} count={product.reviews} />
+            <StarRating rating={rating} count={reviews > 0 ? reviews : undefined} />
 
-            <div className="pv-price-row">
-              <span className="pv-price">{product.price}</span>
-              {product.oldPrice && (
-                <>
-                  <span className="pv-price-old">{product.oldPrice}</span>
-                  <span className="pv-price-badge">{product.discount} OFF</span>
-                </>
-              )}
+            {/* Stock status */}
+            <div style={{ display:"inline-flex", alignItems:"center", gap:"6px", padding:"4px 12px",
+              borderRadius:"20px", background:stockStatus.bg, color:stockStatus.color,
+              fontSize:"12px", fontWeight:700, marginBottom:"12px" }}>
+              <span>{stock > 0 ? "●" : "○"}</span> {stockStatus.label}
+              {stock > 0 && stock <= 10 && <span style={{ fontWeight:400 }}>({stock} left)</span>}
             </div>
 
-            <p className="pv-desc">{product.desc}</p>
+            <div className="pv-price-row">
+              <span className="pv-price">
+                ₱{price.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+              </span>
+              {isOnSale && <span className="pv-price-badge">ON SALE</span>}
+            </div>
+
+            {desc && <p className="pv-desc">{desc}</p>}
 
             <div className="pv-divider" />
 
             {/* Quantity */}
-            <div className="pv-qty-row">
-              <span className="pv-qty-label">Quantity</span>
-              <div className="pv-qty-ctrl">
-                <button className="pv-qty-btn" onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-                <span className="pv-qty-val">{qty}</span>
-                <button className="pv-qty-btn" onClick={() => setQty((q) => q + 1)}>+</button>
+            <div style={{ display:"flex", alignItems:"center", gap:"16px", margin:"16px 0" }}>
+              <span style={{ fontSize:"14px", fontWeight:600, color:"#374151" }}>Quantity</span>
+              <div style={{ display:"flex", alignItems:"center", gap:"0", border:"1.5px solid #D1FAE5", borderRadius:"10px", overflow:"hidden" }}>
+                <button
+                  onClick={() => setQty(q => Math.max(1, q-1))}
+                  style={{ width:"38px", height:"38px", border:"none", background:"#f0faf5", color:"#4d7b65",
+                    fontSize:"18px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+                >−</button>
+                <span style={{ minWidth:"40px", textAlign:"center", fontSize:"15px", fontWeight:700, color:"#0F172A", background:"#fff" }}>{qty}</span>
+                <button
+                  onClick={() => setQty(q => q+1)}
+                  style={{ width:"38px", height:"38px", border:"none", background:"#f0faf5", color:"#4d7b65",
+                    fontSize:"18px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+                >+</button>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="pv-actions">
-              <button className={`pv-add-btn${added ? " pv-add-btn--added" : ""}`} onClick={handleAdd}>
-                {added ? "✓ Added to Cart!" : "🛒 Add to Cart"}
+            <div style={{ display:"flex", gap:"12px", marginTop:"8px", flexWrap:"wrap" }}>
+              <button
+                onClick={handleAdd}
+                disabled={stock === 0 || cartLoading}
+                style={{
+                  flex:"1", minWidth:"160px", padding:"14px 24px",
+                  background: added ? "#059669" : "linear-gradient(135deg,#4d7b65,#2d5a42)",
+                  color:"#fff", border:"none", borderRadius:"12px",
+                  fontSize:"15px", fontWeight:700, cursor: stock===0 ? "not-allowed" : "pointer",
+                  opacity: stock===0 ? 0.5 : 1,
+                  display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
+                  transition:"all 0.2s", boxShadow: added ? "none" : "0 4px 14px rgba(77,123,101,0.35)",
+                  transform: added ? "none" : "translateY(0)",
+                }}
+                onMouseEnter={e => { if(stock>0 && !added) e.currentTarget.style.transform="translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
+              >
+                {cartLoading
+                  ? <span style={{ display:"inline-block", width:"18px", height:"18px", border:"2.5px solid rgba(255,255,255,0.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+                  : <span style={{ fontSize:"18px" }}>{added ? "✓" : "🛒"}</span>
+                }
+                {cartLoading ? "Adding..." : added ? "Added to Cart!" : "Add to Cart"}
               </button>
-              <button className="pv-buy-btn" onClick={handleBuyNow}>
+              <button
+                onClick={handleBuyNow}
+                disabled={stock === 0 || cartLoading}
+                style={{
+                  flex:"1", minWidth:"160px", padding:"14px 24px",
+                  background: "linear-gradient(135deg,#1e40af,#1d4ed8)",
+                  color:"#fff", border:"none", borderRadius:"12px",
+                  fontSize:"15px", fontWeight:700, cursor: stock===0 ? "not-allowed" : "pointer",
+                  opacity: stock===0 ? 0.5 : 1,
+                  display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
+                  transition:"all 0.2s", boxShadow:"0 4px 14px rgba(29,78,216,0.35)",
+                }}
+                onMouseEnter={e => { if(stock>0) e.currentTarget.style.transform="translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
+              >
+                <span style={{ fontSize:"18px" }}>⚡</span>
                 Buy Now
               </button>
             </div>
 
-            {/* Cart link */}
             {totalItems > 0 && (
               <Link to="/cart" className="pv-cart-link">
                 View Cart ({totalItems} item{totalItems !== 1 ? "s" : ""}) →
@@ -178,11 +398,34 @@ export default function ProductView() {
             )}
 
             {/* Trust badges */}
-            <div className="pv-trust">
-              {["🚚 Free delivery in Metro Manila", "✅ Quality guaranteed", "🔄 Easy returns"].map((t) => (
-                <span key={t} className="pv-trust__item">{t}</span>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"8px", marginTop:"16px" }}>
+              {["🚚 Free delivery in Metro Manila","✅ Quality guaranteed","🔄 Easy returns"].map(t => (
+                <span key={t} style={{ fontSize:"12px", padding:"6px 12px", background:"#f0faf5",
+                  color:"#2d5a42", borderRadius:"20px", border:"1px solid #D1FAE5", fontWeight:500 }}>{t}</span>
               ))}
             </div>
+
+            {/* Cart error toast */}
+            {cartError && (
+              <div style={{
+                marginTop:"12px", padding:"12px 16px", borderRadius:"10px",
+                background: cartError.includes("logged in") ? "#EFF6FF" : "#FEF2F2",
+                border: `1px solid ${cartError.includes("logged in") ? "#BFDBFE" : "#FECACA"}`,
+                color: cartError.includes("logged in") ? "#1D4ED8" : "#DC2626",
+                fontSize:"13px", fontWeight:500,
+                display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px"
+              }}>
+                <span style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+                  <span style={{ fontSize:"16px" }}>{cartError.includes("logged in") ? "🔒" : "⚠️"}</span>
+                  {cartError}
+                </span>
+                {cartError.includes("logged in") && (
+                  <Link to="/login" style={{ fontWeight:700, color:"#1D4ED8", whiteSpace:"nowrap", textDecoration:"none", padding:"4px 10px", background:"#DBEAFE", borderRadius:"6px" }}>
+                    Log in →
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -190,26 +433,34 @@ export default function ProductView() {
       {/* ── TABS ── */}
       <section className="pv-tabs-section">
         <div className="container">
-          <div className="pv-tabs">
-            {["overview", "specifications", "reviews"].map((tab) => (
+          <div style={{ display:"flex", gap:"4px", borderBottom:"2px solid #e2e8f0", marginBottom:"32px" }}>
+            {["overview","specifications","reviews"].map(tab => (
               <button
                 key={tab}
-                className={`pv-tab${activeTab === tab ? " active" : ""}`}
                 onClick={() => setActiveTab(tab)}
+                style={{
+                  padding:"12px 24px", border:"none", background:"transparent",
+                  fontSize:"14px", fontWeight: activeTab===tab ? 700 : 500,
+                  color: activeTab===tab ? "#4d7b65" : "#64748B",
+                  borderBottom: activeTab===tab ? "2px solid #4d7b65" : "2px solid transparent",
+                  marginBottom:"-2px", cursor:"pointer", borderRadius:"4px 4px 0 0",
+                  transition:"all 0.15s",
+                  background: activeTab===tab ? "#f0faf5" : "transparent",
+                }}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab.charAt(0).toUpperCase()+tab.slice(1)}
               </button>
             ))}
           </div>
 
-          <div className="pv-tab-content">
+          <div style={{ background:"#fff", borderRadius:"12px", padding:"28px 0", minHeight:"200px" }}>
             {activeTab === "overview" && (
               <div className="pv-overview">
                 <h3>Product Overview</h3>
-                <p>{product.desc}</p>
+                <p>{desc || "No description available for this product."}</p>
                 <p>JEM 8 Circle Trading Co. sources only quality-assured products for your business. This item is available for bulk ordering with discounted pricing for orders of 10 units or more. Contact us for bulk quotations.</p>
                 <div className="pv-overview-features">
-                  {["Premium quality materials", "Suitable for office and commercial use", "Available for bulk orders", "Direct delivery to your office"].map((f) => (
+                  {["Premium quality materials","Suitable for office and commercial use","Available for bulk orders","Direct delivery to your office"].map(f => (
                     <div key={f} className="pv-overview-feature">
                       <span className="pv-overview-feature__check">✓</span> {f}
                     </div>
@@ -217,37 +468,44 @@ export default function ProductView() {
                 </div>
               </div>
             )}
+
             {activeTab === "specifications" && (
               <div className="pv-specs">
                 <h3>Specifications</h3>
                 <table className="pv-specs-table">
                   <tbody>
-                    <tr><td>Category</td><td>{product.cat.charAt(0).toUpperCase() + product.cat.slice(1)}</td></tr>
+                    <tr><td>Product ID</td><td>#{product.id}</td></tr>
+                    <tr><td>Category</td><td>{catLabel || "—"}</td></tr>
                     <tr><td>Brand</td><td>JEM 8 Certified</td></tr>
-                    <tr><td>Rating</td><td>{product.rating} / 5.0</td></tr>
-                    <tr><td>Reviews</td><td>{product.reviews} verified reviews</td></tr>
-                    <tr><td>Availability</td><td>In Stock</td></tr>
+                    <tr><td>Stock</td><td>{stock} units</td></tr>
+                    <tr><td>Status</td><td style={{ color:stockStatus.color, fontWeight:600 }}>{stockStatus.label}</td></tr>
+                    <tr><td>On Sale</td><td>{isOnSale ? "Yes" : "No"}</td></tr>
+                    <tr><td>Rating</td><td>{rating.toFixed(1)} / 5.0</td></tr>
                     <tr><td>Delivery</td><td>Metro Manila: 1–2 days · Laguna: 2–3 days</td></tr>
                     <tr><td>Bulk Pricing</td><td>Available for 10+ units</td></tr>
+                    {product.created_at && (
+                      <tr><td>Listed</td><td>{new Date(product.created_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
             )}
+
             {activeTab === "reviews" && (
               <div className="pv-reviews">
                 <h3>Customer Reviews</h3>
                 <div className="pv-reviews-summary">
-                  <div className="pv-reviews-big">{product.rating}</div>
+                  <div className="pv-reviews-big">{rating.toFixed(1)}</div>
                   <div>
-                    <StarRating rating={product.rating} />
-                    <div className="pv-reviews-count">Based on {product.reviews} reviews</div>
+                    <StarRating rating={rating} />
+                    {reviews > 0 && <div className="pv-reviews-count">Based on {reviews} reviews</div>}
                   </div>
                 </div>
                 {[
-                  { name: "Maria S.", text: "Excellent quality! Exactly as described and arrived on time.", rating: 5 },
-                  { name: "Juan D.",  text: "Great product for the price. Will definitely order again in bulk.", rating: 5 },
-                  { name: "Ana R.",   text: "Good value for money. Delivery was fast.", rating: 4 },
-                ].map((r) => (
+                  { name:"Maria S.", text:"Excellent quality! Exactly as described and arrived on time.", rating:5 },
+                  { name:"Juan D.",  text:"Great product for the price. Will definitely order again in bulk.", rating:5 },
+                  { name:"Ana R.",   text:"Good value for money. Delivery was fast.", rating:4 },
+                ].map(r => (
                   <div key={r.name} className="pv-review-card">
                     <div className="pv-review-card__header">
                       <div className="pv-review-card__avatar">{r.name[0]}</div>
@@ -270,19 +528,9 @@ export default function ProductView() {
         <section className="pv-related">
           <div className="container">
             <span className="section-label">More from this Category</span>
-            <h2 className="section-title" style={{ marginBottom: 32 }}>You May Also Like</h2>
+            <h2 className="section-title" style={{ marginBottom:32 }}>You May Also Like</h2>
             <div className="pv-related-grid">
-              {related.map((p) => (
-                <Link to={`/products/${p.id}`} key={p.id} className="pv-related-card">
-                  <div className="pv-related-card__img">
-                    <img src={p.image} alt={p.name} onError={(e) => { e.target.src = ph(300,300,p.name); }} />
-                  </div>
-                  <div className="pv-related-card__body">
-                    <div className="pv-related-card__name">{p.name}</div>
-                    <div className="pv-related-card__price">{p.price}</div>
-                  </div>
-                </Link>
-              ))}
+              {related.map((p, i) => <RelatedCard key={p.id ?? i} product={p} />)}
             </div>
           </div>
         </section>
