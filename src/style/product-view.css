@@ -1,5 +1,5 @@
 /* ── BREADCRUMB ── */
-.pv-breadcrumb { background: #f8faf9; border-bottom: 1px solid #e8f0eb; }
+.pv-breadcrumb { background: #f8faf9; border-bottom: 1px solid #e8f0eb; margin-top: 75px;  }
 .pv-breadcrumb__inner { display: flex; align-items: center; gap: 8px; padding: 12px 0; font-size: 13px; color: #6b7c70; flex-wrap: wrap; }
 .pv-breadcrumb__inner a { color: var(--clr-primary); text-decoration: none; }
 .pv-breadcrumb__inner a:hover { text-decoration: underline; }
