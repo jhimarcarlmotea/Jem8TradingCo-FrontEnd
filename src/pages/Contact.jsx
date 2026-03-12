@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import "../style/global.css";
 import "../style/pages.css";
+
+const BASE = "http://127.0.0.1:8000/api";
 
 const CHAT_OPTIONS = [
   { icon: "✉️", label: "Send us an email",      value: "jem8circletrading@gmail.com", href: "mailto:jem8circletrading@gmail.com" },
@@ -18,18 +21,35 @@ export default function Contact() {
   const [form, setForm]       = useState({ firstName: "", lastName: "", email: "", phone: "", message: "" });
   const [sent, setSent]       = useState(false);
   const [sending, setSending] = useState(false);
+  const [error, setError]     = useState(null);
 
   const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSending(true);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      await axios.post(`${BASE}/contact`, {
+        first_name:   form.firstName,
+        last_name:    form.lastName,
+        email:        form.email,
+        phone_number: form.phone || undefined,
+        message:      form.message,
+      });
+
       setSent(true);
-      setSending(false);
       setForm({ firstName: "", lastName: "", email: "", phone: "", message: "" });
-    }, 1200);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        "Something went wrong. Please try again."
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   const valid = form.firstName && form.lastName && form.email && form.message;
@@ -98,11 +118,18 @@ export default function Contact() {
                       required
                     />
                   </div>
-                  {/* Button is ALWAYS visible green — opacity reduces when empty, not hidden */}
+
+                  {/* Error message */}
+                  {error && (
+                    <div className="contact-form__error">
+                      ⚠️ {error}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
                     className={`contact-submit-btn${!valid ? " contact-submit-btn--dim" : ""}${sending ? " contact-submit-btn--loading" : ""}`}
-                    disabled={sending}
+                    disabled={sending || !valid}
                   >
                     {sending ? "Sending…" : "📨 Send Message"}
                   </button>

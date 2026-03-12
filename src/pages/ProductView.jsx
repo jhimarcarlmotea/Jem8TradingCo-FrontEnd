@@ -24,7 +24,7 @@ const resolveStock = (p) => Number(p?.product_stocks ?? p?.stock ?? 0);
 const resolveImg   = (img, fallback = "") =>
   img?.image_path ? `${BASE}/storage/${img.image_path}` : fallback;
 
-/* ── Star Rating ── */
+/* ── Star Rating (display) ── */
 function StarRating({ rating, count }) {
   const r = parseFloat(rating) || 0;
   return (
@@ -34,6 +34,34 @@ function StarRating({ rating, count }) {
       ))}
       <span className="pv-stars__score">{r.toFixed(1)}</span>
       {count !== undefined && <span className="pv-stars__count">({count} reviews)</span>}
+    </div>
+  );
+}
+
+/* ── Star Picker (interactive) ── */
+function StarPicker({ value, onChange }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div style={{ display: "flex", gap: "4px" }}>
+      {[1,2,3,4,5].map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => onChange(s)}
+          onMouseEnter={() => setHovered(s)}
+          onMouseLeave={() => setHovered(0)}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: "32px", padding: "0 2px", lineHeight: 1,
+            color: s <= (hovered || value) ? "#f59e0b" : "#d1d5db",
+            transition: "color 0.1s, transform 0.1s",
+            transform: s <= (hovered || value) ? "scale(1.15)" : "scale(1)",
+          }}
+          aria-label={`${s} star${s !== 1 ? "s" : ""}`}
+        >
+          ★
+        </button>
+      ))}
     </div>
   );
 }
@@ -98,6 +126,179 @@ function RelatedCard({ product }) {
   );
 }
 
+/* ── Review Form ── */
+function ReviewForm({ productId, user, onSubmitted }) {
+  const [rating,      setRating]      = useState(0);
+  const [comment,     setComment]     = useState("");
+  const [submitting,  setSubmitting]  = useState(false);
+  const [success,     setSuccess]     = useState(false);
+  const [error,       setError]       = useState(null);
+
+  const STAR_LABELS = ["","Terrible","Poor","Okay","Good","Excellent"];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!rating) { setError("Please select a star rating."); return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await axios.post(
+        `${BASE}/api/products/${productId}/reviews`,
+        { rating, review_text: comment },
+        { withCredentials: true }
+      );
+      setSuccess(true);
+      setRating(0);
+      setComment("");
+      if (onSubmitted) onSubmitted();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to submit review. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div style={{
+        padding: "28px 32px", borderRadius: "16px",
+        background: "linear-gradient(135deg,#f0faf5,#e6f7ef)",
+        border: "1.5px solid #a7f3d0",
+        textAlign: "center", marginTop: "32px",
+      }}>
+        <div style={{ fontSize: "40px", marginBottom: "10px" }}>🎉</div>
+        <h4 style={{ fontSize: "18px", fontWeight: 700, color: "#065f46", margin: "0 0 8px" }}>
+          Thank you for your review!
+        </h4>
+        <p style={{ color: "#047857", margin: "0 0 20px", fontSize: "14px" }}>
+          Your feedback helps other customers make better decisions.
+        </p>
+        <button
+          onClick={() => setSuccess(false)}
+          style={{
+            padding: "10px 24px", background: "#4d7b65", color: "#fff",
+            border: "none", borderRadius: "8px", fontWeight: 600,
+            fontSize: "14px", cursor: "pointer",
+          }}
+        >
+          Write Another Review
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        marginTop: "32px", padding: "28px 32px", borderRadius: "16px",
+        background: "#fafcfb", border: "1.5px solid #e2ede8",
+        boxShadow: "0 2px 12px rgba(77,123,101,0.07)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+        <div style={{
+          width: "44px", height: "44px", borderRadius: "50%",
+          background: "linear-gradient(135deg,#4d7b65,#2d5a42)",
+          color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "17px", fontWeight: 700, flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(77,123,101,0.25)",
+        }}>
+          {(user?.name ?? user?.first_name ?? "?")[0].toUpperCase()}
+        </div>
+        <div>
+          <div style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A" }}>
+            ✍️ Write a Review
+          </div>
+          <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+            Posting as{" "}
+            <strong style={{ color: "#374151" }}>
+              {[user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.name || user?.email || "you"}
+            </strong>
+            {user?.email && (
+              <span style={{ color: "#9ca3af", marginLeft: "6px" }}>· {user.email}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Star picker */}
+      <div style={{ marginBottom: "20px" }}>
+        <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>
+          Your Rating *
+        </label>
+        <StarPicker value={rating} onChange={setRating} />
+        {rating > 0 && (
+          <span style={{
+            display: "inline-block", marginTop: "6px",
+            fontSize: "12px", fontWeight: 600,
+            color: "#f59e0b", background: "#fffbeb",
+            padding: "3px 10px", borderRadius: "20px",
+            border: "1px solid #fde68a",
+          }}>
+            {STAR_LABELS[rating]}
+          </span>
+        )}
+      </div>
+
+      {/* Comment */}
+      <div style={{ marginBottom: "20px" }}>
+        <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
+          Your Review *
+        </label>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Share your experience with this product…"
+          required
+          rows={4}
+          style={{
+            width: "100%", padding: "10px 14px", borderRadius: "10px",
+            border: "1.5px solid #d1d5db", fontSize: "14px",
+            resize: "vertical", outline: "none", boxSizing: "border-box",
+            transition: "border-color 0.15s", fontFamily: "inherit",
+          }}
+          onFocus={(e) => e.target.style.borderColor = "#4d7b65"}
+          onBlur={(e)  => e.target.style.borderColor = "#d1d5db"}
+        />
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{
+          marginBottom: "16px", padding: "10px 14px", borderRadius: "8px",
+          background: "#FEF2F2", border: "1px solid #FECACA",
+          color: "#DC2626", fontSize: "13px", fontWeight: 500,
+          display: "flex", alignItems: "center", gap: "8px",
+        }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={submitting || !comment.trim()}
+        style={{
+          padding: "12px 28px",
+          background: submitting || !comment.trim()
+            ? "#9ca3af"
+            : "linear-gradient(135deg,#4d7b65,#2d5a42)",
+          color: "#fff", border: "none", borderRadius: "10px",
+          fontSize: "14px", fontWeight: 700, cursor: submitting || !comment.trim() ? "not-allowed" : "pointer",
+          display: "flex", alignItems: "center", gap: "8px",
+          transition: "all 0.2s",
+          boxShadow: submitting || !comment.trim() ? "none" : "0 4px 12px rgba(77,123,101,0.3)",
+        }}
+      >
+        {submitting
+          ? <><span style={{ display:"inline-block", width:"14px", height:"14px", border:"2px solid rgba(255,255,255,0.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} /> Submitting…</>
+          : <>⭐ Submit Review</>
+        }
+      </button>
+    </form>
+  );
+}
+
 /* ── Main Page ── */
 export default function ProductView() {
   const { id }                    = useParams();
@@ -114,11 +315,56 @@ export default function ProductView() {
   const [cartLoading, setCartLoading] = useState(false);
   const [cartError, setCartError]     = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [reviewRefresh, setReviewRefresh] = useState(0);
+  const [currentUser,   setCurrentUser]   = useState(null);  // null = loading, false = guest
+  const [reviewsList,   setReviewsList]   = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // ── Fetch current user (/me) ──
+  useEffect(() => {
+    axios.get(`${BASE}/api/me`, { withCredentials: true })
+      .then(res => {
+        const u = res.data?.data ?? res.data?.user ?? res.data;
+        setCurrentUser(u && typeof u === "object" && (u.id || u.user_id) ? u : false);
+      })
+      .catch(() => setCurrentUser(false));
+  }, []);
+
+  // ── Fetch reviews + hydrate user from /accounts/:id if user relation is null ──
+  useEffect(() => {
+    if (!id) return;
+    setReviewsLoading(true);
+
+    axios.get(`${BASE}/api/products/${id}/reviews`, { withCredentials: true })
+      .then(async (res) => {
+        const list = Array.isArray(res.data) ? res.data : (res.data?.reviews ?? res.data?.data ?? []);
+
+        // For any review where r.user is null, fetch account by user_id
+        const hydrated = await Promise.all(
+          list.map(async (r) => {
+            if (r.user) return r; // already has user relation loaded
+            if (!r.user_id) return r;
+            try {
+              const acc = await axios.get(`${BASE}/api/findaccount/${r.user_id}`);
+              console.log(acc)
+              const u = acc.data?.data ?? acc.data?.user ?? acc.data;
+              return { ...r, user: u };
+            } catch {
+              return r; // leave as-is if fetch fails
+            }
+          })
+        );
+
+        setReviewsList(hydrated);
+      })
+      .catch(() => setReviewsList([]))
+      .finally(() => setReviewsLoading(false));
+  }, [id, reviewRefresh]);
 
   // ── Fetch product ──
   useEffect(() => {
     if (!id) return;
-    const fetch = async () => {
+    const fetchProduct = async () => {
       setLoading(true);
       setError(null);
       setActiveImg(0);
@@ -127,15 +373,12 @@ export default function ProductView() {
       try {
         const res  = await axios.get(`${BASE}/api/products/${id}`, { withCredentials: true });
         const data = res.data?.product ?? res.data?.data ?? res.data;
-        console.log("Product API response:", data); // debug — check which id field is used
         setProduct(data);
 
-        // fetch related from same category
         const catId = data?.category_id ?? data?.category?.id ?? data?.category?.category_id;
-        const pid   = data?.id ?? data?.product_id;
         if (catId) {
           try {
-            const all  = await axios.get(`${BASE}/api/admin/products`, { withCredentials: true }); // admin list for related
+            const all  = await axios.get(`${BASE}/api/admin/products`, { withCredentials: true });
             const list = all.data?.data ?? all.data?.products ?? all.data;
             const rel  = (Array.isArray(list) ? list : [])
               .filter(p => {
@@ -154,7 +397,7 @@ export default function ProductView() {
         setLoading(false);
       }
     };
-    fetch();
+    fetchProduct();
   }, [id]);
 
   if (loading) return <Skeleton />;
@@ -185,20 +428,19 @@ export default function ProductView() {
   const mainSrc  = images[activeImg]?.image_path
     ? `${BASE}/storage/${images[activeImg].image_path}`
     : ph(600, 600, name);
-  const rating   = parseFloat(product.rating ?? 4.5);
-  const reviews  = product.reviews ?? product.reviews_count ?? 0;
+  // Derive real average from fetched reviews; only show if reviews exist
+  const reviews     = reviewsList.length;
+  const avgRating   = reviews > 0
+    ? reviewsList.reduce((sum, r) => sum + Number(r.rating ?? r.stars ?? 0), 0) / reviews
+    : 0;
+  const productId = product.product_id ?? product.id;
 
-  // ── Shared cart API call (session cookie auth) ──
+  // ── Cart helpers ──
   const callAddToCart = async () => {
-    const productId = product.product_id ?? product.id;
-    const data = { product_id: productId, quantity: qty };
-    console.log(data)
     return axios.post(
       `${BASE}/api/cart/add`,
-      data,
-      {
-        withCredentials: true,
-      }
+      { product_id: productId, quantity: qty },
+      { withCredentials: true }
     );
   };
 
@@ -208,7 +450,7 @@ export default function ProductView() {
     setCartError(null);
     try {
       await callAddToCart();
-      addToCart(product, qty); // keep local CartContext in sync
+      addToCart(product, qty);
       setAdded(true);
       setTimeout(() => setAdded(false), 2500);
     } catch (err) {
@@ -283,7 +525,6 @@ export default function ProductView() {
               {stock === 0 && <span className="pv-image-badge" style={{ background:"#DC2626", color:"#fff", right:"12px", top:"12px" }}>Out of Stock</span>}
             </div>
 
-            {/* Thumbnail strip */}
             {images.length > 1 && (
               <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", marginTop:"12px" }}>
                 {images.map((img, i) => (
@@ -308,9 +549,11 @@ export default function ProductView() {
             {catLabel && <span className="pv-cat">{catLabel.toUpperCase()}</span>}
             <h1 className="pv-name">{name}</h1>
 
-            <StarRating rating={rating} count={reviews > 0 ? reviews : undefined} />
+            {reviews > 0
+              ? <StarRating rating={avgRating} count={reviews} />
+              : <div style={{ fontSize:"13px", color:"#9ca3af", marginBottom:"8px" }}>No reviews yet</div>
+            }
 
-            {/* Stock status */}
             <div style={{ display:"inline-flex", alignItems:"center", gap:"6px", padding:"4px 12px",
               borderRadius:"20px", background:stockStatus.bg, color:stockStatus.color,
               fontSize:"12px", fontWeight:700, marginBottom:"12px" }}>
@@ -360,7 +603,6 @@ export default function ProductView() {
                   opacity: stock===0 ? 0.5 : 1,
                   display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
                   transition:"all 0.2s", boxShadow: added ? "none" : "0 4px 14px rgba(77,123,101,0.35)",
-                  transform: added ? "none" : "translateY(0)",
                 }}
                 onMouseEnter={e => { if(stock>0 && !added) e.currentTarget.style.transform="translateY(-1px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
@@ -397,7 +639,6 @@ export default function ProductView() {
               </Link>
             )}
 
-            {/* Trust badges */}
             <div style={{ display:"flex", flexWrap:"wrap", gap:"8px", marginTop:"16px" }}>
               {["🚚 Free delivery in Metro Manila","✅ Quality guaranteed","🔄 Easy returns"].map(t => (
                 <span key={t} style={{ fontSize:"12px", padding:"6px 12px", background:"#f0faf5",
@@ -405,7 +646,6 @@ export default function ProductView() {
               ))}
             </div>
 
-            {/* Cart error toast */}
             {cartError && (
               <div style={{
                 marginTop:"12px", padding:"12px 16px", borderRadius:"10px",
@@ -439,7 +679,7 @@ export default function ProductView() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 style={{
-                  padding:"12px 24px", border:"none", background:"transparent",
+                  padding:"12px 24px", border:"none",
                   fontSize:"14px", fontWeight: activeTab===tab ? 700 : 500,
                   color: activeTab===tab ? "#4d7b65" : "#64748B",
                   borderBottom: activeTab===tab ? "2px solid #4d7b65" : "2px solid transparent",
@@ -448,12 +688,16 @@ export default function ProductView() {
                   background: activeTab===tab ? "#f0faf5" : "transparent",
                 }}
               >
-                {tab.charAt(0).toUpperCase()+tab.slice(1)}
+                {tab === "reviews"
+                  ? `Reviews${reviews > 0 ? ` (${reviews})` : ""}`
+                  : tab.charAt(0).toUpperCase()+tab.slice(1)
+                }
               </button>
             ))}
           </div>
 
           <div style={{ background:"#fff", borderRadius:"12px", padding:"28px 0", minHeight:"200px" }}>
+
             {activeTab === "overview" && (
               <div className="pv-overview">
                 <h3>Product Overview</h3>
@@ -480,7 +724,7 @@ export default function ProductView() {
                     <tr><td>Stock</td><td>{stock} units</td></tr>
                     <tr><td>Status</td><td style={{ color:stockStatus.color, fontWeight:600 }}>{stockStatus.label}</td></tr>
                     <tr><td>On Sale</td><td>{isOnSale ? "Yes" : "No"}</td></tr>
-                    <tr><td>Rating</td><td>{rating.toFixed(1)} / 5.0</td></tr>
+                    <tr><td>Rating</td><td>{reviews > 0 ? `${avgRating.toFixed(1)} / 5.0 (${reviews} reviews)` : "No reviews yet"}</td></tr>
                     <tr><td>Delivery</td><td>Metro Manila: 1–2 days · Laguna: 2–3 days</td></tr>
                     <tr><td>Bulk Pricing</td><td>Available for 10+ units</td></tr>
                     {product.created_at && (
@@ -494,31 +738,91 @@ export default function ProductView() {
             {activeTab === "reviews" && (
               <div className="pv-reviews">
                 <h3>Customer Reviews</h3>
-                <div className="pv-reviews-summary">
-                  <div className="pv-reviews-big">{rating.toFixed(1)}</div>
-                  <div>
-                    <StarRating rating={rating} />
-                    {reviews > 0 && <div className="pv-reviews-count">Based on {reviews} reviews</div>}
-                  </div>
-                </div>
-                {[
-                  { name:"Maria S.", text:"Excellent quality! Exactly as described and arrived on time.", rating:5 },
-                  { name:"Juan D.",  text:"Great product for the price. Will definitely order again in bulk.", rating:5 },
-                  { name:"Ana R.",   text:"Good value for money. Delivery was fast.", rating:4 },
-                ].map(r => (
-                  <div key={r.name} className="pv-review-card">
-                    <div className="pv-review-card__header">
-                      <div className="pv-review-card__avatar">{r.name[0]}</div>
-                      <div>
-                        <div className="pv-review-card__name">{r.name}</div>
-                        <StarRating rating={r.rating} />
+
+                {/* ── Summary bar ── */}
+                {reviews > 0 && (
+                  <div className="pv-reviews-summary">
+                    <div className="pv-reviews-big">{avgRating.toFixed(1)}</div>
+                    <div>
+                      <StarRating rating={avgRating} />
+                      <div className="pv-reviews-count">
+                        Based on {reviews} review{reviews !== 1 ? "s" : ""}
                       </div>
                     </div>
-                    <p className="pv-review-card__text">{r.text}</p>
                   </div>
-                ))}
+                )}
+
+                {/* ── Reviews list ── */}
+                {reviewsLoading ? (
+                  <div style={{ padding: "32px 0", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
+                    <span style={{ display:"inline-block", width:"20px", height:"20px", border:"2.5px solid #d1d5db", borderTopColor:"#4d7b65", borderRadius:"50%", animation:"spin 0.7s linear infinite", marginRight:"10px", verticalAlign:"middle" }} />
+                    Loading reviews…
+                  </div>
+                ) : reviewsList.length === 0 ? (
+                  <div style={{ padding: "32px 0", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
+                    <div style={{ fontSize: "36px", marginBottom: "10px" }}>💬</div>
+                    No reviews yet. Be the first to review this product!
+                  </div>
+                ) : (
+                  reviewsList.map((r, i) => {
+                    const reviewer = (r.user ? [r.user.first_name, r.user.last_name].filter(Boolean).join(" ") : null) ?? r.user?.name ?? r.name ?? "Anonymous";
+                    const reviewRating = Number(r.rating ?? r.stars ?? 0);
+                    const reviewText   = r.review_text ?? r.comment ?? r.body ?? "";
+                    const reviewDate   = r.created_at
+                      ? new Date(r.created_at).toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" })
+                      : "";
+                    return (
+                      <div key={r.id ?? i} className="pv-review-card">
+                        <div className="pv-review-card__header">
+                          <div className="pv-review-card__avatar" style={{color:""}}>{reviewer[0].toUpperCase()}</div>
+                          <div style={{ flex: 1 }}>
+                            <div className="pv-review-card__name">{reviewer}</div>
+                            <StarRating rating={reviewRating} />
+                          </div>
+                          {reviewDate && (
+                            <div style={{ fontSize: "12px", color: "#9ca3af", whiteSpace: "nowrap" }}>
+                              {reviewDate}
+                            </div>
+                          )}
+                        </div>
+                        {reviewText && <p className="pv-review-card__text">{reviewText}</p>}
+                      </div>
+                    );
+                  })
+                )}
+
+                {/* ── Write a review ── */}
+                <div style={{ borderTop: "1.5px solid #e2ede8", marginTop: "32px", paddingTop: "8px" }}>
+                  {currentUser ? (
+                    <ReviewForm
+                      productId={productId}
+                      user={currentUser}
+                      onSubmitted={() => setReviewRefresh(r => r + 1)}
+                    />
+                  ) : currentUser === false ? (
+                    <div style={{
+                      marginTop: "24px", padding: "20px 24px", borderRadius: "12px",
+                      background: "#f8fafc", border: "1.5px dashed #d1d5db",
+                      textAlign: "center",
+                    }}>
+                      <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔒</div>
+                      <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 14px" }}>
+                        You need to be logged in to write a review.
+                      </p>
+                      <Link to="/login" style={{
+                        display: "inline-block", padding: "9px 22px",
+                        background: "linear-gradient(135deg,#4d7b65,#2d5a42)",
+                        color: "#fff", borderRadius: "8px", fontWeight: 600,
+                        fontSize: "13px", textDecoration: "none",
+                      }}>
+                        Log in to Review →
+                      </Link>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             )}
+
           </div>
         </div>
       </section>

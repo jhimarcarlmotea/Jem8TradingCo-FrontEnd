@@ -47,7 +47,7 @@
 .cart-summary__row--total { font-size: 18px; font-weight: 700; color: #1a2e22; }
 .cart-summary__free { color: #16a34a; font-weight: 700; }
 .cart-summary__divider { border: none; border-top: 1px solid #e8f0eb; }
-.cart-summary__checkout-btn { width: 100%; padding: 16px; background: var(--clr-primary); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all 0.2s; margin-bottom: 14px; }
+.cart-summary__checkout-btn { width: 100%; padding: 16px; background: #3d6552; color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all 0.2s; margin-bottom: 14px; }
 .cart-summary__checkout-btn:hover { background: #3d6552; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(77,123,101,0.25); }
 .cart-summary__secure { text-align: center; font-family: var(--font-body); font-size: 12px; color: #9ca3af; margin-bottom: 16px; }
 .cart-summary__payments { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }

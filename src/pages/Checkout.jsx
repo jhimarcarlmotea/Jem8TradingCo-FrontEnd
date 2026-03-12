@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { Header, Footer } from "../components/Layout";
-import { useCart } from "../context/CartContext";
+import { getUserAddresses } from "../api/address";
 import "../style/global.css";
 import "../style/checkout.css";
-
 const ph = (w, h, label = "") =>
   `https://placehold.co/${w}x${h}/edf4f0/4d7b65?text=${encodeURIComponent(label)}`;
 
+const BASE = "http://127.0.0.1:8000/api";
 const SHIPPING_FEE = 150;
 const FREE_SHIPPING_MIN = 2000;
 
@@ -82,23 +83,261 @@ const PAYMENT_METHODS = [
 
 const STEPS = ["Delivery", "Payment", "Review"];
 
+const ADDR_PICKER_STYLES = `
+  .co-user-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #f4f8f6;
+    border: 1.5px solid #d0e8db;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+  .co-user-card__avatar {
+    width: 42px; height: 42px;
+    background: #4d7b65;
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .co-user-card__info { flex: 1; min-width: 0; }
+  .co-user-card__name {
+    font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px;
+  }
+  .co-user-card__meta {
+    font-size: 12px; color: #666; line-height: 1.5;
+  }
+  .co-user-card__edit {
+    font-size: 12px; color: #4d7b65; font-weight: 500;
+    text-decoration: none; white-space: nowrap;
+    padding: 5px 10px; border-radius: 7px;
+    border: 1.5px solid #c0ddd0;
+    background: #fff;
+    transition: background 0.15s;
+  }
+  .co-user-card__edit:hover { background: #e8f5ef; }
+  .co-addr-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .co-addr-mode-btn {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid #e0e9e4;
+    background: #fafafa;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .co-addr-mode-btn:hover { border-color: #4d7b65; color: #4d7b65; }
+  .co-addr-mode-btn.active {
+    border-color: #4d7b65;
+    background: #4d7b65;
+    color: #fff;
+    font-weight: 600;
+  }
+  .co-saved-addresses {
+    margin-bottom: 4px;
+  }
+  .co-saved-addresses__label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #5a7a68;
+    margin-bottom: 12px;
+  }
+  .co-saved-addresses__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .co-addr-card {
+    flex: 1 1 200px;
+    min-width: 180px;
+    text-align: left;
+    background: #fff;
+    border: 1.5px solid #e0e9e4;
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    font-family: inherit;
+  }
+  .co-addr-card:hover {
+    border-color: #4d7b65;
+    box-shadow: 0 2px 10px rgba(77,123,101,0.10);
+  }
+  .co-addr-card--active {
+    border-color: #4d7b65;
+    background: #f0f7f3;
+    box-shadow: 0 0 0 3px rgba(77,123,101,0.13);
+  }
+  .co-addr-card__badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #5a7a68;
+    margin-bottom: 6px;
+  }
+  .co-addr-card__company {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 3px;
+  }
+  .co-addr-card__line {
+    font-size: 13px;
+    color: #444;
+    line-height: 1.65;
+  }
+  .co-addr-card__contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #eee;
+    font-size: 11px;
+    color: #888;
+  }
+  .co-addr-card__check-wrap {
+    margin-top: 10px;
+  }
+  .co-addr-card__check {
+    font-size: 12px;
+    font-weight: 700;
+    color: #4d7b65;
+  }
+  .co-addr-card__select {
+    font-size: 11px;
+    color: #bbb;
+  }
+  .co-addr-autosave-note {
+    font-size: 12px;
+    color: #5a7a68;
+    background: #f0f7f3;
+    border: 1px solid #c8e4d4;
+    border-radius: 8px;
+    padding: 9px 13px;
+    margin-top: 4px;
+  }
+`;
+
 export default function Checkout() {
-  const navigate     = useNavigate();
-  const { items, subtotal, placeOrder } = useCart();
+  const navigate = useNavigate();
 
-  const shippingFee = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
-  const total       = subtotal + shippingFee;
+  // ── Cart state (fetched from API) ──────────────────────────────────────────
+  const [items, setItems]       = useState([]);
+  const [loadingCart, setLoadingCart] = useState(true);
+  const [cartError, setCartError]     = useState(null);
 
-  const [step, setStep]         = useState(0); // 0=delivery, 1=payment, 2=review
-  const [payMethod, setPayMethod] = useState("gcash");
-  const [payFields, setPayFields] = useState({});
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        setLoadingCart(true);
+        setCartError(null);
+
+        const res = await axios.get(`${BASE}/cart`, { withCredentials: true });
+        const cartItems = res.data.cartItems ?? [];
+
+        const formatted = cartItems.map((c) => ({
+          id:        c.cart_id,
+          productId: c.product?.product_id,
+          name:      c.product?.product_name || "Unknown product",
+          image:
+            c.product?.primary_image_url ||
+            (c.product?.images?.find((img) => img.is_primary)?.image_path
+              ? `http://127.0.0.1:8000/storage/${c.product.images.find((img) => img.is_primary).image_path}`
+              : "https://placehold.co/80x80"),
+          rawPrice:  Number(c.product?.price || 0),
+          price:     `₱${Number(c.product?.price || 0).toLocaleString()}`,
+          qty:       c.quantity,
+          cat:       c.product?.category_id || "Product",
+        }));
+
+        setItems(formatted);
+      } catch (err) {
+        setCartError(err.response?.data?.message || "Failed to load cart.");
+      } finally {
+        setLoadingCart(false);
+      }
+    };
+
+    fetchCart();
+  }, []);
+
+  // ── Current user (fetched from /me) ───────────────────────────────────────
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await axios.get(`${BASE}/me`, { withCredentials: true });
+        // support both { data: { data: user } } and { data: user }
+        setUser(res.data?.data ?? res.data);
+      } catch {
+        // unauthenticated — user stays null
+      }
+    };
+    fetchMe();
+  }, []);
+
+  // ── Step / form state ──────────────────────────────────────────────────────
+  const [step, setStep]               = useState(0);
+  const [payMethod, setPayMethod]     = useState("gcash");
+  const [payFields, setPayFields]     = useState({});
   const [specialNote, setSpecialNote] = useState("");
-  const [placing, setPlacing]   = useState(false);
+  const [placing, setPlacing]         = useState(false);
+  const [placeError, setPlaceError]   = useState(null);
 
   const [delivery, setDelivery] = useState({
-    firstName: "", lastName: "", email: "", phone: "",
     address: "", barangay: "", city: "", province: "", zip: "",
   });
+
+  // ── Saved addresses ────────────────────────────────────────────────────────
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddrId, setSelectedAddrId] = useState(null);
+  const [addrMode, setAddrMode]             = useState("detect"); // "detect"|"saved"|"new"
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        const res  = await getUserAddresses();
+        const data = res.data?.data ?? res.data ?? [];
+        const list = Array.isArray(data) ? data : [];
+        setSavedAddresses(list);
+        setAddrMode(list.length > 0 ? "saved" : "new");
+      } catch {
+        setAddrMode("new");
+      }
+    };
+    fetchAddresses();
+  }, []);
+
+  const selectSavedAddress = (addr) => setSelectedAddrId(addr.id);
+  const deselectAddress    = ()     => setSelectedAddrId(null);
+
+  const selectedAddr = savedAddresses.find((a) => a.id === selectedAddrId) || null;
+
+  const contactValid  = !!(user?.first_name && user?.email);
+  const deliveryValid = addrMode === "saved"
+    ? contactValid && !!selectedAddrId
+    : contactValid && delivery.address && delivery.city && delivery.province;
+
+  // ── Derived totals ─────────────────────────────────────────────────────────
+  const subtotal    = items.reduce((sum, i) => sum + i.rawPrice * i.qty, 0);
+  const shippingFee = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
+  const total       = subtotal + shippingFee;
 
   const handleDeliveryChange = (e) =>
     setDelivery((d) => ({ ...d, [e.target.name]: e.target.value }));
@@ -106,28 +345,131 @@ export default function Checkout() {
   const handlePayFieldChange = (e) =>
     setPayFields((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const deliveryValid = delivery.firstName && delivery.lastName &&
-    delivery.email && delivery.phone && delivery.address &&
-    delivery.city && delivery.province;
-
   const activePayment = PAYMENT_METHODS.find((m) => m.id === payMethod);
 
-  const handlePlaceOrder = () => {
+  // ── Place order → POST /api/checkout ──────────────────────────────────────
+  const handlePlaceOrder = async () => {
     setPlacing(true);
-    setTimeout(() => {
-      const orderId = placeOrder({
-        delivery,
-        paymentMethod: activePayment.label,
-        paymentDetails: payFields,
-        specialNote,
-        subtotal,
-        shippingFee,
-        total,
+    setPlaceError(null);
+
+    // Resolve address fields from either saved addr or the manual form
+    let resolvedAddress;
+    if (addrMode === "saved" && selectedAddr) {
+      resolvedAddress = {
+        address:  selectedAddr.street      || "",
+        barangay: selectedAddr.barangay    || "",
+        city:     selectedAddr.city        || "",
+        province: selectedAddr.province    || "",
+        zip:      selectedAddr.postal_code || "",
+      };
+    } else {
+      resolvedAddress = {
+        address:  delivery.address,
+        barangay: delivery.barangay,
+        city:     delivery.city,
+        province: delivery.province,
+        zip:      delivery.zip,
+      };
+
+      // ── Auto-create address if user filled form and has no saved addresses ──
+      if (savedAddresses.length === 0) {
+        try {
+          const { addAddress } = await import("../api/address");
+          const newAddr = await addAddress({
+            type:        "personal",
+            street:      delivery.address,
+            barangay:    delivery.barangay,
+            city:        delivery.city,
+            province:    delivery.province,
+            postal_code: delivery.zip,
+            country:     "Philippines",
+            status:      "active",
+          });
+          // Silently save — don't block checkout if it fails
+          if (newAddr?.data) {
+            setSavedAddresses([newAddr.data?.data ?? newAddr.data]);
+          }
+        } catch {
+          // Non-blocking — proceed with checkout anyway
+        }
+      }
+    }
+
+    const billingAddress = [
+      resolvedAddress.address,
+      resolvedAddress.barangay,
+      resolvedAddress.city,
+      resolvedAddress.province,
+      resolvedAddress.zip,
+    ].filter(Boolean).join(", ");
+
+    const paymentDetails = {
+      ...payFields,
+      first_name:      user?.first_name    || "",
+      last_name:       user?.last_name     || "",
+      email:           user?.email         || "",
+      phone:           user?.phone_number  || "",
+      billing_address: billingAddress,
+    };
+
+    const payload = {
+      payment_method:       activePayment.label,
+      payment_details:      paymentDetails,
+      shipping_fee:         shippingFee,
+      special_instructions: specialNote || undefined,
+    };
+
+    try {
+      const res = await axios.post(`${BASE}/checkout`, payload, {
+        withCredentials: true,
       });
-      navigate(`/orders?new=${orderId}`);
-    }, 1200);
+      const { checkout_id } = res.data;
+      navigate(`/orders?new=${checkout_id}`);
+    } catch (err) {
+      setPlaceError(
+        err.response?.data?.message || "Failed to place order. Please try again."
+      );
+      setPlacing(false);
+    }
   };
 
+  // ── Loading cart ───────────────────────────────────────────────────────────
+  if (loadingCart) {
+    return (
+      <div className="checkout-page">
+        <Header />
+        <div className="cart-empty">
+          <div className="container cart-empty__inner">
+            <div className="cart-empty__icon">⏳</div>
+            <h2 className="cart-empty__title">Loading your cart…</h2>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // ── Cart fetch error ───────────────────────────────────────────────────────
+  if (cartError) {
+    return (
+      <div className="checkout-page">
+        <Header />
+        <div className="cart-empty">
+          <div className="container cart-empty__inner">
+            <div className="cart-empty__icon">⚠️</div>
+            <h2 className="cart-empty__title">Something went wrong</h2>
+            <p className="cart-empty__desc">{cartError}</p>
+            <button className="btn-primary" onClick={() => window.location.reload()}>
+              Try Again
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // ── Empty cart ─────────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <div className="checkout-page">
@@ -144,8 +486,10 @@ export default function Checkout() {
     );
   }
 
+  // ── Main checkout ──────────────────────────────────────────────────────────
   return (
     <div className="checkout-page">
+      <style>{ADDR_PICKER_STYLES}</style>
       <Header />
 
       {/* Breadcrumb */}
@@ -163,7 +507,10 @@ export default function Checkout() {
       <div className="co-progress">
         <div className="container co-progress__inner">
           {STEPS.map((s, i) => (
-            <div key={s} className={`co-progress__step${i <= step ? " active" : ""}${i < step ? " done" : ""}`}>
+            <div
+              key={s}
+              className={`co-progress__step${i <= step ? " active" : ""}${i < step ? " done" : ""}`}
+            >
               <div className="co-progress__dot">{i < step ? "✓" : i + 1}</div>
               <span className="co-progress__label">{s}</span>
               {i < STEPS.length - 1 && <div className="co-progress__line" />}
@@ -182,48 +529,132 @@ export default function Checkout() {
             {step === 0 && (
               <div className="co-section">
                 <h2 className="co-section__title">📦 Delivery Information</h2>
-                <div className="co-form-grid">
-                  <div className="co-field">
-                    <label>First Name *</label>
-                    <input name="firstName" value={delivery.firstName} onChange={handleDeliveryChange} placeholder="Juan" />
+
+                {/* ── Logged-in user info card ── */}
+                <div className="co-user-card">
+                  <div className="co-user-card__avatar">
+                    {user ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() : "…"}
                   </div>
-                  <div className="co-field">
-                    <label>Last Name *</label>
-                    <input name="lastName" value={delivery.lastName} onChange={handleDeliveryChange} placeholder="dela Cruz" />
+                  <div className="co-user-card__info">
+                    <div className="co-user-card__name">
+                      {user ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() : "Loading…"}
+                    </div>
+                    <div className="co-user-card__meta">{user?.email || "—"}</div>
+                    {user?.phone_number && (
+                      <div className="co-user-card__meta">{user.phone_number}</div>
+                    )}
                   </div>
-                  <div className="co-field co-field--full">
-                    <label>Email Address *</label>
-                    <input name="email" type="email" value={delivery.email} onChange={handleDeliveryChange} placeholder="juan@company.com" />
-                  </div>
-                  <div className="co-field co-field--full">
-                    <label>Mobile Number *</label>
-                    <input name="phone" type="tel" value={delivery.phone} onChange={handleDeliveryChange} placeholder="09XXXXXXXXX" />
-                  </div>
-                  <div className="co-field co-field--full">
-                    <label>Street Address / Building / Unit *</label>
-                    <input name="address" value={delivery.address} onChange={handleDeliveryChange} placeholder="e.g. Unit 202, Cityland Tower, HV Dela Costa St." />
-                  </div>
-                  <div className="co-field">
-                    <label>Barangay</label>
-                    <input name="barangay" value={delivery.barangay} onChange={handleDeliveryChange} placeholder="Barangay name" />
-                  </div>
-                  <div className="co-field">
-                    <label>City / Municipality *</label>
-                    <input name="city" value={delivery.city} onChange={handleDeliveryChange} placeholder="Makati City" />
-                  </div>
-                  <div className="co-field">
-                    <label>Province *</label>
-                    <input name="province" value={delivery.province} onChange={handleDeliveryChange} placeholder="Metro Manila" />
-                  </div>
-                  <div className="co-field">
-                    <label>ZIP Code</label>
-                    <input name="zip" value={delivery.zip} onChange={handleDeliveryChange} placeholder="1227" />
-                  </div>
+                  <Link to="/Profilepersonal" className="co-user-card__edit" title="Edit profile">
+                    ✏️ Edit
+                  </Link>
                 </div>
+
+                {/* ── Address mode toggle (only if user has saved addresses) ── */}
+                {savedAddresses.length > 0 && (
+                  <div className="co-addr-mode-toggle">
+                    <button
+                      type="button"
+                      className={`co-addr-mode-btn${addrMode === "saved" ? " active" : ""}`}
+                      onClick={() => { setAddrMode("saved"); }}
+                    >
+                      📍 My Saved Addresses
+                    </button>
+                    <button
+                      type="button"
+                      className={`co-addr-mode-btn${addrMode === "new" ? " active" : ""}`}
+                      onClick={() => { setAddrMode("new"); setSelectedAddrId(null); }}
+                    >
+                      ✏️ Use a Different Address
+                    </button>
+                  </div>
+                )}
+
+                {/* ── SAVED MODE: cards, form hidden ── */}
+                {addrMode === "saved" && savedAddresses.length > 0 && (
+                  <div className="co-saved-addresses">
+                    <div className="co-saved-addresses__label">Select a delivery address</div>
+                    <div className="co-saved-addresses__list">
+                      {savedAddresses.map((addr) => {
+                        const isCompany = addr.type === "company";
+                        const isActive  = selectedAddrId === addr.id;
+                        const lines = [
+                          addr.street,
+                          [addr.barangay, addr.city].filter(Boolean).join(", "),
+                          [addr.province, addr.postal_code].filter(Boolean).join(" "),
+                          addr.country,
+                        ].filter(Boolean);
+
+                        return (
+                          <button
+                            key={addr.id}
+                            type="button"
+                            className={`co-addr-card${isActive ? " co-addr-card--active" : ""}`}
+                            onClick={() => isActive ? deselectAddress() : selectSavedAddress(addr)}
+                          >
+                            <div className="co-addr-card__badge">
+                              {isCompany ? "🏢 Company" : "👤 Personal"}
+                            </div>
+                            {isCompany && addr.company_name && (
+                              <div className="co-addr-card__company">{addr.company_name}</div>
+                            )}
+                            {lines.map((line, i) => (
+                              <div key={i} className="co-addr-card__line">{line}</div>
+                            ))}
+                            {isCompany && (addr.company_number || addr.company_email) && (
+                              <div className="co-addr-card__contacts">
+                                {addr.company_number && <span>📞 {addr.company_number}</span>}
+                                {addr.company_email  && <span>✉ {addr.company_email}</span>}
+                              </div>
+                            )}
+                            <div className="co-addr-card__check-wrap">
+                              {isActive
+                                ? <span className="co-addr-card__check">✓ Delivering here</span>
+                                : <span className="co-addr-card__select">Tap to select</span>
+                              }
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── NEW MODE: show address form ── */}
+                {addrMode === "new" && (
+                  <div className="co-form-grid">
+                    <div className="co-field co-field--full">
+                      <label>Street Address / Building / Unit *</label>
+                      <input name="address" value={delivery.address} onChange={handleDeliveryChange} placeholder="e.g. Unit 202, Cityland Tower, HV Dela Costa St." />
+                    </div>
+                    <div className="co-field">
+                      <label>Barangay</label>
+                      <input name="barangay" value={delivery.barangay} onChange={handleDeliveryChange} placeholder="Barangay name" />
+                    </div>
+                    <div className="co-field">
+                      <label>City / Municipality *</label>
+                      <input name="city" value={delivery.city} onChange={handleDeliveryChange} placeholder="Makati City" />
+                    </div>
+                    <div className="co-field">
+                      <label>Province *</label>
+                      <input name="province" value={delivery.province} onChange={handleDeliveryChange} placeholder="Metro Manila" />
+                    </div>
+                    <div className="co-field">
+                      <label>ZIP Code</label>
+                      <input name="zip" value={delivery.zip} onChange={handleDeliveryChange} placeholder="1227" />
+                    </div>
+                    {savedAddresses.length === 0 && (
+                      <div className="co-addr-autosave-note co-field--full">
+                        💾 This address will be saved to your profile automatically.
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <button
                   className="co-next-btn"
                   onClick={() => setStep(1)}
                   disabled={!deliveryValid}
+                  style={{ marginTop: 24 }}
                 >
                   Continue to Payment →
                 </button>
@@ -260,7 +691,6 @@ export default function Checkout() {
                   ))}
                 </div>
 
-                {/* Dynamic fields for selected method */}
                 {activePayment.fields.length > 0 && (
                   <div className="co-pay-fields">
                     <h3 className="co-pay-fields__title">{activePayment.label} Details</h3>
@@ -282,9 +712,7 @@ export default function Checkout() {
                 )}
 
                 {activePayment.note && (
-                  <div className="co-pay-note">
-                    ℹ️ {activePayment.note}
-                  </div>
+                  <div className="co-pay-note">ℹ️ {activePayment.note}</div>
                 )}
 
                 <div className="co-field co-field--full" style={{ marginTop: 24 }}>
@@ -316,9 +744,18 @@ export default function Checkout() {
                     <button className="co-review-edit" onClick={() => setStep(0)}>Edit</button>
                   </div>
                   <div className="co-review-block__content">
-                    <strong>{delivery.firstName} {delivery.lastName}</strong><br />
-                    {delivery.phone} · {delivery.email}<br />
-                    {delivery.address}, {delivery.barangay && `${delivery.barangay}, `}{delivery.city}, {delivery.province} {delivery.zip}
+                    <strong>{user?.first_name} {user?.last_name}</strong><br />
+                    {user?.phone_number && <>{user.phone_number} · </>}{user?.email}<br />
+                    {addrMode === "saved" && selectedAddr ? (
+                      <>
+                        {selectedAddr.street}{selectedAddr.barangay ? `, ${selectedAddr.barangay}` : ""},{" "}
+                        {selectedAddr.city}, {selectedAddr.province} {selectedAddr.postal_code}
+                      </>
+                    ) : (
+                      <>
+                        {delivery.address},{delivery.barangay && ` ${delivery.barangay},`} {delivery.city}, {delivery.province} {delivery.zip}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -350,7 +787,9 @@ export default function Checkout() {
                           <div className="co-review-item__name">{item.name}</div>
                           <div className="co-review-item__qty">Qty: {item.qty}</div>
                         </div>
-                        <div className="co-review-item__price">₱{(item.rawPrice * item.qty).toLocaleString()}</div>
+                        <div className="co-review-item__price">
+                          ₱{(item.rawPrice * item.qty).toLocaleString()}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -363,8 +802,17 @@ export default function Checkout() {
                   </div>
                 )}
 
+                {/* API error message */}
+                {placeError && (
+                  <div className="co-pay-note" style={{ borderColor: "#ef4444", color: "#ef4444", background: "#fef2f2" }}>
+                    ⚠️ {placeError}
+                  </div>
+                )}
+
                 <div className="co-step-nav">
-                  <button className="co-back-btn" onClick={() => setStep(1)}>← Back</button>
+                  <button className="co-back-btn" onClick={() => setStep(1)} disabled={placing}>
+                    ← Back
+                  </button>
                   <button
                     className={`co-place-btn${placing ? " co-place-btn--loading" : ""}`}
                     onClick={handlePlaceOrder}
@@ -393,7 +841,9 @@ export default function Checkout() {
                       <span className="co-summary__item-qty">{item.qty}</span>
                     </div>
                     <div className="co-summary__item-name">{item.name}</div>
-                    <div className="co-summary__item-price">₱{(item.rawPrice * item.qty).toLocaleString()}</div>
+                    <div className="co-summary__item-price">
+                      ₱{(item.rawPrice * item.qty).toLocaleString()}
+                    </div>
                   </div>
                 ))}
               </div>
