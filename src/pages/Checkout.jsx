@@ -12,50 +12,51 @@ const BASE = "http://127.0.0.1:8000/api";
 const SHIPPING_FEE = 150;
 const FREE_SHIPPING_MIN = 2000;
 
+// ── Payment method id matches exactly what the backend switch expects ──
 const PAYMENT_METHODS = [
   {
-    id: "gcash",
+    id: "gcash",                     // ← backend: case 'gcash'
     label: "GCash",
     icon: "💙",
     tag: "E-Wallet",
     tagColor: "#0078FF",
     desc: "Pay via GCash e-wallet",
     fields: [
-      { name: "gcashNumber", label: "GCash Mobile Number", placeholder: "09XXXXXXXXX", type: "tel" },
-      { name: "gcashName",   label: "GCash Account Name",  placeholder: "Full Name on GCash" },
+      { name: "mobile_number", label: "GCash Mobile Number", placeholder: "09XXXXXXXXX", type: "tel" },
+      { name: "account_name", label: "GCash Account Name",   placeholder: "Full Name on GCash" },
     ],
     note: "You will receive a GCash payment request after placing your order. Please complete payment within 1 hour.",
   },
   {
-    id: "maya",
+    id: "maya",                      // ← backend: case 'maya'
     label: "Maya (PayMaya)",
     icon: "💚",
     tag: "E-Wallet",
     tagColor: "#00C562",
     desc: "Pay via Maya e-wallet",
     fields: [
-      { name: "mayaNumber", label: "Maya Mobile Number", placeholder: "09XXXXXXXXX", type: "tel" },
-      { name: "mayaName",   label: "Maya Account Name",  placeholder: "Full Name on Maya" },
+      { name: "mobile_number", label: "Maya Mobile Number", placeholder: "09XXXXXXXXX", type: "tel" },
+      { name: "account_name", label: "Maya Account Name",   placeholder: "Full Name on Maya" },
     ],
     note: "A Maya payment link will be sent to your mobile number. Complete payment within 1 hour.",
   },
   {
-    id: "bank",
+    id: "bank_transfer",             // ← backend: case 'bank_transfer'
     label: "Bank Transfer",
     icon: "🏦",
     tag: "Bank",
     tagColor: "#6366f1",
     desc: "BPI, BDO, Metrobank, UnionBank, Landbank, PNB",
     fields: [
-      { name: "bankName",    label: "Bank Name",          placeholder: "e.g. BPI, BDO, Metrobank" },
-      { name: "accountName", label: "Account Name",       placeholder: "Your account name" },
-      { name: "accountNum",  label: "Account Number",     placeholder: "Your account number" },
-      { name: "refNumber",   label: "Reference Number",   placeholder: "Transaction reference (after transfer)" },
+      { name: "bank_name",        label: "Bank Name",        placeholder: "e.g. BPI, BDO, Metrobank" },
+      { name: "account_name",     label: "Account Name",     placeholder: "Your account name" },
+      { name: "account_number",   label: "Account Number",   placeholder: "Your account number" },
+      { name: "reference_number", label: "Reference Number", placeholder: "Transaction reference (after transfer)" },
     ],
     note: "Transfer to: BPI Savings — JEM 8 Circle Trading Co. — Account No. 1234-5678-90. Send proof of payment to our email.",
   },
   {
-    id: "cod",
+    id: "cod",                       // ← backend: case 'cod'
     label: "Cash on Delivery",
     icon: "💵",
     tag: "COD",
@@ -65,17 +66,17 @@ const PAYMENT_METHODS = [
     note: "Prepare the exact amount upon delivery. Our courier will contact you before arriving. COD available within Metro Manila and Laguna only.",
   },
   {
-    id: "check",
+    id: "check",                     // ← backend: case 'check'
     label: "Check Payment",
     icon: "📄",
     tag: "Check",
     tagColor: "#64748b",
     desc: "Pay by post-dated or manager's check",
     fields: [
-      { name: "checkBank",   label: "Issuing Bank",       placeholder: "e.g. BDO, BPI" },
-      { name: "checkNum",    label: "Check Number",       placeholder: "Check number" },
-      { name: "checkDate",   label: "Check Date",         type: "date" },
-      { name: "checkAmount", label: "Check Amount (₱)",   placeholder: "Amount in pesos", type: "number" },
+      { name: "bank_name",     label: "Issuing Bank",     placeholder: "e.g. BDO, BPI" },
+      { name: "check_number",  label: "Check Number",     placeholder: "Check number" },
+      { name: "check_date",    label: "Check Date",       type: "date" },
+      { name: "check_amount",  label: "Check Amount (₱)", placeholder: "Amount in pesos", type: "number" },
     ],
     note: "Make check payable to: JEM 8 Circle Trading Co. Deliver check to our Makati office or hand to our sales representative.",
   },
@@ -236,20 +237,19 @@ const ADDR_PICKER_STYLES = `
 export default function Checkout() {
   const navigate = useNavigate();
 
-  // ── Cart state (fetched from API) ──────────────────────────────────────────
-  const [items, setItems]       = useState([]);
+  // ── Cart state ─────────────────────────────────────────────────────────────
+  const [items, setItems]             = useState([]);
   const [loadingCart, setLoadingCart] = useState(true);
   const [cartError, setCartError]     = useState(null);
+  // console.log(items)
 
   useEffect(() => {
     const fetchCart = async () => {
       try {
         setLoadingCart(true);
         setCartError(null);
-
-        const res = await axios.get(`${BASE}/cart`, { withCredentials: true });
+        const res       = await axios.get(`${BASE}/cart`, { withCredentials: true });
         const cartItems = res.data.cartItems ?? [];
-
         const formatted = cartItems.map((c) => ({
           id:        c.cart_id,
           productId: c.product?.product_id,
@@ -259,12 +259,11 @@ export default function Checkout() {
             (c.product?.images?.find((img) => img.is_primary)?.image_path
               ? `http://127.0.0.1:8000/storage/${c.product.images.find((img) => img.is_primary).image_path}`
               : "https://placehold.co/80x80"),
-          rawPrice:  Number(c.product?.price || 0),
-          price:     `₱${Number(c.product?.price || 0).toLocaleString()}`,
-          qty:       c.quantity,
-          cat:       c.product?.category_id || "Product",
+          rawPrice: Number(c.product?.price || 0),
+          price:    `₱${Number(c.product?.price || 0).toLocaleString()}`,
+          qty:      c.quantity,
+          cat:      c.product?.category_id || "Product",
         }));
-
         setItems(formatted);
       } catch (err) {
         setCartError(err.response?.data?.message || "Failed to load cart.");
@@ -272,21 +271,19 @@ export default function Checkout() {
         setLoadingCart(false);
       }
     };
-
     fetchCart();
   }, []);
 
-  // ── Current user (fetched from /me) ───────────────────────────────────────
+  // ── Current user ───────────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     const fetchMe = async () => {
       try {
         const res = await axios.get(`${BASE}/me`, { withCredentials: true });
-        // support both { data: { data: user } } and { data: user }
         setUser(res.data?.data ?? res.data);
       } catch {
-        // unauthenticated — user stays null
+        // unauthenticated
       }
     };
     fetchMe();
@@ -307,7 +304,7 @@ export default function Checkout() {
   // ── Saved addresses ────────────────────────────────────────────────────────
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddrId, setSelectedAddrId] = useState(null);
-  const [addrMode, setAddrMode]             = useState("detect"); // "detect"|"saved"|"new"
+  const [addrMode, setAddrMode]             = useState("detect");
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -326,7 +323,6 @@ export default function Checkout() {
 
   const selectSavedAddress = (addr) => setSelectedAddrId(addr.id);
   const deselectAddress    = ()     => setSelectedAddrId(null);
-
   const selectedAddr = savedAddresses.find((a) => a.id === selectedAddrId) || null;
 
   const contactValid  = !!(user?.first_name && user?.email);
@@ -347,12 +343,12 @@ export default function Checkout() {
 
   const activePayment = PAYMENT_METHODS.find((m) => m.id === payMethod);
 
-  // ── Place order → POST /api/checkout ──────────────────────────────────────
+  // ── Place order ────────────────────────────────────────────────────────────
   const handlePlaceOrder = async () => {
     setPlacing(true);
     setPlaceError(null);
 
-    // Resolve address fields from either saved addr or the manual form
+    // Resolve shipping address
     let resolvedAddress;
     if (addrMode === "saved" && selectedAddr) {
       resolvedAddress = {
@@ -363,15 +359,9 @@ export default function Checkout() {
         zip:      selectedAddr.postal_code || "",
       };
     } else {
-      resolvedAddress = {
-        address:  delivery.address,
-        barangay: delivery.barangay,
-        city:     delivery.city,
-        province: delivery.province,
-        zip:      delivery.zip,
-      };
+      resolvedAddress = { ...delivery };
 
-      // ── Auto-create address if user filled form and has no saved addresses ──
+      // Auto-save address if first time
       if (savedAddresses.length === 0) {
         try {
           const { addAddress } = await import("../api/address");
@@ -381,16 +371,15 @@ export default function Checkout() {
             barangay:    delivery.barangay,
             city:        delivery.city,
             province:    delivery.province,
-            postal_code: delivery.zip,
+            postal_code: delivery.zip, 
             country:     "Philippines",
             status:      "active",
           });
-          // Silently save — don't block checkout if it fails
           if (newAddr?.data) {
             setSavedAddresses([newAddr.data?.data ?? newAddr.data]);
           }
         } catch {
-          // Non-blocking — proceed with checkout anyway
+          // non-blocking
         }
       }
     }
@@ -403,26 +392,30 @@ export default function Checkout() {
       resolvedAddress.zip,
     ].filter(Boolean).join(", ");
 
+    // ── Build payment_details to match backend expectations ──
+    // Backend reads: payment_details.mobile_number, payment_details.account_name, etc.
+    // We pass payFields directly — field names already match (mobile_number, account_name, etc.)
     const paymentDetails = {
       ...payFields,
-      first_name:      user?.first_name    || "",
-      last_name:       user?.last_name     || "",
-      email:           user?.email         || "",
-      phone:           user?.phone_number  || "",
+      // Attach contact info for all methods
+      first_name:      user?.first_name   || "",
+      last_name:       user?.last_name    || "",
+      email:           user?.email        || "",
+      phone:           user?.phone_number || "",
       billing_address: billingAddress,
     };
 
+    // ── Payload: payment_method is the raw id (gcash, cod, bank_transfer, etc.) ──
     const payload = {
-      payment_method:       activePayment.label,
+      cart_id: items[0].id,
+      payment_method:       payMethod,          // ← "gcash" | "maya" | "bank_transfer" | "cod" | "check"
       payment_details:      paymentDetails,
       shipping_fee:         shippingFee,
-      special_instructions: specialNote || undefined,
+      special_instructions: specialNote || null,
     };
-
+    console.log(payload)
     try {
-      const res = await axios.post(`${BASE}/checkout`, payload, {
-        withCredentials: true,
-      });
+      const res = await axios.post(`${BASE}/checkout`, payload, { withCredentials: true });
       const { checkout_id } = res.data;
       navigate(`/orders?new=${checkout_id}`);
     } catch (err) {
@@ -433,7 +426,7 @@ export default function Checkout() {
     }
   };
 
-  // ── Loading cart ───────────────────────────────────────────────────────────
+  // ── Loading / error / empty states ────────────────────────────────────────
   if (loadingCart) {
     return (
       <div className="checkout-page">
@@ -449,7 +442,6 @@ export default function Checkout() {
     );
   }
 
-  // ── Cart fetch error ───────────────────────────────────────────────────────
   if (cartError) {
     return (
       <div className="checkout-page">
@@ -459,9 +451,7 @@ export default function Checkout() {
             <div className="cart-empty__icon">⚠️</div>
             <h2 className="cart-empty__title">Something went wrong</h2>
             <p className="cart-empty__desc">{cartError}</p>
-            <button className="btn-primary" onClick={() => window.location.reload()}>
-              Try Again
-            </button>
+            <button className="btn-primary" onClick={() => window.location.reload()}>Try Again</button>
           </div>
         </div>
         <Footer />
@@ -469,7 +459,6 @@ export default function Checkout() {
     );
   }
 
-  // ── Empty cart ─────────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <div className="checkout-page">
@@ -486,7 +475,7 @@ export default function Checkout() {
     );
   }
 
-  // ── Main checkout ──────────────────────────────────────────────────────────
+  // ── Main render ────────────────────────────────────────────────────────────
   return (
     <div className="checkout-page">
       <style>{ADDR_PICKER_STYLES}</style>
@@ -530,7 +519,6 @@ export default function Checkout() {
               <div className="co-section">
                 <h2 className="co-section__title">📦 Delivery Information</h2>
 
-                {/* ── Logged-in user info card ── */}
                 <div className="co-user-card">
                   <div className="co-user-card__avatar">
                     {user ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() : "…"}
@@ -549,13 +537,12 @@ export default function Checkout() {
                   </Link>
                 </div>
 
-                {/* ── Address mode toggle (only if user has saved addresses) ── */}
                 {savedAddresses.length > 0 && (
                   <div className="co-addr-mode-toggle">
                     <button
                       type="button"
                       className={`co-addr-mode-btn${addrMode === "saved" ? " active" : ""}`}
-                      onClick={() => { setAddrMode("saved"); }}
+                      onClick={() => setAddrMode("saved")}
                     >
                       📍 My Saved Addresses
                     </button>
@@ -569,7 +556,6 @@ export default function Checkout() {
                   </div>
                 )}
 
-                {/* ── SAVED MODE: cards, form hidden ── */}
                 {addrMode === "saved" && savedAddresses.length > 0 && (
                   <div className="co-saved-addresses">
                     <div className="co-saved-addresses__label">Select a delivery address</div>
@@ -583,7 +569,6 @@ export default function Checkout() {
                           [addr.province, addr.postal_code].filter(Boolean).join(" "),
                           addr.country,
                         ].filter(Boolean);
-
                         return (
                           <button
                             key={addr.id}
@@ -619,7 +604,6 @@ export default function Checkout() {
                   </div>
                 )}
 
-                {/* ── NEW MODE: show address form ── */}
                 {addrMode === "new" && (
                   <div className="co-form-grid">
                     <div className="co-field co-field--full">
@@ -671,7 +655,7 @@ export default function Checkout() {
                     <div
                       key={m.id}
                       className={`co-pay-method${payMethod === m.id ? " active" : ""}`}
-                      onClick={() => setPayMethod(m.id)}
+                      onClick={() => { setPayMethod(m.id); setPayFields({}); }}
                     >
                       <div className="co-pay-method__radio">
                         <div className={`co-radio${payMethod === m.id ? " co-radio--active" : ""}`} />
@@ -767,7 +751,7 @@ export default function Checkout() {
                   <div className="co-review-block__content">
                     <strong>{activePayment.icon} {activePayment.label}</strong>
                     {Object.entries(payFields).map(([k, v]) =>
-                      v ? <div key={k} className="co-review-field">{k}: {v}</div> : null
+                      v ? <div key={k} className="co-review-field">{k.replace(/_/g, " ")}: {v}</div> : null
                     )}
                   </div>
                 </div>
@@ -802,7 +786,6 @@ export default function Checkout() {
                   </div>
                 )}
 
-                {/* API error message */}
                 {placeError && (
                   <div className="co-pay-note" style={{ borderColor: "#ef4444", color: "#ef4444", background: "#fef2f2" }}>
                     ⚠️ {placeError}
