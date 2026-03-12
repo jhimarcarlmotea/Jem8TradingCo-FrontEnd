@@ -111,6 +111,7 @@ export function Header() {
               className="site-header__cart-btn"
               aria-label="View cart"
               style={{ position: "relative" }}
+              title="Add to Cart"
             >
               🛒
               {totalItems > 0 && (
@@ -124,6 +125,16 @@ export function Header() {
                   {totalItems > 9 ? "9+" : totalItems}
                 </span>
               )}
+            </Link>
+
+            <Link
+              to="/adminDashboard"
+              className="site-header__cart-btn"
+              aria-label="View cart"
+              title="Admin"
+              style={{ position: "relative" }}
+            >
+              🛠️
             </Link>
 
             {/* Contact button */}
