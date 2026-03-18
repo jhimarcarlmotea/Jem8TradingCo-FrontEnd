@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import '../style/about.css';
-import '../style/global.css';
 
 const BASE = 'http://127.0.0.1:8000';
 
@@ -16,10 +14,10 @@ const resolveImg = (path) => {
 const About = () => {
   const [stats] = useState({ since: 2016, employees: '1–7', clients: 250 });
 
-  // ── Leadership from API ──
-  const [leaders, setLeaders]         = useState([]);
+  // Leadership from API
+  const [leaders, setLeaders] = useState([]);
   const [leadersLoading, setLeadersLoading] = useState(true);
-  const [leadersError, setLeadersError]     = useState(false);
+  const [leadersError, setLeadersError] = useState(false);
 
   useEffect(() => {
     axios
@@ -32,7 +30,6 @@ const About = () => {
       })
       .then((res) => {
         const data = res.data?.data ?? res.data;
-        // Only show members with status = 1 (visible)
         const visible = Array.isArray(data)
           ? data.filter((m) => m.status == 1 || m.status === true)
           : [];
@@ -46,108 +43,96 @@ const About = () => {
   }, []);
 
   return (
-    <div className="about-page">
-
+    <div className="pt-[76px] bg-white">
       {/* ===== HERO ===== */}
-      <section className="about-hero">
-        <div className="container">
-          <div className="about-hero__inner">
-            <div className="about-hero__label">
-              <span className="about-hero__label-dot"></span>
-              About Jem 8 Circle Trading Co.
+      <section className="bg-[linear-gradient(135deg,#edf4f0_0%,#fff_60%,#f9fdf9_100%)] py-[clamp(70px,10vw,130px)] px-0 text-center relative overflow-hidden">
+        <div className="absolute top-[-120px] right-[-120px] w-[480px] h-[480px] bg-[radial-gradient(circle,rgba(77,123,101,0.1)_0%,transparent_70%)] pointer-events-none"></div>
+        <div className="container max-w-[1280px] mx-auto px-[clamp(20px,5vw,80px)] relative z-10">
+          <div className="inline-flex items-center gap-2 bg-white border border-[rgba(77,123,101,0.2)] rounded-[999px] py-[7px] px-[18px] font-['DM_Sans'] text-xs font-semibold text-[#4d7b65] uppercase tracking-[2px] mb-7">
+            <span className="w-1.5 h-1.5 bg-[#4d7b65] rounded-full animate-[pulse_2s_infinite]"></span>
+            About Jem 8 Circle Trading Co.
+          </div>
+          <h1 className="font-['Playfair_Display'] text-[clamp(32px,5vw,60px)] font-bold text-[#0d1b14] leading-[1.2] mb-5 max-w-[700px] mx-auto">
+            "Your trusted source for<br /><em className="italic text-[#4d7b65] not-italic">equipment and supplies.</em>"
+          </h1>
+          <p className="font-['DM_Sans'] text-[clamp(15px,1.8vw,18px)] text-[#6b7280] leading-[1.8] max-w-[580px] mx-auto mb-12">
+            We connect trading companies with the industrial equipment and supplies
+            they need to operate at peak efficiency — reliably, seamlessly, at scale.
+          </p>
+          <div className="inline-flex bg-white border border-[rgba(0,0,0,0.08)] rounded-[20px] shadow-[0_4px_16px_rgba(0,0,0,0.08)] overflow-hidden">
+            <div className="py-[22px] px-10 text-center border-r border-[rgba(0,0,0,0.08)]">
+              <span className="block font-['Playfair_Display'] text-[30px] font-bold text-[#4d7b65] leading-none mb-1">{stats.since}</span>
+              <span className="block font-['DM_Sans'] text-xs font-medium text-[#6b7280] uppercase tracking-[1px]">Est. Year</span>
             </div>
-            <h1 className="about-hero__title">
-              "Your trusted source for<br /><em>equipment and supplies.</em>"
-            </h1>
-            <p className="about-hero__subtitle">
-              We connect trading companies with the industrial equipment and supplies
-              they need to operate at peak efficiency — reliably, seamlessly, at scale.
-            </p>
-            <div className="about-hero__stats">
-              <div className="about-hero__stat">
-                <span className="about-hero__stat-num">{stats.since}</span>
-                <span className="about-hero__stat-label">Est. Year</span>
-              </div>
-              <div className="about-hero__stat">
-                <span className="about-hero__stat-num">{stats.employees}</span>
-                <span className="about-hero__stat-label">Employees</span>
-              </div>
-              <div className="about-hero__stat">
-                <span className="about-hero__stat-num">{stats.clients}+</span>
-                <span className="about-hero__stat-label">Clients</span>
-              </div>
+            <div className="py-[22px] px-10 text-center border-r border-[rgba(0,0,0,0.08)]">
+              <span className="block font-['Playfair_Display'] text-[30px] font-bold text-[#4d7b65] leading-none mb-1">{stats.employees}</span>
+              <span className="block font-['DM_Sans'] text-xs font-medium text-[#6b7280] uppercase tracking-[1px]">Employees</span>
+            </div>
+            <div className="py-[22px] px-10 text-center">
+              <span className="block font-['Playfair_Display'] text-[30px] font-bold text-[#4d7b65] leading-none mb-1">{stats.clients}+</span>
+              <span className="block font-['DM_Sans'] text-xs font-medium text-[#6b7280] uppercase tracking-[1px]">Clients</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* ===== MISSION & VISION ===== */}
-      <section className="about-mv">
-        <div className="container">
-          <div className="about-mv__grid">
-
+      <section className="py-[clamp(60px,8vw,110px)] px-0 bg-white">
+        <div className="container max-w-[1280px] mx-auto px-[clamp(20px,5vw,80px)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Mission */}
-            <div className="about-mv__card about-mv__card--mission">
-              <div className="about-mv__card-deco"></div>
-              <div className="about-mv__card-tag">Our Mission</div>
-              <h2 className="about-mv__card-title">Advancing with heart, integrity, and smart systems.</h2>
-              <p className="about-mv__card-desc">
+            <div className="bg-[#0d1b14] rounded-[28px] p-[clamp(36px,5vw,56px)] relative overflow-hidden border border-[rgba(0,0,0,0.08)] shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-250 hover:shadow-[0_16px_48px_rgba(0,0,0,0.14)] hover:-translate-y-1">
+              <div className="absolute top-[-40px] right-[-40px] w-[200px] h-[200px] rounded-full bg-[rgba(77,123,101,0.15)] pointer-events-none"></div>
+              <div className="inline-block font-['DM_Sans'] text-[11px] font-bold tracking-[3px] uppercase mb-4 py-1 px-3.5 rounded-[999px] bg-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.8)]">Our Mission</div>
+              <h2 className="font-['Playfair_Display'] text-[clamp(22px,2.5vw,30px)] font-bold text-white leading-[1.25] mb-[18px]">Advancing with heart, integrity, and smart systems.</h2>
+              <p className="font-['DM_Sans'] text-[15px] text-[rgba(255,255,255,0.75)] leading-[1.8] mb-7">
                 We advance JEM 8 Circle with heart, integrity, and smart systems. Through ethical distribution,
                 structured processes, and strong teamwork, we develop confident, knowledgeable, and responsible
                 leaders, expand our global reach, and create sustainable growth for both our people and the organization.
               </p>
-              <div className="about-mv__card-since">
-                <div className="about-mv__card-since-dot"></div>
-                <span className="about-mv__card-since-text">Since {stats.since}</span>
+              <div className="inline-flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-full bg-[#4d7b65] shadow-[0_0_0_3px_rgba(77,123,101,0.3)]"></div>
+                <span className="font-['DM_Sans'] text-[13px] font-semibold text-[rgba(255,255,255,0.6)]">Since {stats.since}</span>
               </div>
             </div>
 
             {/* Vision */}
-            <div className="about-mv__card about-mv__card--vision">
-              <div className="about-mv__card-deco"></div>
-              <div className="about-mv__card-tag">Our Vision</div>
-              <h2 className="about-mv__card-title">Where wellness fuels opportunity and purpose drives action.</h2>
-              <p className="about-mv__card-desc">
+            <div className="bg-[#edf4f0] rounded-[28px] p-[clamp(36px,5vw,56px)] relative overflow-hidden border border-[rgba(0,0,0,0.08)] shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-250 hover:shadow-[0_16px_48px_rgba(0,0,0,0.14)] hover:-translate-y-1">
+              <div className="absolute top-[-40px] right-[-40px] w-[200px] h-[200px] rounded-full bg-[rgba(77,123,101,0.12)] pointer-events-none"></div>
+              <div className="inline-block font-['DM_Sans'] text-[11px] font-bold tracking-[3px] uppercase mb-4 py-1 px-3.5 rounded-[999px] bg-[rgba(77,123,101,0.15)] text-[#4d7b65]">Our Vision</div>
+              <h2 className="font-['Playfair_Display'] text-[clamp(22px,2.5vw,30px)] font-bold text-[#0d1b14] leading-[1.25] mb-[18px]">Where wellness fuels opportunity and purpose drives action.</h2>
+              <p className="font-['DM_Sans'] text-[15px] text-[#6b7280] leading-[1.8] mb-7">
                 To create a world where wellness fuels opportunity, leaders inspire growth, and a united team
                 transforms lives through passion, integrity, and purpose-driven action.
               </p>
             </div>
-
           </div>
         </div>
       </section>
 
       {/* ===== LEADERSHIP ===== */}
-      <section className="about-leadership">
-        <div className="container">
-          <div className="about-leadership__header">
-            <div className="about-hero__label" style={{ margin: '0 auto 8px' }}>
-              <span className="about-hero__label-dot"></span>Our Team
+      <section className="py-[clamp(60px,8vw,110px)] px-0 bg-[#f5f7f5]">
+        <div className="container max-w-[1280px] mx-auto px-[clamp(20px,5vw,80px)]">
+          <div className="text-center mb-[clamp(40px,6vw,64px)]">
+            <div className="inline-flex items-center gap-2 bg-white border border-[rgba(77,123,101,0.2)] rounded-[999px] py-[7px] px-[18px] font-['DM_Sans'] text-xs font-semibold text-[#4d7b65] uppercase tracking-[2px] mb-2 mx-auto">
+              <span className="w-1.5 h-1.5 bg-[#4d7b65] rounded-full animate-[pulse_2s_infinite]"></span>
+              Our Team
             </div>
-            <h2 className="section-title">Leadership</h2>
-            <p className="about-hero__subtitle" style={{ marginBottom: 0 }}>
+            <h2 className="font-['Playfair_Display'] text-[clamp(26px,3.5vw,42px)] font-bold text-[#0d1b14] leading-[1.2] mt-2">Leadership</h2>
+            <p className="font-['DM_Sans'] text-[clamp(15px,1.5vw,17px)] text-[#6b7280] leading-[1.75] max-w-[580px] mx-auto mb-0">
               The people behind JEM 8 Circle Trading Co.
             </p>
           </div>
 
           {/* Loading skeletons */}
           {leadersLoading && (
-            <div className="about-leadership__grid">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="leader-card" style={{ opacity: 0.6 }}>
-                  <div
-                    className="leader-card__photo-wrap"
-                    style={{
-                      background: 'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)',
-                      backgroundSize: '200% 100%',
-                      animation: 'about-shimmer 1.4s infinite',
-                      borderRadius: '50%',
-                      aspectRatio: '1',
-                    }}
-                  />
-                  <div className="leader-card__body">
-                    <div style={{ height: '14px', width: '70%', background: '#E2E8F0', borderRadius: '6px', marginBottom: '8px', animation: 'about-shimmer 1.4s infinite', backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)' }} />
-                    <div style={{ height: '11px', width: '90%', background: '#E2E8F0', borderRadius: '6px', animation: 'about-shimmer 1.4s infinite', backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)' }} />
+                <div key={i} className="bg-white rounded-[20px] overflow-hidden border border-[rgba(0,0,0,0.08)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] text-center opacity-60">
+                  <div className="w-full aspect-square bg-[linear-gradient(90deg,#F1F5F9_25%,#E2E8F0_50%,#F1F5F9_75%)] bg-[length:200%_100%] animate-[shimmer_1.4s_infinite] rounded-full"></div>
+                  <div className="p-4 pb-[18px]">
+                    <div className="h-3.5 w-[70%] bg-[#E2E8F0] rounded mb-2 animate-[shimmer_1.4s_infinite] bg-[linear-gradient(90deg,#F1F5F9_25%,#E2E8F0_50%,#F1F5F9_75%)] bg-[length:200%_100%]"></div>
+                    <div className="h-2.5 w-[90%] bg-[#E2E8F0] rounded animate-[shimmer_1.4s_infinite] bg-[linear-gradient(90deg,#F1F5F9_25%,#E2E8F0_50%,#F1F5F9_75%)] bg-[length:200%_100%]"></div>
                   </div>
                 </div>
               ))}
@@ -156,29 +141,29 @@ const About = () => {
 
           {/* Error state */}
           {!leadersLoading && leadersError && (
-            <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: '14px', padding: '32px 0' }}>
+            <p className="text-center text-[#94A3B8] text-sm py-8 px-0">
               Unable to load team members at this time.
             </p>
           )}
 
           {/* Leaders grid */}
           {!leadersLoading && !leadersError && (
-            <div className="about-leadership__grid">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {leaders.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: '14px', gridColumn: '1/-1', padding: '32px 0' }}>
+                <p className="text-center text-[#94A3B8] text-sm col-span-full py-8 px-0">
                   No team members to display.
                 </p>
               ) : (
                 leaders.map((leader) => {
                   const imgSrc = resolveImg(leader.leadership_img);
                   return (
-                    <div key={leader.leadership_id ?? leader.id} className="leader-card">
-                      <div className="leader-card__photo-wrap">
+                    <div key={leader.leadership_id ?? leader.id} className="bg-white rounded-[20px] overflow-hidden border border-[rgba(0,0,0,0.08)] shadow-[0_1px_3px_rgba(0,0,0,0.06)] text-center transition-all duration-250 hover:shadow-[0_8px_32px_rgba(0,0,0,0.12)] hover:-translate-y-[5px] hover:border-[rgba(77,123,101,0.2)]">
+                      <div className="w-full aspect-square bg-[#edf4f0] overflow-hidden relative">
                         {imgSrc ? (
                           <img
                             src={imgSrc}
                             alt={leader.name}
-                            className="leader-card__photo"
+                            className="w-full h-full object-cover object-top transition-transform duration-400 hover:scale-105"
                             onError={(e) => {
                               e.target.style.display = 'none';
                               const fb = e.target.nextSibling;
@@ -187,15 +172,15 @@ const About = () => {
                           />
                         ) : null}
                         <div
-                          className="leader-card__fallback"
+                          className="absolute inset-0 hidden items-center justify-center font-['Playfair_Display'] text-4xl font-bold text-[#4d7b65] bg-[#edf4f0]"
                           style={{ display: imgSrc ? 'none' : 'flex' }}
                         >
                           {getInitials(leader.name)}
                         </div>
                       </div>
-                      <div className="leader-card__body">
-                        <div className="leader-card__name">{leader.name}</div>
-                        <div className="leader-card__role">{leader.position}</div>
+                      <div className="p-4 pb-[18px]">
+                        <div className="font-['Poppins'] text-[13px] font-bold text-[#0d1b14] mb-1 leading-[1.4]">{leader.name}</div>
+                        <div className="font-['DM_Sans'] text-xs text-[#4d7b65] font-medium leading-[1.4]">{leader.position}</div>
                       </div>
                     </div>
                   );
@@ -207,24 +192,23 @@ const About = () => {
       </section>
 
       {/* ===== TRUSTED BANNER ===== */}
-      <section className="about-trusted">
-        <div className="container">
-          <div className="about-trusted__inner">
-            <h2 className="about-trusted__title">
-              Your Trusted <span>Supply Partner</span>
-            </h2>
-            <p className="about-trusted__desc">
-              From small businesses to established companies, we empower organizations of all sizes with office supplies,
-              pantry and janitorial essentials, and health and wellness products — delivered with quality at the best price.
-            </p>
-          </div>
+      <section className="bg-[#0d1b14] py-[clamp(60px,8vw,100px)] px-0 text-center relative overflow-hidden">
+        <div className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(77,123,101,0.2)_0%,transparent_65%)] pointer-events-none"></div>
+        <div className="container max-w-[1280px] mx-auto px-[clamp(20px,5vw,80px)] relative z-10">
+          <h2 className="font-['Playfair_Display'] text-[clamp(30px,5vw,58px)] font-bold text-white leading-[1.2] mb-5">
+            Your Trusted <span className="text-[#4d7b65]">Supply Partner</span>
+          </h2>
+          <p className="font-['DM_Sans'] text-[clamp(14px,1.5vw,17px)] text-[rgba(255,255,255,0.65)] leading-[1.8] max-w-[620px] mx-auto">
+            From small businesses to established companies, we empower organizations of all sizes with office supplies,
+            pantry and janitorial essentials, and health and wellness products — delivered with quality at the best price.
+          </p>
         </div>
       </section>
 
       {/* ===== ABOUT DETAIL ===== */}
-      <section className="about-detail">
-        <div className="container">
-          <h2 className="about-detail__title">About JEM 8 Circle</h2>
+      <section className="py-[clamp(60px,8vw,110px)] px-0 bg-white">
+        <div className="container max-w-[1280px] mx-auto px-[clamp(20px,5vw,80px)]">
+          <h2 className="font-['Playfair_Display'] text-[clamp(26px,3vw,38px)] font-bold text-[#0d1b14] mb-[clamp(36px,5vw,60px)] pb-5 border-b-2 border-[#edf4f0]">About JEM 8 Circle</h2>
 
           {[
             {
@@ -259,13 +243,13 @@ const About = () => {
                 and manpower costs by delivering office supplies and promotional items directly to their offices.`,
             },
           ].map((row, i) => (
-            <div className="about-row" key={i}>
-              <div className="about-row__label">
-                {row.label.split('\n').map((l, j) => <span key={j}>{l}<br /></span>)}
+            <div key={i} className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-8 py-9 border-b border-[rgba(0,0,0,0.08)] last:border-b-0 items-start transition-all duration-180">
+              <div className="font-['Playfair_Display'] text-base font-bold text-[#4d7b65] leading-[1.5] pt-1 whitespace-pre-line">
+                {row.label}
               </div>
               <div>
-                <p className="about-row__title">{row.title}</p>
-                <p className="about-row__desc">{row.desc}</p>
+                <p className="font-['Poppins'] text-[17px] font-bold text-[#0d1b14] mb-2.5 leading-[1.4]">{row.title}</p>
+                <p className="font-['DM_Sans'] text-[15px] text-[#6b7280] leading-[1.8]">{row.desc}</p>
               </div>
             </div>
           ))}
@@ -273,27 +257,30 @@ const About = () => {
       </section>
 
       {/* ===== ENTERPRISE ===== */}
-      <section className="about-enterprise">
-        <div className="container">
-          <div className="about-enterprise__inner">
+      <section className="py-[clamp(60px,8vw,110px)] px-0 bg-[#f5f7f5]">
+        <div className="container max-w-[1280px] mx-auto px-[clamp(20px,5vw,80px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="about-enterprise__label">Enterprise</div>
-              <h2 className="about-enterprise__title">Complete supply solutions for your business</h2>
-              <p className="about-enterprise__desc">
+              <div className="inline-block bg-[#edf4f0] text-[#4d7b65] font-['DM_Sans'] text-[11px] font-bold tracking-[3px] uppercase py-1.5 px-3.5 rounded-[999px] mb-4">Enterprise</div>
+              <h2 className="font-['Playfair_Display'] text-[clamp(26px,3vw,38px)] font-bold text-[#0d1b14] mb-4 leading-[1.25]">Complete supply solutions for your business</h2>
+              <p className="font-['DM_Sans'] text-[15px] text-[#6b7280] leading-[1.8] mb-7">
                 We provide a complete range of office supplies, pantry and janitorial supplies, and health and
                 wellness products tailored to your business needs. Delivering quality at the best price —
                 directly to your office.
               </p>
-              <div className="about-enterprise__features">
+              <div className="flex flex-col gap-3 mb-9">
                 {['Reliable Supply', 'Consistent Quality', 'Timely Delivery'].map((f) => (
-                  <div className="about-enterprise__feature" key={f}>{f}</div>
+                  <div key={f} className="flex items-center gap-3 font-['Poppins'] text-[15px] font-semibold text-[#0d1b14]">
+                    <span className="flex items-center justify-center w-6 h-6 bg-[#4d7b65] text-white rounded-full text-xs font-bold flex-shrink-0">✓</span>
+                    {f}
+                  </div>
                 ))}
               </div>
             </div>
-            <div className="about-enterprise__imgs">
+            <div className="grid grid-cols-3 gap-3">
               {['/img/download-2-3.png', '/img/download-1.png', '/img/download-1-2.png'].map((src, i) => (
-                <div className="about-enterprise__img-wrap" key={i}>
-                  <img src={src} alt={`Product ${i + 1}`} />
+                <div key={i} className={`rounded-[12px] overflow-hidden aspect-[3/4] shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-250 hover:shadow-[0_16px_48px_rgba(0,0,0,0.14)] hover:-translate-y-1 ${i === 1 ? 'lg:mt-6' : ''}`}>
+                  <img src={src} alt={`Product ${i + 1}`} className="w-full h-full object-cover transition-transform duration-400 hover:scale-105" />
                 </div>
               ))}
             </div>
@@ -302,23 +289,27 @@ const About = () => {
       </section>
 
       {/* ===== CTA ===== */}
-      <section className="about-cta">
-        <div className="container">
-          <div className="about-cta__inner">
-            <p className="about-cta__text">From our hands to your office.</p>
-            <p className="about-cta__sub">Ready to work with a trusted supply partner?</p>
-            <a href="/contact" className="about-cta__btn">Get Started →</a>
-          </div>
+      <section className="bg-[linear-gradient(135deg,#4d7b65_0%,#3a6350_100%)] py-[clamp(60px,8vw,100px)] px-0 text-center relative overflow-hidden">
+        <div className="absolute top-[-60px] right-[-60px] w-[300px] h-[300px] rounded-full bg-[rgba(255,255,255,0.06)] pointer-events-none"></div>
+        <div className="container max-w-[1280px] mx-auto px-[clamp(20px,5vw,80px)] relative z-10">
+          <p className="font-['Playfair_Display'] text-[clamp(26px,3.5vw,44px)] font-bold text-white mb-3 leading-[1.25]">From our hands to your office.</p>
+          <p className="font-['DM_Sans'] text-base text-[rgba(255,255,255,0.75)] mb-10">Ready to work with a trusted supply partner?</p>
+          <a href="/contact" className="inline-flex items-center gap-2.5 px-10 py-4 bg-white text-[#4d7b65] rounded-[12px] font-['Poppins'] text-base font-bold shadow-[0_8px_28px_rgba(0,0,0,0.2)] transition-all duration-250 hover:-translate-y-[3px] hover:shadow-[0_14px_36px_rgba(0,0,0,0.25)] hover:bg-[#f0faf5]">
+            Get Started →
+          </a>
         </div>
       </section>
 
       <style>{`
-        @keyframes about-shimmer {
-          0%   { background-position: -200% 0 }
-          100% { background-position:  200% 0 }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(1.4); }
         }
       `}</style>
-
     </div>
   );
 };
