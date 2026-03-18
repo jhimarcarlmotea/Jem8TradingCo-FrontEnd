@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import "../style/global.css";
 import "../style/pages.css";
+import { postChatMessage, getChatRooms, getChatMessages } from "../api/chat";
+import api from "../api/axios";
 
 /* ── Seed conversations ── */
 const INITIAL_THREADS = [
@@ -58,6 +60,7 @@ export default function Messages() {
   const [activeTab, setActiveTab]       = useState("Inbox");
   const [input, setInput]               = useState("");
   const [searchQuery, setSearchQuery]   = useState("");
+  const [unauthenticated, setUnauthenticated] = useState(false);
   const bottomRef                       = useRef(null);
 
   const thread = threads.find((t) => t.id === activeThread);
@@ -67,9 +70,16 @@ export default function Messages() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeThread, thread?.messages?.length]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
+
+    const optimisticMsg = {
+      id: Date.now(),
+      from: "me",
+      text,
+      time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+    };
 
     setThreads((prev) =>
       prev.map((t) =>
@@ -78,37 +88,139 @@ export default function Messages() {
               ...t,
               unread: 0,
               lastTime: "Just now",
-              messages: [...t.messages, {
-                id: Date.now(),
-                from: "me",
-                text,
-                time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-              }],
+              messages: [...t.messages, optimisticMsg],
             }
           : t
       )
     );
     setInput("");
 
-    // Simulate admin reply after 1.5s
-    setTimeout(() => {
-      setThreads((prev) =>
-        prev.map((t) =>
-          t.id === activeThread
-            ? {
-                ...t,
-                messages: [...t.messages, {
-                  id: Date.now() + 1,
-                  from: "admin",
-                  text: "Thank you for your message! Our team will get back to you shortly. 😊",
-                  time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-                }],
-              }
-            : t
-        )
-      );
-    }, 1500);
+    // Send to backend (optimistic UI). If backend expects a different payload, adjust accordingly.
+    try {
+      await postChatMessage({ chatroom_id: activeThread, text });
+
+      // After successful send, fetch server messages for the active thread to sync
+      try {
+        const msgsResp = await getChatMessages(activeThread);
+        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+        setThreads((prev) =>
+          prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages } : t))
+        );
+      } catch (err2) {
+        console.warn("Failed to refresh messages after send:", err2);
+      }
+    } catch (err) {
+      // If unauthenticated, try sending via token endpoint
+      const msg = err && err.message ? err.message : String(err);
+      if (msg === "Unauthenticated.") {
+        setUnauthenticated(true);
+        try {
+          await api.post("/chat/messages/token", { chatroom_id: activeThread, text });
+          // Attempt to refresh messages from server even when using token route
+          try {
+            const msgsResp2 = await getChatMessages(activeThread);
+            const serverMessages2 = Array.isArray(msgsResp2) ? msgsResp2 : msgsResp2.messages || [];
+            setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages2 } : t)));
+          } catch (e2) {
+            // ignore
+          }
+        } catch (e) {
+          console.error("Token-send failed:", e);
+        }
+      } else {
+        console.error("Failed to send chat message:", err);
+      }
+    }
   };
+
+  // Load chat rooms on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // quick check to ensure session auth is valid
+        try {
+          await api.get("/me");
+        } catch (mErr) {
+          // ignore — will surface when requesting rooms
+        }
+
+        const roomsResp = await getChatRooms();
+        // roomsResp may be an array or an object like { rooms: [...] }
+        const rooms = Array.isArray(roomsResp) ? roomsResp : roomsResp.rooms || roomsResp.chatrooms || [];
+
+        if (!mounted) return;
+
+        if (rooms.length > 0) {
+          // Map server rooms to local thread shape when possible
+          const mapped = rooms.map((r) => ({
+            id: r.id || r.chatroom_id || r.room_id,
+            name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
+            avatar: (r.name || "").charAt(0).toUpperCase() || "J",
+            avatarBg: r.avatarBg || "#4d7b65",
+            isAdmin: !!r.is_admin,
+            unread: r.unread || 0,
+            lastTime: r.last_time || "",
+            messages: Array.isArray(r.messages) ? r.messages : [],
+          }));
+          setThreads(mapped);
+          setActiveThread(mapped[0]?.id ?? 1);
+        }
+      } catch (err) {
+        // Backend may require session auth (Sanctum). Try obtaining CSRF cookie and retry once.
+        const msg = err && err.message ? err.message : String(err);
+        if (msg === "Unauthenticated.") {
+          try {
+            await api.get("/sanctum/csrf-cookie");
+            // retry once
+            const roomsResp2 = await getChatRooms();
+            const rooms2 = Array.isArray(roomsResp2) ? roomsResp2 : roomsResp2.rooms || roomsResp2.chatrooms || [];
+            if (!mounted) return;
+            if (rooms2.length > 0) {
+              const mapped = rooms2.map((r) => ({
+                id: r.id || r.chatroom_id || r.room_id,
+                name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
+                avatar: (r.name || "").charAt(0).toUpperCase() || "J",
+                avatarBg: r.avatarBg || "#4d7b65",
+                isAdmin: !!r.is_admin,
+                unread: r.unread || 0,
+                lastTime: r.last_time || "",
+                messages: Array.isArray(r.messages) ? r.messages : [],
+              }));
+              setThreads(mapped);
+              setActiveThread(mapped[0]?.id ?? 1);
+              return;
+            }
+          } catch (e) {
+            // fall through to unauthenticated handling
+          }
+
+          setUnauthenticated(true);
+          console.warn("Unauthenticated while loading chat rooms — using local mock threads");
+        } else {
+          console.warn("Failed to load chat rooms:", msg);
+        }
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
+
+  // Fetch messages when active thread changes
+  useEffect(() => {
+    if (!activeThread) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const msgsResp = await getChatMessages(activeThread);
+        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+        if (!mounted) return;
+        setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages } : t)));
+      } catch (err) {
+        // if API not available, keep local mock
+      }
+    })();
+    return () => { mounted = false };
+  }, [activeThread]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
