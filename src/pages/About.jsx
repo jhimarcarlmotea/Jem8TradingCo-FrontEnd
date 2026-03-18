@@ -1,44 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import '../style/about.css';
 import '../style/global.css';
 
-// Leader images
-import Shella from '../assets/Shella_Ricafrente-Acibar.png';
-import Jinkie from '../assets/Jinkie_Ricafrente-Malinag.png';
-import Akiko from '../assets/Akiko_Serrano.png';
-import Ruby from '../assets/Ruby_Ann_Castillo.png';
-import Charisse from '../assets/Charisse_Decano.png';
-import Adrian from '../assets/Adrian_Mallanao.png';
-import Vhernaldo from '../assets/Vhernaldo_Ricafrente.png';
-import Mark from '../assets/Mark_Edward_C_Malinag.png';
-import Daniel from '../assets/Daniel_Kian_Rodriguez_Cadena.png';
-import Kayla from '../assets/Kayla_R_Bacsafra.png';
-import Cristina from '../assets/Cristina_A_Saturnio.png';
+const BASE = 'http://127.0.0.1:8000';
+
+const getInitials = (name) =>
+  name.replace(/^(Ms\.|Mr\.)\s+/, '').split(' ').slice(0, 2).map((n) => n[0]).join('');
+
+const resolveImg = (path) => {
+  if (!path) return null;
+  return path.startsWith('http') ? path : `${BASE}/storage/${path}`;
+};
 
 const About = () => {
   const [stats] = useState({ since: 2016, employees: '1–7', clients: 250 });
 
-  const [leaders] = useState([
-    { id: 1,  name: 'Ms. Shella R. Acibar',            role: 'Co-Owner of Jem 8 Circle',                           image: Shella    },
-    { id: 2,  name: 'Ms. Jinkie Malinag',               role: 'Co-Owner of Jem 8 Circle',                           image: Jinkie    },
-    { id: 3,  name: 'Ms. Akiko Serrano',                role: 'Sales Executive of Jem 8 Circle',                    image: Akiko     },
-    { id: 4,  name: 'Ms. Ruby Ann Castillo',            role: 'Sales Executive of Jem 8 Circle',                    image: Ruby      },
-    { id: 5,  name: 'Ms. Charisse Mae Decano',          role: 'Admin/HR Representative of Jem 8 Circle',            image: Charisse  },
-    { id: 6,  name: 'Mr. Adrian Mallanao',              role: 'Laison Head Officer of Jem 8 Circle',                image: Adrian    },
-    { id: 7,  name: 'Mr. Vhernaldo Ricafrente',         role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Vhernaldo },
-    { id: 8,  name: 'Mr. Mark Edward Malinag',          role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Mark      },
-    { id: 9,  name: 'Mr. Daniel Kian Rodriguez Cadena', role: 'Business Associate of Jem 8 Circle',                 image: Daniel    },
-    { id: 10, name: 'Ms. Kayla R. Bacsafra',            role: 'Sales Executive of Jem 8 Circle (South Luzon Area)', image: Kayla     },
-    { id: 11, name: 'Ms. Cristina A. Saturnio',         role: 'Accounting and Finance of Jem 8 Circle',             image: Cristina  },
-  ]);
+  // ── Leadership from API ──
+  const [leaders, setLeaders]         = useState([]);
+  const [leadersLoading, setLeadersLoading] = useState(true);
+  const [leadersError, setLeadersError]     = useState(false);
 
-  const getInitials = (name) =>
-    name.replace(/^(Ms\.|Mr\.)\s+/, '').split(' ').slice(0, 2).map(n => n[0]).join('');
-
-  const handleImageError = (e) => {
-    e.target.style.display = 'none';
-    e.target.nextSibling?.style && (e.target.nextSibling.style.display = 'flex');
-  };
+  useEffect(() => {
+    axios
+      .get(`${BASE}/api/leadership`, {
+        withCredentials: true,
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+      .then((res) => {
+        const data = res.data?.data ?? res.data;
+        // Only show members with status = 1 (visible)
+        const visible = Array.isArray(data)
+          ? data.filter((m) => m.status == 1 || m.status === true)
+          : [];
+        setLeaders(visible);
+      })
+      .catch((err) => {
+        console.error('Failed to load leadership:', err);
+        setLeadersError(true);
+      })
+      .finally(() => setLeadersLoading(false));
+  }, []);
 
   return (
     <div className="about-page">
@@ -52,7 +57,7 @@ const About = () => {
               About Jem 8 Circle Trading Co.
             </div>
             <h1 className="about-hero__title">
-              "Your trusted source for<br/><em>equipment and supplies.</em>"
+              "Your trusted source for<br /><em>equipment and supplies.</em>"
             </h1>
             <p className="about-hero__subtitle">
               We connect trading companies with the industrial equipment and supplies
@@ -124,27 +129,80 @@ const About = () => {
               The people behind JEM 8 Circle Trading Co.
             </p>
           </div>
-          <div className="about-leadership__grid">
-            {leaders.map((leader) => (
-              <div key={leader.id} className="leader-card">
-                <div className="leader-card__photo-wrap">
-                  <img
-                    src={leader.image}
-                    alt={leader.name}
-                    className="leader-card__photo"
-                    onError={handleImageError}
+
+          {/* Loading skeletons */}
+          {leadersLoading && (
+            <div className="about-leadership__grid">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="leader-card" style={{ opacity: 0.6 }}>
+                  <div
+                    className="leader-card__photo-wrap"
+                    style={{
+                      background: 'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'about-shimmer 1.4s infinite',
+                      borderRadius: '50%',
+                      aspectRatio: '1',
+                    }}
                   />
-                  <div className="leader-card__fallback" style={{ display: 'none' }}>
-                    {getInitials(leader.name)}
+                  <div className="leader-card__body">
+                    <div style={{ height: '14px', width: '70%', background: '#E2E8F0', borderRadius: '6px', marginBottom: '8px', animation: 'about-shimmer 1.4s infinite', backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)' }} />
+                    <div style={{ height: '11px', width: '90%', background: '#E2E8F0', borderRadius: '6px', animation: 'about-shimmer 1.4s infinite', backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)' }} />
                   </div>
                 </div>
-                <div className="leader-card__body">
-                  <div className="leader-card__name">{leader.name}</div>
-                  <div className="leader-card__role">{leader.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error state */}
+          {!leadersLoading && leadersError && (
+            <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: '14px', padding: '32px 0' }}>
+              Unable to load team members at this time.
+            </p>
+          )}
+
+          {/* Leaders grid */}
+          {!leadersLoading && !leadersError && (
+            <div className="about-leadership__grid">
+              {leaders.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: '14px', gridColumn: '1/-1', padding: '32px 0' }}>
+                  No team members to display.
+                </p>
+              ) : (
+                leaders.map((leader) => {
+                  const imgSrc = resolveImg(leader.leadership_img);
+                  return (
+                    <div key={leader.leadership_id ?? leader.id} className="leader-card">
+                      <div className="leader-card__photo-wrap">
+                        {imgSrc ? (
+                          <img
+                            src={imgSrc}
+                            alt={leader.name}
+                            className="leader-card__photo"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              const fb = e.target.nextSibling;
+                              if (fb) fb.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="leader-card__fallback"
+                          style={{ display: imgSrc ? 'none' : 'flex' }}
+                        >
+                          {getInitials(leader.name)}
+                        </div>
+                      </div>
+                      <div className="leader-card__body">
+                        <div className="leader-card__name">{leader.name}</div>
+                        <div className="leader-card__role">{leader.position}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -202,7 +260,9 @@ const About = () => {
             },
           ].map((row, i) => (
             <div className="about-row" key={i}>
-              <div className="about-row__label">{row.label.split('\n').map((l, j) => <span key={j}>{l}<br/></span>)}</div>
+              <div className="about-row__label">
+                {row.label.split('\n').map((l, j) => <span key={j}>{l}<br /></span>)}
+              </div>
               <div>
                 <p className="about-row__title">{row.title}</p>
                 <p className="about-row__desc">{row.desc}</p>
@@ -225,7 +285,7 @@ const About = () => {
                 directly to your office.
               </p>
               <div className="about-enterprise__features">
-                {['Reliable Supply', 'Consistent Quality', 'Timely Delivery'].map(f => (
+                {['Reliable Supply', 'Consistent Quality', 'Timely Delivery'].map((f) => (
                   <div className="about-enterprise__feature" key={f}>{f}</div>
                 ))}
               </div>
@@ -251,6 +311,13 @@ const About = () => {
           </div>
         </div>
       </section>
+
+      <style>{`
+        @keyframes about-shimmer {
+          0%   { background-position: -200% 0 }
+          100% { background-position:  200% 0 }
+        }
+      `}</style>
 
     </div>
   );

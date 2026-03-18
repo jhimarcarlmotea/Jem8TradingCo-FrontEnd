@@ -26,7 +26,8 @@ export default function Cart() {
         setLoading(true);
         setError(null);
 
-        const res = await axios.get(`${BASE}/cart`, { withCredentials: true });
+        const res = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
+        console.log(res)
         const cartItems = res.data.cartItems ?? [];
 
         const formatted = cartItems.map((c) => ({

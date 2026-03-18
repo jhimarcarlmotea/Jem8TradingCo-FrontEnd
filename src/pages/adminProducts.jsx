@@ -4,6 +4,99 @@ import axios from "axios";
 
 const BASE = "http://127.0.0.1:8000";
 
+// ── Shared styles (outside component to avoid recreation) ──
+const labelStyle = {
+  display:"block", fontSize:"11px", fontWeight:600, color:"#374151",
+  marginBottom:"5px", textTransform:"uppercase", letterSpacing:"0.05em"
+};
+const inputStyle = {
+  width:"100%", padding:"9px 11px", border:"1px solid #E2E8F0", borderRadius:"8px",
+  fontSize:"13px", color:"#0F172A", background:"#fff", outline:"none",
+  boxSizing:"border-box", fontFamily:"inherit"
+};
+
+// ── Reusable components defined OUTSIDE AdminProducts ──
+// KEY FIX: Components defined inside a parent component are recreated on every
+// render. React sees them as a new component type each time, so it unmounts and
+// remounts them — which drops focus from any active input.
+
+const Overlay = ({ children, onClose, wide }) => (
+  <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.55)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:"16px" }}>
+    <div onClick={e => e.stopPropagation()} style={{ background:"#fff", width:"100%", maxWidth: wide ? "780px" : "560px", borderRadius:"16px", boxShadow:"0 24px 64px rgba(0,0,0,0.18)", maxHeight:"94vh", overflowY:"auto" }}>
+      {children}
+    </div>
+  </div>
+);
+
+const ModalHeader = ({ title, subtitle, onClose }) => (
+  <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #F1F5F9", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, background:"#fff", zIndex:10, borderRadius:"16px 16px 0 0" }}>
+    <div>
+      <h2 style={{ margin:0, fontSize:"17px", fontWeight:700, color:"#0F172A" }}>{title}</h2>
+      {subtitle && <p style={{ margin:"2px 0 0", fontSize:"12px", color:"#94A3B8" }}>{subtitle}</p>}
+    </div>
+    <button onClick={onClose} style={{ width:"32px", height:"32px", borderRadius:"8px", border:"1px solid #E2E8F0", background:"#F8FAFC", color:"#64748B", fontSize:"18px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>×</button>
+  </div>
+);
+
+const ImageUploadZone = ({ id, onchange, previews, onRemove, label }) => (
+  <div style={{ marginBottom:"20px" }}>
+    <label style={{ ...labelStyle, marginBottom:"8px" }}>{label ?? "Product Images"}</label>
+    <label htmlFor={id} style={{ display:"block", border:"2px dashed #CBD5E1", borderRadius:"10px", padding:"18px", textAlign:"center", cursor:"pointer", background:"#F8FAFC", transition:"border-color 0.2s", marginBottom: previews.length > 0 ? "10px" : "0" }}
+      onMouseEnter={e => e.currentTarget.style.borderColor="#155DFC"}
+      onMouseLeave={e => e.currentTarget.style.borderColor="#CBD5E1"}>
+      <div style={{ fontSize:"26px", marginBottom:"4px" }}>🖼️</div>
+      <div style={{ fontSize:"13px", fontWeight:600, color:"#374151" }}>Click to upload images</div>
+      <div style={{ fontSize:"11px", color:"#94A3B8", marginTop:"2px" }}>PNG, JPG, WEBP — multiple allowed</div>
+      <input id={id} type="file" multiple accept="image/*" onChange={onchange} style={{ display:"none" }} />
+    </label>
+    {previews.length > 0 && (
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(88px,1fr))", gap:"8px" }}>
+        {previews.map((src, i) => (
+          <div key={i} style={{ position:"relative", borderRadius:"8px", overflow:"hidden", aspectRatio:"1", border: i===0 ? "2px solid #155DFC" : "1px solid #E2E8F0", background:"#F1F5F9" }}>
+            <img src={src} alt={`preview-${i}`} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+            {i===0 && <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"#155DFC", color:"#fff", fontSize:"9px", fontWeight:700, textAlign:"center", padding:"3px" }}>MAIN</div>}
+            <button type="button" onClick={() => onRemove(i)} style={{ position:"absolute", top:"4px", right:"4px", width:"18px", height:"18px", borderRadius:"50%", background:"rgba(0,0,0,0.55)", color:"#fff", border:"none", fontSize:"11px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+// Note: categories is now passed as a prop instead of being closed over
+const CategorySelect = ({ name, value, onChange, disabled, categories }) => (
+  <div style={{ position:"relative" }}>
+    <select name={name} value={value} onChange={onChange} required disabled={disabled}
+      style={{ ...inputStyle, appearance:"none", WebkitAppearance:"none", paddingRight:"32px", cursor: disabled ? "not-allowed" : "pointer", color: value ? "#0F172A" : "#9CA3AF", background: disabled ? "#F8FAFC" : "#fff" }}>
+      <option value="" disabled>{disabled ? "Loading…" : "Select a category"}</option>
+      {categories.map(cat => (
+        <option key={cat.id ?? cat.category_id} value={cat.id ?? cat.category_id}>
+          {cat.name ?? cat.category_name ?? cat.title}
+        </option>
+      ))}
+      {!disabled && categories.length===0 && <option value="" disabled>No categories found</option>}
+    </select>
+    <div style={{ position:"absolute", right:"10px", top:"50%", transform:"translateY(-50%)", pointerEvents:"none", color:"#94A3B8", fontSize:"11px" }}>{disabled ? "⟳" : "▾"}</div>
+  </div>
+);
+
+const SaleToggle = ({ checked, onChange, name }) => (
+  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#F8FAFC", border:"1px solid #E2E8F0", borderRadius:"8px", padding:"12px 14px", marginBottom:"20px" }}>
+    <div>
+      <div style={{ fontSize:"13px", fontWeight:600, color:"#374151" }}>Mark as On Sale</div>
+      <div style={{ fontSize:"11px", color:"#94A3B8" }}>Show a sale badge on this product</div>
+    </div>
+    <label style={{ position:"relative", display:"inline-block", width:"40px", height:"22px", cursor:"pointer" }}>
+      <input type="checkbox" name={name} checked={checked} onChange={onChange} style={{ opacity:0, width:0, height:0, position:"absolute" }} />
+      <div style={{ position:"absolute", inset:0, borderRadius:"11px", background: checked ? "#155DFC" : "#CBD5E1", transition:"background 0.2s" }} />
+      <div style={{ position:"absolute", top:"3px", left: checked ? "21px" : "3px", width:"16px", height:"16px", borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }} />
+    </label>
+  </div>
+);
+
+// ────────────────────────────────────────────────────────────
+// Main component
+// ────────────────────────────────────────────────────────────
 const AdminProducts = () => {
   const [searchTerm, setSearchTerm]               = useState("");
   const [selectedCategory, setSelectedCategory]   = useState("All");
@@ -16,7 +109,7 @@ const AdminProducts = () => {
   const [showViewModal, setShowViewModal]         = useState(false);
   const [showEditModal, setShowEditModal]         = useState(false);
   const [showDeleteModal, setShowDeleteModal]     = useState(false);
-  const [activeProduct, setActiveProduct]         = useState(null); // product for view/edit/delete
+  const [activeProduct, setActiveProduct]         = useState(null);
   const [activeImgIdx, setActiveImgIdx]           = useState(0);
 
   // ── Data ──
@@ -35,27 +128,16 @@ const AdminProducts = () => {
   const [addForm, setAddForm] = useState({
     product_name:"", category_id:"", product_stocks:"", description:"", price:"", isSale:false
   });
-  const [addImages, setAddImages]           = useState([]);
-  const [addPreviews, setAddPreviews]       = useState([]);
+  const [addImages, setAddImages]     = useState([]);
+  const [addPreviews, setAddPreviews] = useState([]);
 
   // ── Edit form ──
   const [editForm, setEditForm] = useState({
     product_name:"", category_id:"", product_stocks:"", description:"", price:"", isSale:false
   });
-  const [newImages, setNewImages]           = useState([]);
-  const [newPreviews, setNewPreviews]       = useState([]);
-  const [removedImageIds, setRemovedImageIds] = useState([]);
-
-  // ── Shared styles ──
-  const labelStyle = {
-    display:"block", fontSize:"11px", fontWeight:600, color:"#374151",
-    marginBottom:"5px", textTransform:"uppercase", letterSpacing:"0.05em"
-  };
-  const inputStyle = {
-    width:"100%", padding:"9px 11px", border:"1px solid #E2E8F0", borderRadius:"8px",
-    fontSize:"13px", color:"#0F172A", background:"#fff", outline:"none",
-    boxSizing:"border-box", fontFamily:"inherit"
-  };
+  const [newImages, setNewImages]               = useState([]);
+  const [newPreviews, setNewPreviews]           = useState([]);
+  const [removedImageIds, setRemovedImageIds]   = useState([]);
 
   // ────────────────────────────────────────────
   // API calls
@@ -64,7 +146,6 @@ const AdminProducts = () => {
     setProductsLoading(true);
     try {
       const res  = await axios.get(`${BASE}/api/admin/products`, { withCredentials:true });
-      console.log(res)
       const data = res.data?.data ?? res.data?.products ?? res.data;
       const list = Array.isArray(data) ? data : [];
       setProducts(list);
@@ -193,7 +274,7 @@ const AdminProducts = () => {
     fd.append("isSale",         addForm.isSale ? 1 : 0);
     addImages.forEach(img => fd.append("images[]", img));
     try {
-      await axios.post(`${BASE}/api/admin/products`, fd, { withCredentials:true }); 
+      await axios.post(`${BASE}/api/admin/products`, fd, { withCredentials:true });
       setShowAddModal(false);
       setAddForm({ product_name:"", category_id:"", product_stocks:"", description:"", price:"", isSale:false });
       setAddImages([]);
@@ -212,13 +293,7 @@ const AdminProducts = () => {
   // ────────────────────────────────────────────
   const handleEditChange = (e) => {
     const { name, value, type, checked } = e.target;
-
-    console.log("typed:", value); // this will show 8
-
-    setEditForm(prev => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
+    setEditForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
   const handleNewImages = (e) => {
     const files = Array.from(e.target.files);
@@ -236,21 +311,20 @@ const AdminProducts = () => {
     e.preventDefault();
     setSaving(true);
     const fd = new FormData();
-    fd.append("_method", "PUT");
-    fd.append("product_name", editForm.product_name);
-    fd.append("category_id", editForm.category_id);
+    fd.append("_method",        "PUT");
+    fd.append("product_name",   editForm.product_name);
+    fd.append("category_id",    editForm.category_id);
     fd.append("product_stocks", editForm.product_stocks);
-    fd.append("description", editForm.description);
-    fd.append("price", editForm.price);
-    fd.append("isSale", editForm.isSale ? 1 : 0);
+    fd.append("description",    editForm.description);
+    fd.append("price",          editForm.price);
+    fd.append("isSale",         editForm.isSale ? 1 : 0);
     removedImageIds.forEach(id => fd.append("remove_images[]", id));
     newImages.forEach(img => fd.append("images[]", img));
-
     try {
       const productId = activeProduct.product_id ?? activeProduct.id;
-      await axios.post(`${BASE}/api/admin/products/${productId}`, fd, { withCredentials:true }); // ← POST instead of PUT
+      await axios.post(`${BASE}/api/admin/products/${productId}`, fd, { withCredentials:true });
       setShowEditModal(false);
-      fetchProducts(); // optional: update products state instead
+      fetchProducts();
     } catch (err) {
       console.error(err.response?.data || err);
       alert("Failed to update product");
@@ -279,89 +353,9 @@ const AdminProducts = () => {
   };
 
   // ────────────────────────────────────────────
-  // Reusable: overlay wrapper
-  // ────────────────────────────────────────────
-  const Overlay = ({ children, onClose, wide }) => (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.55)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:"16px" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:"#fff", width:"100%", maxWidth: wide ? "780px" : "560px", borderRadius:"16px", boxShadow:"0 24px 64px rgba(0,0,0,0.18)", maxHeight:"94vh", overflowY:"auto" }}>
-        {children}
-      </div>
-    </div>
-  );
-
-  // Modal header reusable
-  const ModalHeader = ({ title, subtitle, onClose }) => (
-    <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #F1F5F9", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, background:"#fff", zIndex:10, borderRadius:"16px 16px 0 0" }}>
-      <div>
-        <h2 style={{ margin:0, fontSize:"17px", fontWeight:700, color:"#0F172A" }}>{title}</h2>
-        {subtitle && <p style={{ margin:"2px 0 0", fontSize:"12px", color:"#94A3B8" }}>{subtitle}</p>}
-      </div>
-      <button onClick={onClose} style={{ width:"32px", height:"32px", borderRadius:"8px", border:"1px solid #E2E8F0", background:"#F8FAFC", color:"#64748B", fontSize:"18px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>×</button>
-    </div>
-  );
-
-  // Image upload zone reusable
-  const ImageUploadZone = ({ id, onchange, previews, onRemove, label }) => (
-    <div style={{ marginBottom:"20px" }}>
-      <label style={{ ...labelStyle, marginBottom:"8px" }}>{label ?? "Product Images"}</label>
-      <label htmlFor={id} style={{ display:"block", border:"2px dashed #CBD5E1", borderRadius:"10px", padding:"18px", textAlign:"center", cursor:"pointer", background:"#F8FAFC", transition:"border-color 0.2s", marginBottom: previews.length > 0 ? "10px" : "0" }}
-        onMouseEnter={e => e.currentTarget.style.borderColor="#155DFC"}
-        onMouseLeave={e => e.currentTarget.style.borderColor="#CBD5E1"}>
-        <div style={{ fontSize:"26px", marginBottom:"4px" }}>🖼️</div>
-        <div style={{ fontSize:"13px", fontWeight:600, color:"#374151" }}>Click to upload images</div>
-        <div style={{ fontSize:"11px", color:"#94A3B8", marginTop:"2px" }}>PNG, JPG, WEBP — multiple allowed</div>
-        <input id={id} type="file" multiple accept="image/*" onChange={onchange} style={{ display:"none" }} />
-      </label>
-      {previews.length > 0 && (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(88px,1fr))", gap:"8px" }}>
-          {previews.map((src, i) => (
-            <div key={i} style={{ position:"relative", borderRadius:"8px", overflow:"hidden", aspectRatio:"1", border: i===0 ? "2px solid #155DFC" : "1px solid #E2E8F0", background:"#F1F5F9" }}>
-              <img src={src} alt={`preview-${i}`} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-              {i===0 && <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"#155DFC", color:"#fff", fontSize:"9px", fontWeight:700, textAlign:"center", padding:"3px" }}>MAIN</div>}
-              <button type="button" onClick={() => onRemove(i)} style={{ position:"absolute", top:"4px", right:"4px", width:"18px", height:"18px", borderRadius:"50%", background:"rgba(0,0,0,0.55)", color:"#fff", border:"none", fontSize:"11px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  // Category select reusable
-  const CategorySelect = ({ name, value, onChange, disabled }) => (
-    <div style={{ position:"relative" }}>
-      <select name={name} value={value} onChange={onChange} required disabled={disabled}
-        style={{ ...inputStyle, appearance:"none", WebkitAppearance:"none", paddingRight:"32px", cursor: disabled ? "not-allowed" : "pointer", color: value ? "#0F172A" : "#9CA3AF", background: disabled ? "#F8FAFC" : "#fff" }}>
-        <option value="" disabled>{disabled ? "Loading…" : "Select a category"}</option>
-        {categories.map(cat => (
-          <option key={cat.id ?? cat.category_id} value={cat.id ?? cat.category_id}>
-            {cat.name ?? cat.category_name ?? cat.title}
-          </option>
-        ))}
-        {!disabled && categories.length===0 && <option value="" disabled>No categories found</option>}
-      </select>
-      <div style={{ position:"absolute", right:"10px", top:"50%", transform:"translateY(-50%)", pointerEvents:"none", color:"#94A3B8", fontSize:"11px" }}>{disabled ? "⟳" : "▾"}</div>
-    </div>
-  );
-
-  // Sale toggle reusable
-  const SaleToggle = ({ checked, onChange, name }) => (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#F8FAFC", border:"1px solid #E2E8F0", borderRadius:"8px", padding:"12px 14px", marginBottom:"20px" }}>
-      <div>
-        <div style={{ fontSize:"13px", fontWeight:600, color:"#374151" }}>Mark as On Sale</div>
-        <div style={{ fontSize:"11px", color:"#94A3B8" }}>Show a sale badge on this product</div>
-      </div>
-      <label style={{ position:"relative", display:"inline-block", width:"40px", height:"22px", cursor:"pointer" }}>
-        <input type="checkbox" name={name} checked={checked} onChange={onChange} style={{ opacity:0, width:0, height:0, position:"absolute" }} />
-        <div style={{ position:"absolute", inset:0, borderRadius:"11px", background: checked ? "#155DFC" : "#CBD5E1", transition:"background 0.2s" }} />
-        <div style={{ position:"absolute", top:"3px", left: checked ? "21px" : "3px", width:"16px", height:"16px", borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }} />
-      </label>
-    </div>
-  );
-
-  // ────────────────────────────────────────────
   // View modal images
   // ────────────────────────────────────────────
-  const viewImages = activeProduct?.images ?? [];
+  const viewImages  = activeProduct?.images ?? [];
   const viewMainSrc = viewImages[activeImgIdx]?.image_path
     ? `${BASE}/storage/${viewImages[activeImgIdx].image_path}`
     : null;
@@ -399,8 +393,10 @@ const AdminProducts = () => {
                   <input name="product_name" placeholder="e.g. Long Bondpaper" value={addForm.product_name} onChange={handleAddChange} required style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Category {categoriesLoading && <span style={{ marginLeft:"6px", fontSize:"10px", color:"#94A3B8", fontWeight:400, textTransform:"none" }}>Loading…</span>}</label>
-                  <CategorySelect name="category_id" value={addForm.category_id} onChange={handleAddChange} disabled={categoriesLoading} />
+                  <label style={labelStyle}>
+                    Category{categoriesLoading && <span style={{ marginLeft:"6px", fontSize:"10px", color:"#94A3B8", fontWeight:400, textTransform:"none" }}>Loading…</span>}
+                  </label>
+                  <CategorySelect name="category_id" value={addForm.category_id} onChange={handleAddChange} disabled={categoriesLoading} categories={categories} />
                 </div>
                 <div>
                   <label style={labelStyle}>Stocks</label>
@@ -437,10 +433,8 @@ const AdminProducts = () => {
               onClose={() => setShowViewModal(false)}
             />
             <div style={{ padding:"20px 24px 24px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"20px" }}>
-
               {/* Left — image gallery */}
               <div>
-                {/* Main image */}
                 <div style={{ borderRadius:"12px", overflow:"hidden", background:"#F8FAFC", border:"1px solid #E2E8F0", aspectRatio:"1", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:"10px", position:"relative" }}>
                   {viewMainSrc
                     ? <img src={viewMainSrc} alt="main" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
@@ -455,7 +449,6 @@ const AdminProducts = () => {
                     return <span style={{ ...s, position:"absolute", top:"10px", right:"10px", padding:"3px 10px", borderRadius:"20px", fontSize:"11px", fontWeight:600 }}>{st}</span>;
                   })()}
                 </div>
-                {/* Thumbnails */}
                 {viewImages.length > 1 && (
                   <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
                     {viewImages.map((img, i) => (
@@ -485,9 +478,9 @@ const AdminProducts = () => {
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
                   {[
                     { label:"Stock",    value: activeProduct.product_stocks ?? activeProduct.stock ?? 0, icon:"📦" },
-                    { label:"Category", value: resolveCat(activeProduct.category, activeProduct.category_name),  icon:"🏷️" },
-                    { label:"On Sale",  value: activeProduct.isSale == 1 ? "Yes" : "No",                icon:"🏷" },
-                    { label:"Images",   value: `${viewImages.length} image(s)`,                          icon:"🖼️" },
+                    { label:"Category", value: resolveCat(activeProduct.category, activeProduct.category_name), icon:"🏷️" },
+                    { label:"On Sale",  value: activeProduct.isSale == 1 ? "Yes" : "No", icon:"🏷" },
+                    { label:"Images",   value: `${viewImages.length} image(s)`, icon:"🖼️" },
                   ].map(item => (
                     <div key={item.label} style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"10px", padding:"12px", display:"flex", alignItems:"center", gap:"10px" }}>
                       <span style={{ fontSize:"18px" }}>{item.icon}</span>
@@ -512,7 +505,6 @@ const AdminProducts = () => {
                   ))}
                 </div>
 
-                {/* Actions */}
                 <div style={{ display:"flex", gap:"10px", marginTop:"auto" }}>
                   <button onClick={() => { setShowViewModal(false); openEdit(activeProduct); }}
                     style={{ flex:1, padding:"10px", border:"none", borderRadius:"8px", background:"#155DFC", color:"#fff", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
@@ -536,7 +528,6 @@ const AdminProducts = () => {
             <ModalHeader title="Edit Product" subtitle={`Editing: ${activeProduct.product_name ?? activeProduct.name}`} onClose={() => setShowEditModal(false)} />
             <form onSubmit={submitEdit} style={{ padding:"20px 24px 24px" }}>
 
-              {/* Existing images */}
               {(activeProduct.images ?? []).length > 0 && (
                 <div style={{ marginBottom:"16px" }}>
                   <label style={{ ...labelStyle, marginBottom:"6px" }}>Current Images</label>
@@ -568,7 +559,7 @@ const AdminProducts = () => {
                 </div>
                 <div>
                   <label style={labelStyle}>Category</label>
-                  <CategorySelect name="category_id" value={editForm.category_id} onChange={handleEditChange} disabled={categoriesLoading} />
+                  <CategorySelect name="category_id" value={editForm.category_id} onChange={handleEditChange} disabled={categoriesLoading} categories={categories} />
                 </div>
                 <div>
                   <label style={labelStyle}>Stocks</label>

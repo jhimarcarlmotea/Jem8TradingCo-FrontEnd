@@ -316,11 +316,11 @@ export default function ProductView() {
   const [cartError, setCartError]     = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [reviewRefresh, setReviewRefresh] = useState(0);
-  const [currentUser,   setCurrentUser]   = useState(null);  // null = loading, false = guest
+  const [currentUser,   setCurrentUser]   = useState(null);
   const [reviewsList,   setReviewsList]   = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
-  // ── Fetch current user (/me) ──
+  // ── Fetch current user ──
   useEffect(() => {
     axios.get(`${BASE}/api/me`, { withCredentials: true })
       .then(res => {
@@ -330,7 +330,7 @@ export default function ProductView() {
       .catch(() => setCurrentUser(false));
   }, []);
 
-  // ── Fetch reviews + hydrate user from /accounts/:id if user relation is null ──
+  // ── Fetch reviews ──
   useEffect(() => {
     if (!id) return;
     setReviewsLoading(true);
@@ -339,18 +339,16 @@ export default function ProductView() {
       .then(async (res) => {
         const list = Array.isArray(res.data) ? res.data : (res.data?.reviews ?? res.data?.data ?? []);
 
-        // For any review where r.user is null, fetch account by user_id
         const hydrated = await Promise.all(
           list.map(async (r) => {
-            if (r.user) return r; // already has user relation loaded
+            if (r.user) return r;
             if (!r.user_id) return r;
             try {
               const acc = await axios.get(`${BASE}/api/findaccount/${r.user_id}`);
-              console.log(acc)
-              const u = acc.data?.data ?? acc.data?.user ?? acc.data;
+              const u   = acc.data?.data ?? acc.data?.user ?? acc.data;
               return { ...r, user: u };
             } catch {
-              return r; // leave as-is if fetch fails
+              return r;
             }
           })
         );
@@ -418,19 +416,18 @@ export default function ProductView() {
   }
 
   // ── Normalise fields ──
-  const name     = resolveName(product);
-  const price    = resolvePrice(product);
-  const catLabel = resolveCat(product);
-  const stock    = resolveStock(product);
-  const isOnSale = product.isSale == 1;
-  const desc     = product.description ?? "";
-  const images   = product.images ?? [];
-  const mainSrc  = images[activeImg]?.image_path
+  const name      = resolveName(product);
+  const price     = resolvePrice(product);
+  const catLabel  = resolveCat(product);
+  const stock     = resolveStock(product);
+  const isOnSale  = product.isSale == 1;
+  const desc      = product.description ?? "";
+  const images    = product.images ?? [];
+  const mainSrc   = images[activeImg]?.image_path
     ? `${BASE}/storage/${images[activeImg].image_path}`
     : ph(600, 600, name);
-  // Derive real average from fetched reviews; only show if reviews exist
-  const reviews     = reviewsList.length;
-  const avgRating   = reviews > 0
+  const reviews   = reviewsList.length;
+  const avgRating = reviews > 0
     ? reviewsList.reduce((sum, r) => sum + Number(r.rating ?? r.stars ?? 0), 0) / reviews
     : 0;
   const productId = product.product_id ?? product.id;
@@ -503,7 +500,7 @@ export default function ProductView() {
           <span className="pv-breadcrumb__sep">›</span>
           <Link to="/products">Products</Link>
           <span className="pv-breadcrumb__sep">›</span>
-          {catLabel && <><Link to={`/products`}>{catLabel}</Link><span className="pv-breadcrumb__sep">›</span></>}
+          {catLabel && <><Link to="/products">{catLabel}</Link><span className="pv-breadcrumb__sep">›</span></>}
           <span>{name}</span>
         </div>
       </div>
@@ -698,6 +695,7 @@ export default function ProductView() {
 
           <div style={{ background:"#fff", borderRadius:"12px", padding:"28px 0", minHeight:"200px" }}>
 
+            {/* ── Overview Tab ── */}
             {activeTab === "overview" && (
               <div className="pv-overview">
                 <h3>Product Overview</h3>
@@ -713,6 +711,7 @@ export default function ProductView() {
               </div>
             )}
 
+            {/* ── Specifications Tab ── */}
             {activeTab === "specifications" && (
               <div className="pv-specs">
                 <h3>Specifications</h3>
@@ -735,11 +734,12 @@ export default function ProductView() {
               </div>
             )}
 
+            {/* ── Reviews Tab ── */}
             {activeTab === "reviews" && (
               <div className="pv-reviews">
                 <h3>Customer Reviews</h3>
 
-                {/* ── Summary bar ── */}
+                {/* Summary bar */}
                 {reviews > 0 && (
                   <div className="pv-reviews-summary">
                     <div className="pv-reviews-big">{avgRating.toFixed(1)}</div>
@@ -752,7 +752,7 @@ export default function ProductView() {
                   </div>
                 )}
 
-                {/* ── Reviews list ── */}
+                {/* Reviews list */}
                 {reviewsLoading ? (
                   <div style={{ padding: "32px 0", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
                     <span style={{ display:"inline-block", width:"20px", height:"20px", border:"2.5px solid #d1d5db", borderTopColor:"#4d7b65", borderRadius:"50%", animation:"spin 0.7s linear infinite", marginRight:"10px", verticalAlign:"middle" }} />
@@ -765,16 +765,25 @@ export default function ProductView() {
                   </div>
                 ) : (
                   reviewsList.map((r, i) => {
-                    const reviewer = (r.user ? [r.user.first_name, r.user.last_name].filter(Boolean).join(" ") : null) ?? r.user?.name ?? r.name ?? "Anonymous";
+                    const reviewer    = (r.user ? [r.user.first_name, r.user.last_name].filter(Boolean).join(" ") : null)
+                                        ?? r.user?.name ?? r.name ?? "Anonymous";
                     const reviewRating = Number(r.rating ?? r.stars ?? 0);
                     const reviewText   = r.review_text ?? r.comment ?? r.body ?? "";
                     const reviewDate   = r.created_at
                       ? new Date(r.created_at).toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" })
                       : "";
+                    const repliedDate  = r.replied_at
+                      ? new Date(r.replied_at).toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" })
+                      : "";
+
                     return (
-                      <div key={r.id ?? i} className="pv-review-card">
+                      <div key={r.review_id ?? r.id ?? i} className="pv-review-card">
+
+                        {/* Review header */}
                         <div className="pv-review-card__header">
-                          <div className="pv-review-card__avatar" style={{color:""}}>{reviewer[0].toUpperCase()}</div>
+                          <div className="pv-review-card__avatar">
+                            {reviewer[0].toUpperCase()}
+                          </div>
                           <div style={{ flex: 1 }}>
                             <div className="pv-review-card__name">{reviewer}</div>
                             <StarRating rating={reviewRating} />
@@ -785,13 +794,48 @@ export default function ProductView() {
                             </div>
                           )}
                         </div>
-                        {reviewText && <p className="pv-review-card__text">{reviewText}</p>}
+
+                        {/* Review text */}
+                        {reviewText && (
+                          <p className="pv-review-card__text">{reviewText}</p>
+                        )}
+
+                        {/* ── Admin Reply ── */}
+                        {r.admin_reply && (
+                          <div style={{
+                            marginTop: "12px",
+                            padding: "12px 14px",
+                            borderRadius: "8px",
+                            background: "#F0F7FF",
+                            borderLeft: "3px solid #155DFC",
+                          }}>
+                            <div style={{
+                              display: "flex", alignItems: "center", gap: "6px",
+                              fontSize: "11px", fontWeight: 700,
+                              color: "#155DFC", marginBottom: "6px",
+                            }}>
+                              <span>💬</span> Admin Reply
+                              {repliedDate && (
+                                <span style={{ fontWeight: 400, color: "#9ca3af", marginLeft: "4px" }}>
+                                  · {repliedDate}
+                                </span>
+                              )}
+                            </div>
+                            <p style={{
+                              fontSize: "13px", color: "#374151",
+                              margin: 0, lineHeight: "1.6", fontStyle: "italic",
+                            }}>
+                              {r.admin_reply}
+                            </p>
+                          </div>
+                        )}
+
                       </div>
                     );
                   })
                 )}
 
-                {/* ── Write a review ── */}
+                {/* Write a review */}
                 <div style={{ borderTop: "1.5px solid #e2ede8", marginTop: "32px", paddingTop: "8px" }}>
                   {currentUser ? (
                     <ReviewForm
