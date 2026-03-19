@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import '../style/about.css';
-import '../style/global.css';
+import React, { useState } from 'react';
+import Shella from '../assets/Shella_Ricafrente-Acibar.png';
+import Jinkie from '../assets/Jinkie_Ricafrente-Malinag.png';
+import Akiko from '../assets/Akiko_Serrano.png';
+import Ruby from '../assets/Ruby_Ann_Castillo.png';
+import Charisse from '../assets/Charisse_Decano.png';
+import Adrian from '../assets/Adrian_Mallanao.png';
+import Vhernaldo from '../assets/Vhernaldo_Ricafrente.png';
+import Mark from '../assets/Mark_Edward_C_Malinag.png';
+import Daniel from '../assets/Daniel_Kian_Rodriguez_Cadena.png';
+import Kayla from '../assets/Kayla_R_Bacsafra.png';
+import Cristina from '../assets/Cristina_A_Saturnio.png';
 
 const BASE = 'http://127.0.0.1:8000';
 

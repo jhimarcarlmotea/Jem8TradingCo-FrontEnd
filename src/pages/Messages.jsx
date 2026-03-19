@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import "../style/global.css";
 import "../style/pages.css";
+import { postChatMessage, getChatRooms, getChatMessages } from "../api/chat";
+import api from "../api/axios";
 
 /* ── Seed conversations ── */
 const INITIAL_THREADS = [
@@ -58,6 +60,8 @@ export default function Messages() {
   const [activeTab, setActiveTab]       = useState("Inbox");
   const [input, setInput]               = useState("");
   const [searchQuery, setSearchQuery]   = useState("");
+  const [unauthenticated, setUnauthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const bottomRef                       = useRef(null);
 
   const thread = threads.find((t) => t.id === activeThread);
@@ -67,9 +71,16 @@ export default function Messages() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeThread, thread?.messages?.length]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
+
+    const optimisticMsg = {
+      id: Date.now(),
+      from: "me",
+      text,
+      time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+    };
 
     setThreads((prev) =>
       prev.map((t) =>
@@ -78,37 +89,151 @@ export default function Messages() {
               ...t,
               unread: 0,
               lastTime: "Just now",
-              messages: [...t.messages, {
-                id: Date.now(),
-                from: "me",
-                text,
-                time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-              }],
+              messages: [...t.messages, optimisticMsg],
             }
           : t
       )
     );
     setInput("");
 
-    // Simulate admin reply after 1.5s
-    setTimeout(() => {
-      setThreads((prev) =>
-        prev.map((t) =>
-          t.id === activeThread
-            ? {
-                ...t,
-                messages: [...t.messages, {
-                  id: Date.now() + 1,
-                  from: "admin",
-                  text: "Thank you for your message! Our team will get back to you shortly. 😊",
-                  time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-                }],
-              }
-            : t
-        )
-      );
-    }, 1500);
+    // Send to backend (optimistic UI). If backend expects a different payload, adjust accordingly.
+    try {
+      await postChatMessage({ chatroom_id: activeThread, text });
+
+      // After successful send, fetch server messages for the active thread to sync
+      try {
+        const msgsResp = await getChatMessages(activeThread);
+        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+        setThreads((prev) =>
+          prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages.length > 0 ? serverMessages : t.messages } : t))
+        );
+      } catch (err2) {
+        console.warn("Failed to refresh messages after send:", err2);
+      }
+    } catch (err) {
+      // If unauthenticated, try sending via token endpoint
+      const msg = err && err.message ? err.message : String(err);
+      if (msg === "Unauthenticated.") {
+        setUnauthenticated(true);
+        try {
+          await api.post("/chat/messages/token", { chatroom_id: activeThread, text });
+          // Attempt to refresh messages from server even when using token route
+          try {
+            const msgsResp2 = await getChatMessages(activeThread);
+            const serverMessages2 = Array.isArray(msgsResp2) ? msgsResp2 : msgsResp2.messages || [];
+            setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages2 } : t)));
+          } catch (e2) {
+            // ignore
+          }
+        } catch (e) {
+          console.error("Token-send failed:", e);
+        }
+      } else {
+        console.error("Failed to send chat message:", err);
+      }
+    }
   };
+
+  // Load chat rooms on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // quick check to ensure session auth is valid
+        try {
+          const meResp = await api.get("/me");
+          if (meResp && meResp.data) setCurrentUser(meResp.data);
+        } catch (mErr) {
+          // ignore — will surface when requesting rooms
+        }
+
+        const roomsResp = await getChatRooms();
+        // roomsResp may be an array or an object like { rooms: [...] }
+        const rooms = Array.isArray(roomsResp) ? roomsResp : roomsResp.rooms || roomsResp.chatrooms || [];
+
+        if (!mounted) return;
+
+        if (rooms.length > 0) {
+          // Map server rooms to local thread shape when possible
+          const mapped = rooms.map((r) => ({
+            id: r.id || r.chatroom_id || r.room_id,
+            name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
+            avatar: (r.name || "").charAt(0).toUpperCase() || "J",
+            avatarBg: r.avatarBg || "#4d7b65",
+            isAdmin: !!r.is_admin,
+            unread: r.unread || 0,
+            lastTime: r.last_time || "",
+            messages: Array.isArray(r.messages) ? r.messages : [],
+          }));
+          setThreads((prev) =>
+            mapped.map((m) => ({
+              ...m,
+              messages: Array.isArray(m.messages) && m.messages.length > 0 ? m.messages : (prev.find((p) => p.id === m.id)?.messages || []),
+            }))
+          );
+          setActiveThread(mapped[0]?.id ?? 1);
+        }
+      } catch (err) {
+        // Backend may require session auth (Sanctum). Try obtaining CSRF cookie and retry once.
+        const msg = err && err.message ? err.message : String(err);
+        if (msg === "Unauthenticated.") {
+          try {
+            // CSRF endpoint is served from the backend root (not under /api)
+            await api.get("http://127.0.0.1:8000/sanctum/csrf-cookie", { withCredentials: true });
+            // retry once
+            const roomsResp2 = await getChatRooms();
+            const rooms2 = Array.isArray(roomsResp2) ? roomsResp2 : roomsResp2.rooms || roomsResp2.chatrooms || [];
+            if (!mounted) return;
+            if (rooms2.length > 0) {
+              const mapped = rooms2.map((r) => ({
+                id: r.id || r.chatroom_id || r.room_id,
+                name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
+                avatar: (r.name || "").charAt(0).toUpperCase() || "J",
+                avatarBg: r.avatarBg || "#4d7b65",
+                isAdmin: !!r.is_admin,
+                unread: r.unread || 0,
+                lastTime: r.last_time || "",
+                messages: Array.isArray(r.messages) ? r.messages : [],
+              }));
+              setThreads((prev) =>
+                mapped.map((m) => ({
+                  ...m,
+                  messages: Array.isArray(m.messages) && m.messages.length > 0 ? m.messages : (prev.find((p) => p.id === m.id)?.messages || []),
+                }))
+              );
+              setActiveThread(mapped[0]?.id ?? 1);
+              return;
+            }
+          } catch (e) {
+            // fall through to unauthenticated handling
+          }
+
+          setUnauthenticated(true);
+          console.warn("Unauthenticated while loading chat rooms — using local mock threads");
+        } else {
+          console.warn("Failed to load chat rooms:", msg);
+        }
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
+
+  // Fetch messages when active thread changes
+  useEffect(() => {
+    if (!activeThread) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const msgsResp = await getChatMessages(activeThread);
+        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+        if (!mounted) return;
+        setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages.length > 0 ? serverMessages : t.messages } : t)));
+      } catch (err) {
+        // if API not available, keep local mock
+      }
+    })();
+    return () => { mounted = false };
+  }, [activeThread]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -128,6 +253,18 @@ export default function Messages() {
   });
 
   const totalUnread = threads.reduce((s, t) => s + t.unread, 0);
+
+  const formatMsgTime = (msg) => {
+    const t = msg?.time || msg?.created_at || msg?.createdAt || msg?.createdAt;
+    if (!t) return "";
+    try {
+      return new Date(t).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    } catch (e) {
+      return String(t);
+    }
+  };
+
+  const getMsgText = (msg) => msg?.text || msg?.messages || msg?.message || "";
 
   return (
     <div className="msg-page">
@@ -178,11 +315,11 @@ export default function Messages() {
               {filteredThreads.length === 0 ? (
                 <div className="msg-thread-empty">No conversations found.</div>
               ) : (
-                filteredThreads.map((t) => {
+                filteredThreads.map((t, threadIdx) => {
                   const lastMsg = t.messages[t.messages.length - 1];
                   return (
                     <div
-                      key={t.id}
+                      key={t.id ?? `thread-${threadIdx}-${t.name}`}
                       className={`msg-thread-item${activeThread === t.id ? " active" : ""}${t.unread > 0 ? " unread" : ""}`}
                       onClick={() => openThread(t.id)}
                     >
@@ -196,7 +333,7 @@ export default function Messages() {
                           <span className="msg-thread-item__time">{t.lastTime}</span>
                         </div>
                         <div className="msg-thread-item__preview">
-                          {lastMsg?.img ? "📷 Photo" : lastMsg?.text}
+                          {lastMsg?.img ? "📷 Photo" : (lastMsg?.text || lastMsg?.messages || lastMsg?.message || "")}
                         </div>
                       </div>
                       {t.unread > 0 && (
@@ -228,17 +365,24 @@ export default function Messages() {
 
             {/* Messages */}
             <div className="msg-chat__messages">
-              {thread?.messages.map((msg) => (
+              {thread?.messages.map((msg, msgIdx) => {
+                const isFromMe = msg?.from === "me" || (currentUser && (
+                  msg.user_id === currentUser.id ||
+                  msg.account_id === currentUser.id ||
+                  msg.sender_id === currentUser.id ||
+                  (msg.account && msg.account.id === currentUser.id)
+                ));
+                return (
                 <div
-                  key={msg.id}
-                  className={`msg-bubble-row${msg.from === "me" ? " msg-bubble-row--me" : ""}`}
+                  key={msg.id ?? `msg-${msgIdx}-${msg.time || msg.from || ''}`}
+                  className={`msg-bubble-row${isFromMe ? " msg-bubble-row--me" : ""}`}
                 >
-                  {msg.from !== "me" && (
+                  {!isFromMe && (
                     <div className="msg-bubble__avatar" style={{ background: thread.avatarBg }}>
                       {thread.avatar}
                     </div>
                   )}
-                  <div className={`msg-bubble${msg.from === "me" ? " msg-bubble--me" : ""}`}>
+                  <div className={`msg-bubble${isFromMe ? " msg-bubble--me" : ""}`}>
                     {msg.img && (
                       <img
                         src={msg.img}
@@ -247,11 +391,12 @@ export default function Messages() {
                         onError={(e) => { e.target.style.display = "none"; }}
                       />
                     )}
-                    {msg.text && <p>{msg.text}</p>}
-                    <span className="msg-bubble__time">{msg.time}</span>
+                    <p>{getMsgText(msg)}</p>
+                    <span className="msg-bubble__time">{formatMsgTime(msg)}</span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
               <div ref={bottomRef} />
             </div>
 
