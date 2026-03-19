@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import AdminNav from "../components/AdminNav";
 import axios from "axios";
 
@@ -7,43 +7,27 @@ const BASE = "http://127.0.0.1:8000";
 const CATEGORIES = ["All", "Announcement", "Travel Blog", "Business Trips", "Product Updates"];
 
 const categoryMap = {
-  All: "All Posts",
-  Announcement: "Announcements",
-  "Travel Blog": "Travel Blog",
+  All:              "All Posts",
+  Announcement:     "Announcements",
+  "Travel Blog":    "Travel Blog",
   "Business Trips": "Business Trips",
-  "Product Updates": "Product Updates",
+  "Product Updates":"Product Updates",
 };
 
-// ─────────────────────────────────────────────────────────────
-// Shared sub-components (matching AdminProducts style)
-// ─────────────────────────────────────────────────────────────
-const labelStyle = {
-  display: "block", fontSize: "11px", fontWeight: 600, color: "#374151",
-  marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.05em",
-};
-const inputStyle = {
-  width: "100%", padding: "9px 11px", border: "1px solid #E2E8F0", borderRadius: "8px",
-  fontSize: "13px", color: "#0F172A", background: "#fff", outline: "none",
-  boxSizing: "border-box", fontFamily: "inherit",
-};
+// ── Shared input class ────────────────────────────────────────────────────────
+const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none box-border font-[inherit]";
+const labelCls = "block text-[11px] font-semibold text-gray-700 mb-1.5 uppercase tracking-wide";
 
+// ── Sub-components ────────────────────────────────────────────────────────────
 function Overlay({ children, onClose, wide }) {
   return (
     <div
       onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)",
-        backdropFilter: "blur(4px)", display: "flex", alignItems: "center",
-        justifyContent: "center", zIndex: 1000, padding: "16px",
-      }}
+      className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center z-[1000] p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "#fff", width: "100%", maxWidth: wide ? "820px" : "580px",
-          borderRadius: "16px", boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
-          maxHeight: "94vh", overflowY: "auto",
-        }}
+        className={`bg-white w-full ${wide ? "max-w-[820px]" : "max-w-[580px]"} rounded-2xl shadow-2xl max-h-[94vh] overflow-y-auto`}
       >
         {children}
       </div>
@@ -53,23 +37,14 @@ function Overlay({ children, onClose, wide }) {
 
 function ModalHeader({ title, subtitle, onClose }) {
   return (
-    <div style={{
-      padding: "20px 24px 16px", borderBottom: "1px solid #F1F5F9",
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      position: "sticky", top: 0, background: "#fff", zIndex: 10,
-      borderRadius: "16px 16px 0 0",
-    }}>
+    <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-2xl">
       <div>
-        <h2 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>{title}</h2>
-        {subtitle && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#94A3B8" }}>{subtitle}</p>}
+        <h2 className="m-0 text-[17px] font-bold text-slate-900">{title}</h2>
+        {subtitle && <p className="mt-0.5 mb-0 text-xs text-slate-400">{subtitle}</p>}
       </div>
       <button
         onClick={onClose}
-        style={{
-          width: "32px", height: "32px", borderRadius: "8px", border: "1px solid #E2E8F0",
-          background: "#F8FAFC", color: "#64748B", fontSize: "18px", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
-        }}
+        className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-lg cursor-pointer flex items-center justify-center leading-none hover:bg-slate-100 transition-colors"
       >×</button>
     </div>
   );
@@ -77,44 +52,30 @@ function ModalHeader({ title, subtitle, onClose }) {
 
 function ImageUploadZone({ id, onChange, preview, onRemove, label }) {
   return (
-    <div style={{ marginBottom: "20px" }}>
-      <label style={{ ...labelStyle, marginBottom: "8px" }}>{label ?? "Cover Image"}</label>
+    <div className="mb-5">
+      <label className={`${labelCls} mb-2`}>{label ?? "Cover Image"}</label>
       <label
         htmlFor={id}
-        style={{
-          display: "block", border: "2px dashed #CBD5E1", borderRadius: "10px",
-          padding: "18px", textAlign: "center", cursor: "pointer",
-          background: "#F8FAFC", transition: "border-color 0.2s",
-          marginBottom: preview ? "10px" : "0",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#155DFC")}
-        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#CBD5E1")}
+        className={`block border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer bg-slate-50 transition-colors hover:border-blue-600 ${preview ? "mb-2.5" : ""}`}
       >
         {preview ? (
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <img
-              src={preview}
-              alt="preview"
-              style={{ maxHeight: "160px", maxWidth: "100%", borderRadius: "8px", objectFit: "cover" }}
-            />
+          <div className="relative inline-block">
+            <img src={preview} alt="preview" className="max-h-40 max-w-full rounded-lg object-cover" />
           </div>
         ) : (
           <>
-            <div style={{ fontSize: "26px", marginBottom: "4px" }}>🖼️</div>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Click to upload image</div>
-            <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "2px" }}>PNG, JPG, WEBP</div>
+            <div className="text-[26px] mb-1">🖼️</div>
+            <div className="text-sm font-semibold text-gray-700">Click to upload image</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WEBP</div>
           </>
         )}
-        <input id={id} type="file" accept="image/*" onChange={onChange} style={{ display: "none" }} />
+        <input id={id} type="file" accept="image/*" onChange={onChange} className="hidden" />
       </label>
       {preview && (
         <button
           type="button"
           onClick={onRemove}
-          style={{
-            fontSize: "12px", color: "#DC2626", background: "none", border: "none",
-            cursor: "pointer", padding: "0", fontWeight: 500,
-          }}
+          className="text-xs text-red-600 bg-transparent border-none cursor-pointer p-0 font-medium hover:underline"
         >
           ✕ Remove image
         </button>
@@ -125,84 +86,63 @@ function ImageUploadZone({ id, onChange, preview, onRemove, label }) {
 
 function CategorySelect({ name, value, onChange }) {
   return (
-    <div style={{ position: "relative" }}>
+    <div className="relative">
       <select
         name={name}
         value={value}
         onChange={onChange}
         required
-        style={{
-          ...inputStyle, appearance: "none", WebkitAppearance: "none",
-          paddingRight: "32px", cursor: "pointer",
-          color: value ? "#0F172A" : "#9CA3AF",
-        }}
+        className={`${inputCls} appearance-none pr-8 cursor-pointer ${value ? "text-slate-900" : "text-gray-400"}`}
       >
         <option value="" disabled>Select a category</option>
         {CATEGORIES.filter((c) => c !== "All").map((c) => (
           <option key={c} value={c}>{c}</option>
         ))}
       </select>
-      <div style={{
-        position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)",
-        pointerEvents: "none", color: "#94A3B8", fontSize: "11px",
-      }}>▾</div>
+      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[11px]">▾</div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Field wrapper — must live OUTSIDE the main component
-// so it is never recreated on render (avoids input unfocus)
-// ─────────────────────────────────────────────────────────────
 function Field({ label, children }) {
   return (
-    <div style={{ marginBottom: "16px" }}>
-      <label style={labelStyle}>{label}</label>
+    <div className="mb-4">
+      <label className={labelCls}>{label}</label>
       {children}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function AdminBlogpost() {
-  const [sidebarOpen, setSidebarOpen]   = useState(false);
-  const [posts, setPosts]               = useState([]);
-  const [loading, setLoading]           = useState(false);
+  const [sidebarOpen, setSidebarOpen]       = useState(false);
+  const [posts, setPosts]                   = useState([]);
+  const [loading, setLoading]               = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
-  const [search, setSearch]             = useState("");
+  const [search, setSearch]                 = useState("");
 
-  // ── Modal states ──
-  const [showAddModal, setShowAddModal]     = useState(false);
-  const [showViewModal, setShowViewModal]   = useState(false);
-  const [showEditModal, setShowEditModal]   = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [activePost, setActivePost]         = useState(null);
+  const [showAddModal, setShowAddModal]         = useState(false);
+  const [showViewModal, setShowViewModal]       = useState(false);
+  const [showEditModal, setShowEditModal]       = useState(false);
+  const [showDeleteModal, setShowDeleteModal]   = useState(false);
+  const [activePost, setActivePost]             = useState(null);
 
-  // ── Submitting flags ──
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving]         = useState(false);
   const [deleting, setDeleting]     = useState(false);
+  const [error, setError]           = useState(null);
 
-  // ── Error state ──
-  const [error, setError] = useState(null);
-
-  // ── Add form ──
   const emptyForm = { title: "", description: "", category: "", date: "", content: "" };
-  const [addForm, setAddForm]     = useState(emptyForm);
+  const [addForm, setAddForm]       = useState(emptyForm);
   const [addPreview, setAddPreview] = useState(null);
-  const [addFile, setAddFile]     = useState(null);
+  const [addFile, setAddFile]       = useState(null);
 
-  // ── Edit form ──
   const [editForm, setEditForm]       = useState(emptyForm);
   const [editPreview, setEditPreview] = useState(null);
   const [editFile, setEditFile]       = useState(null);
   const [removeImage, setRemoveImage] = useState(false);
 
-  // ─────────────────────────────────
-  // API helpers
-  // ─────────────────────────────────
+  // ── API ───────────────────────────────────────────────────────────────────
   const fetchPosts = async () => {
     setLoading(true);
     setError(null);
@@ -220,9 +160,7 @@ export default function AdminBlogpost() {
 
   useEffect(() => { fetchPosts(); }, []);
 
-  // ─────────────────────────────────
-  // Derived data
-  // ─────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
   const filtered = posts.filter((p) => {
     const matchCat    = activeCategory === "All" || (p.category ?? p.category_name) === activeCategory;
     const matchSearch = (p.title ?? "").toLowerCase().includes(search.toLowerCase());
@@ -230,9 +168,7 @@ export default function AdminBlogpost() {
   });
 
   const counts = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = cat === "All"
-      ? posts.length
-      : posts.filter((p) => (p.category ?? p.category_name) === cat).length;
+    acc[cat] = cat === "All" ? posts.length : posts.filter((p) => (p.category ?? p.category_name) === cat).length;
     return acc;
   }, {});
 
@@ -243,19 +179,14 @@ export default function AdminBlogpost() {
     return null;
   };
 
-  // ─────────────────────────────────
-  // Open modal helpers
-  // ─────────────────────────────────
+  // ── Modal openers ─────────────────────────────────────────────────────────
   const openView = (post) => { setActivePost(post); setShowViewModal(true); };
 
   const toInputDate = (val) => {
     if (!val) return "";
-    // Already YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    // Try parsing any other format
     const d = new Date(val);
-    if (isNaN(d)) return "";
-    return d.toISOString().slice(0, 10);
+    return isNaN(d) ? "" : d.toISOString().slice(0, 10);
   };
 
   const openEdit = (post) => {
@@ -275,9 +206,7 @@ export default function AdminBlogpost() {
 
   const openDelete = (post) => { setActivePost(post); setShowDeleteModal(true); };
 
-  // ─────────────────────────────────
-  // Form handlers
-  // ─────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleAddChange  = (e) => setAddForm((f)  => ({ ...f, [e.target.name]: e.target.value }));
   const handleEditChange = (e) => setEditForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -296,9 +225,6 @@ export default function AdminBlogpost() {
     setRemoveImage(false);
   };
 
-  // ─────────────────────────────────
-  // Submit: Add
-  // ─────────────────────────────────
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -306,27 +232,19 @@ export default function AdminBlogpost() {
       const fd = new FormData();
       Object.entries(addForm).forEach(([k, v]) => fd.append(k, v));
       if (addFile) fd.append("image", addFile);
-
-      await axios.post(`${BASE}/api/blogs`, fd, {
-        withCredentials: true,
-        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest", "Content-Type": "multipart/form-data" },
-      });
+      await axios.post(`${BASE}/api/blogs`, fd, { withCredentials: true, headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest", "Content-Type": "multipart/form-data" } });
       setShowAddModal(false);
       setAddForm(emptyForm);
       setAddPreview(null);
       setAddFile(null);
       fetchPosts();
     } catch (err) {
-      console.error("Add failed:", err);
       alert(err.response?.data?.message ?? "Failed to create post.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ─────────────────────────────────
-  // Submit: Edit
-  // ─────────────────────────────────
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!activePost) return;
@@ -334,104 +252,73 @@ export default function AdminBlogpost() {
     try {
       const fd = new FormData();
       Object.entries(editForm).forEach(([k, v]) => fd.append(k, v));
-      if (editFile)       fd.append("image", editFile);
-      if (removeImage)    fd.append("remove_image", "1");
-      fd.append("_method", "PUT"); // Laravel method spoofing
-
+      if (editFile)    fd.append("image", editFile);
+      if (removeImage) fd.append("remove_image", "1");
+      fd.append("_method", "PUT");
       const postId = activePost.id ?? activePost.post_id;
-      await axios.post(`${BASE}/api/blogs/${postId}`, fd, {
-        withCredentials: true,
-        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest", "Content-Type": "multipart/form-data" },
-      });
+      await axios.post(`${BASE}/api/blogs/${postId}`, fd, { withCredentials: true, headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest", "Content-Type": "multipart/form-data" } });
       setShowEditModal(false);
       fetchPosts();
     } catch (err) {
-      console.error("Edit failed:", err);
       alert(err.response?.data?.message ?? "Failed to update post.");
     } finally {
       setSaving(false);
     }
   };
 
-  // ─────────────────────────────────
-  // Submit: Delete
-  // ─────────────────────────────────
   const handleDelete = async () => {
     if (!activePost) return;
     setDeleting(true);
     try {
       const postId = activePost.id ?? activePost.post_id;
-      await axios.delete(`${BASE}/api/blogs${postId}`, {
-        withCredentials: true,
-        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-      });
+      await axios.delete(`${BASE}/api/blogs${postId}`, { withCredentials: true, headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } });
       setShowDeleteModal(false);
       setActivePost(null);
       fetchPosts();
     } catch (err) {
-      console.error("Delete failed:", err);
       alert(err.response?.data?.message ?? "Failed to delete post.");
     } finally {
       setDeleting(false);
     }
   };
 
-  // ─────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────
+  // ── Shared modal button classes ───────────────────────────────────────────
+  const btnCancel  = "flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-gray-700 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors";
+  const btnPrimary = (disabled) => `flex-1 py-2.5 border-none rounded-lg text-white text-sm font-semibold transition-colors ${disabled ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 cursor-pointer"}`;
+
   return (
     <>
-      <style>{`
-        @media (max-width: 767px) {
-          .abp-burger { display: inline !important; }
-          .abp-stats  { grid-template-columns: repeat(2,1fr) !important; }
-        }
-        @media (min-width: 768px) {
-          .abp-burger { display: none !important; }
-          .abp-stats  { grid-template-columns: repeat(5,1fr) !important; }
-        }
-        .abp-row:hover td { background: #F8FAFF !important; }
-        .abp-act-btn:hover { opacity: 0.75; }
-      `}</style>
+      <style>{`@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}`}</style>
 
-      <div style={{ display: "flex", minHeight: "100vh", background: "#F0F7F2", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+      <div className="flex min-h-screen bg-[#F0F7F2] font-sans">
         <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        {/* ═══════════════════════════════════
-            ADD MODAL
-        ═══════════════════════════════════ */}
+        {/* ── ADD MODAL ── */}
         {showAddModal && (
           <Overlay onClose={() => setShowAddModal(false)}>
             <ModalHeader title="New Blog Post" subtitle="Fill in the details to publish a new post" onClose={() => setShowAddModal(false)} />
-            <form onSubmit={handleAddSubmit} style={{ padding: "20px 24px 24px" }}>
+            <form onSubmit={handleAddSubmit} className="px-6 pt-5 pb-6">
               <ImageUploadZone id="addImg" onChange={handleAddImageChange} preview={addPreview} onRemove={() => { setAddPreview(null); setAddFile(null); }} />
-
               <Field label="Title">
-                <input name="title" value={addForm.title} onChange={handleAddChange} required placeholder="e.g. Jem 8 at MSME Expo 2025" style={inputStyle} />
+                <input name="title" value={addForm.title} onChange={handleAddChange} required placeholder="e.g. Jem 8 at MSME Expo 2025" className={inputCls} />
               </Field>
-
               <Field label="Description / Excerpt">
-                <textarea name="description" value={addForm.description} onChange={handleAddChange} placeholder="Short summary shown on cards…" style={{ ...inputStyle, height: "72px", resize: "vertical" }} />
+                <textarea name="description" value={addForm.description} onChange={handleAddChange} placeholder="Short summary shown on cards…" className={`${inputCls} h-[72px] resize-y`} />
               </Field>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              <div className="grid grid-cols-2 gap-3.5">
                 <Field label="Category">
                   <CategorySelect name="category" value={addForm.category} onChange={handleAddChange} />
                 </Field>
                 <Field label="Date">
-                  <input type="date" name="date" value={addForm.date} onChange={handleAddChange} style={inputStyle} />
+                  <input type="date" name="date" value={addForm.date} onChange={handleAddChange} className={inputCls} />
                 </Field>
               </div>
-
               <Field label="Content (optional)">
-                <textarea name="content" value={addForm.content} onChange={handleAddChange} placeholder="Full post content…" style={{ ...inputStyle, height: "120px", resize: "vertical" }} />
+                <textarea name="content" value={addForm.content} onChange={handleAddChange} placeholder="Full post content…" className={`${inputCls} h-[120px] resize-y`} />
               </Field>
-
-              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-                <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: "10px", border: "1px solid #E2E8F0", borderRadius: "8px", background: "#fff", color: "#374151", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitting} style={{ flex: 1, padding: "10px", border: "none", borderRadius: "8px", background: submitting ? "#93C5FD" : "#155DFC", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}>
+              <div className="flex gap-2.5 mt-2">
+                <button type="button" onClick={() => setShowAddModal(false)} className={btnCancel}>Cancel</button>
+                <button type="submit" disabled={submitting} className={btnPrimary(submitting)}>
                   {submitting ? "Publishing…" : "Publish Post"}
                 </button>
               </div>
@@ -439,71 +326,49 @@ export default function AdminBlogpost() {
           </Overlay>
         )}
 
-        {/* ═══════════════════════════════════
-            VIEW MODAL
-        ═══════════════════════════════════ */}
+        {/* ── VIEW MODAL ── */}
         {showViewModal && activePost && (() => {
           const imgSrc = resolveImg(activePost);
           return (
             <Overlay wide onClose={() => setShowViewModal(false)}>
-              <ModalHeader
-                title="Post Details"
-                subtitle={activePost.title}
-                onClose={() => setShowViewModal(false)}
-              />
-              <div style={{ padding: "24px" }}>
-                {/* Cover image */}
+              <ModalHeader title="Post Details" subtitle={activePost.title} onClose={() => setShowViewModal(false)} />
+              <div className="p-6">
                 {imgSrc && (
-                  <div style={{ marginBottom: "20px", borderRadius: "12px", overflow: "hidden", maxHeight: "280px" }}>
-                    <img src={imgSrc} alt={activePost.title} style={{ width: "100%", objectFit: "cover", display: "block", maxHeight: "280px" }} />
+                  <div className="mb-5 rounded-xl overflow-hidden max-h-[280px]">
+                    <img src={imgSrc} alt={activePost.title} className="w-full object-cover block max-h-[280px]" />
                   </div>
                 )}
-
-                {/* Meta row */}
-                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
-                  <span style={{ fontSize: "12px", padding: "4px 12px", background: "#EFF6FF", color: "#1D4ED8", borderRadius: "20px", fontWeight: 600, border: "1px solid #BFDBFE" }}>
+                <div className="flex gap-2.5 flex-wrap mb-4">
+                  <span className="text-xs px-3 py-1 bg-blue-50 text-blue-700 rounded-full font-semibold border border-blue-200">
                     {activePost.category ?? activePost.category_name ?? "Uncategorized"}
                   </span>
                   {(activePost.date ?? activePost.published_at) && (
-                    <span style={{ fontSize: "12px", padding: "4px 12px", background: "#F8FAFC", color: "#64748B", borderRadius: "20px", border: "1px solid #E2E8F0" }}>
+                    <span className="text-xs px-3 py-1 bg-slate-50 text-slate-500 rounded-full border border-slate-200">
                       📅 {activePost.date ?? activePost.published_at}
                     </span>
                   )}
                 </div>
-
-                {/* Title */}
-                <h2 style={{ margin: "0 0 10px", fontSize: "20px", fontWeight: 700, color: "#0F172A", lineHeight: 1.3 }}>
-                  {activePost.title}
-                </h2>
-
-                {/* Description */}
+                <h2 className="m-0 mb-2.5 text-xl font-bold text-slate-900 leading-snug">{activePost.title}</h2>
                 {(activePost.description ?? activePost.excerpt) && (
-                  <p style={{ margin: "0 0 16px", fontSize: "14px", color: "#475569", lineHeight: 1.6 }}>
+                  <p className="m-0 mb-4 text-sm text-slate-500 leading-relaxed">
                     {activePost.description ?? activePost.excerpt}
                   </p>
                 )}
-
-                {/* Divider */}
                 {(activePost.content ?? activePost.body) && (
                   <>
-                    <div style={{ height: "1px", background: "#F1F5F9", margin: "16px 0" }} />
-                    <div style={{ fontSize: "13px", color: "#374151", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                    <div className="h-px bg-slate-100 my-4" />
+                    <div className="text-xs text-gray-700 leading-7 whitespace-pre-wrap">
                       {activePost.content ?? activePost.body}
                     </div>
                   </>
                 )}
-
-                {/* Actions */}
-                <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
-                  <button
-                    onClick={() => { setShowViewModal(false); openEdit(activePost); }}
-                    style={{ flex: 1, padding: "10px", border: "none", borderRadius: "8px", background: "#155DFC", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
-                  >
+                <div className="flex gap-2.5 mt-6">
+                  <button onClick={() => { setShowViewModal(false); openEdit(activePost); }} className={btnPrimary(false)}>
                     ✏️ Edit Post
                   </button>
                   <button
                     onClick={() => { setShowViewModal(false); openDelete(activePost); }}
-                    style={{ flex: 1, padding: "10px", border: "1px solid #FECACA", borderRadius: "8px", background: "#FEF2F2", color: "#DC2626", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+                    className="flex-1 py-2.5 border border-red-200 rounded-lg bg-red-50 text-red-600 text-sm font-semibold cursor-pointer hover:bg-red-100 transition-colors"
                   >
                     🗑️ Delete Post
                   </button>
@@ -513,50 +378,32 @@ export default function AdminBlogpost() {
           );
         })()}
 
-        {/* ═══════════════════════════════════
-            EDIT MODAL
-        ═══════════════════════════════════ */}
+        {/* ── EDIT MODAL ── */}
         {showEditModal && activePost && (
           <Overlay onClose={() => setShowEditModal(false)}>
-            <ModalHeader
-              title="Edit Post"
-              subtitle={`Editing: ${activePost.title}`}
-              onClose={() => setShowEditModal(false)}
-            />
-            <form onSubmit={handleEditSubmit} style={{ padding: "20px 24px 24px" }}>
-              <ImageUploadZone
-                id="editImg"
-                onChange={handleEditImageChange}
-                preview={editPreview}
-                onRemove={() => { setEditPreview(null); setEditFile(null); setRemoveImage(true); }}
-              />
-
+            <ModalHeader title="Edit Post" subtitle={`Editing: ${activePost.title}`} onClose={() => setShowEditModal(false)} />
+            <form onSubmit={handleEditSubmit} className="px-6 pt-5 pb-6">
+              <ImageUploadZone id="editImg" onChange={handleEditImageChange} preview={editPreview} onRemove={() => { setEditPreview(null); setEditFile(null); setRemoveImage(true); }} />
               <Field label="Title">
-                <input name="title" value={editForm.title} onChange={handleEditChange} required style={inputStyle} />
+                <input name="title" value={editForm.title} onChange={handleEditChange} required className={inputCls} />
               </Field>
-
               <Field label="Description / Excerpt">
-                <textarea name="description" value={editForm.description} onChange={handleEditChange} style={{ ...inputStyle, height: "72px", resize: "vertical" }} />
+                <textarea name="description" value={editForm.description} onChange={handleEditChange} className={`${inputCls} h-[72px] resize-y`} />
               </Field>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              <div className="grid grid-cols-2 gap-3.5">
                 <Field label="Category">
                   <CategorySelect name="category" value={editForm.category} onChange={handleEditChange} />
                 </Field>
                 <Field label="Date">
-                  <input type="date" name="date" value={editForm.date} onChange={handleEditChange} style={inputStyle} />
+                  <input type="date" name="date" value={editForm.date} onChange={handleEditChange} className={inputCls} />
                 </Field>
               </div>
-
               <Field label="Content">
-                <textarea name="content" value={editForm.content} onChange={handleEditChange} placeholder="Full post content…" style={{ ...inputStyle, height: "120px", resize: "vertical" }} />
+                <textarea name="content" value={editForm.content} onChange={handleEditChange} placeholder="Full post content…" className={`${inputCls} h-[120px] resize-y`} />
               </Field>
-
-              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-                <button type="button" onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: "10px", border: "1px solid #E2E8F0", borderRadius: "8px", background: "#fff", color: "#374151", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} style={{ flex: 1, padding: "10px", border: "none", borderRadius: "8px", background: saving ? "#93C5FD" : "#155DFC", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
+              <div className="flex gap-2.5 mt-2">
+                <button type="button" onClick={() => setShowEditModal(false)} className={btnCancel}>Cancel</button>
+                <button type="submit" disabled={saving} className={btnPrimary(saving)}>
                   {saving ? "Saving…" : "Save Changes"}
                 </button>
               </div>
@@ -564,23 +411,23 @@ export default function AdminBlogpost() {
           </Overlay>
         )}
 
-        {/* ═══════════════════════════════════
-            DELETE CONFIRM MODAL
-        ═══════════════════════════════════ */}
+        {/* ── DELETE MODAL ── */}
         {showDeleteModal && activePost && (
           <Overlay onClose={() => setShowDeleteModal(false)}>
-            <div style={{ padding: "32px 28px", textAlign: "center" }}>
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>🗑️</div>
-              <h3 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700, color: "#0F172A" }}>Delete Post?</h3>
-              <p style={{ margin: "0 0 6px", fontSize: "14px", color: "#64748B" }}>
+            <div className="px-7 py-8 text-center">
+              <div className="text-5xl mb-3">🗑️</div>
+              <h3 className="m-0 mb-2 text-lg font-bold text-slate-900">Delete Post?</h3>
+              <p className="m-0 mb-1.5 text-sm text-slate-500">
                 "<strong>{activePost.title}</strong>"
               </p>
-              <p style={{ margin: "0 0 24px", fontSize: "13px", color: "#94A3B8" }}>This action cannot be undone.</p>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: "10px", border: "1px solid #E2E8F0", borderRadius: "8px", background: "#fff", color: "#374151", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-                  Cancel
-                </button>
-                <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: "10px", border: "none", borderRadius: "8px", background: deleting ? "#FCA5A5" : "#DC2626", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: deleting ? "not-allowed" : "pointer" }}>
+              <p className="m-0 mb-6 text-xs text-slate-400">This action cannot be undone.</p>
+              <div className="flex gap-2.5">
+                <button onClick={() => setShowDeleteModal(false)} className={btnCancel}>Cancel</button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className={`flex-1 py-2.5 border-none rounded-lg text-white text-sm font-semibold transition-colors ${deleting ? "bg-red-300 cursor-not-allowed" : "bg-red-600 hover:bg-red-700 cursor-pointer"}`}
+                >
                   {deleting ? "Deleting…" : "Delete"}
                 </button>
               </div>
@@ -588,35 +435,31 @@ export default function AdminBlogpost() {
           </Overlay>
         )}
 
-        {/* ═══════════════════════════════════
-            MAIN CONTENT
-        ═══════════════════════════════════ */}
-        <main style={{ flex: 1, padding: "0 0 40px", overflowX: "hidden" }}>
+        {/* ── MAIN CONTENT ── */}
+        <main className="flex-1 pb-10 overflow-x-hidden">
 
           {/* Top Bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px 0", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div className="flex items-center justify-between px-7 pt-5 gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
               <button
-                className="abp-burger"
+                className="lg:hidden bg-transparent border-none text-xl cursor-pointer text-gray-700 hover:bg-gray-100 px-2 py-1 rounded-md"
                 onClick={() => setSidebarOpen(true)}
-                style={{ display: "none", background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#374151" }}
               >☰</button>
-              <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: "#0F172A" }}>Blog Post</h1>
+              <h1 className="m-0 text-xl font-bold text-slate-900">Blog Post</h1>
             </div>
-            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-              {/* Search */}
-              <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "13px", color: "#94A3B8" }}>🔍</span>
+            <div className="flex gap-2.5 items-center flex-wrap">
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">🔍</span>
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search posts…"
-                  style={{ ...inputStyle, paddingLeft: "30px", width: "220px", background: "#fff" }}
+                  className={`${inputCls} pl-8 w-[220px]`}
                 />
               </div>
               <button
                 onClick={() => { setAddForm(emptyForm); setAddPreview(null); setAddFile(null); setShowAddModal(true); }}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px", border: "none", borderRadius: "8px", background: "#155DFC", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+                className="flex items-center gap-1.5 px-4 py-2 border-none rounded-lg bg-blue-600 text-white text-sm font-semibold cursor-pointer hover:bg-blue-700 transition-colors"
               >
                 + New Post
               </button>
@@ -624,59 +467,58 @@ export default function AdminBlogpost() {
           </div>
 
           {/* Stats Cards */}
-          <div
-            className="abp-stats"
-            style={{ display: "grid", gap: "14px", padding: "20px 28px", gridTemplateColumns: "repeat(5,1fr)" }}
-          >
+          <div className="grid gap-3.5 px-7 py-5 grid-cols-2 md:grid-cols-5">
             {CATEGORIES.map((cat) => (
-              <div key={cat} style={{ background: "#fff", borderRadius: "12px", padding: "16px 18px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #F1F5F9" }}>
-                <div style={{ fontSize: "11px", fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
+              <div key={cat} className="bg-white rounded-xl px-4 py-4 shadow-sm border border-slate-100">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
                   {categoryMap[cat]}
                 </div>
-                <div style={{ fontSize: "26px", fontWeight: 800, color: "#0F172A", lineHeight: 1 }}>
+                <div className="text-[26px] font-extrabold text-slate-900 leading-none">
                   {loading ? "—" : counts[cat]}
                 </div>
-                {cat === "All" && <div style={{ fontSize: "10px", color: "#94A3B8", marginTop: "3px", fontWeight: 600, letterSpacing: "0.05em" }}>TOTAL</div>}
+                {cat === "All" && (
+                  <div className="text-[10px] text-slate-400 mt-0.5 font-semibold tracking-wide">TOTAL</div>
+                )}
               </div>
             ))}
           </div>
 
           {/* Filter Tabs */}
-          <div style={{ padding: "0 28px 16px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          <div className="px-7 pb-4 flex gap-1.5 flex-wrap">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                style={{
-                  padding: "6px 14px", borderRadius: "20px", border: "1px solid",
-                  fontSize: "12px", fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
-                  background:    activeCategory === cat ? "#155DFC" : "#fff",
-                  color:         activeCategory === cat ? "#fff"    : "#64748B",
-                  borderColor:   activeCategory === cat ? "#155DFC" : "#E2E8F0",
-                }}
+                className={`px-3.5 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-all
+                  ${activeCategory === cat
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600"
+                  }`}
               >
                 {cat}
-                <span style={{ marginLeft: "5px", fontSize: "11px", opacity: 0.75 }}>({counts[cat]})</span>
+                <span className="ml-1 text-[11px] opacity-75">({counts[cat]})</span>
               </button>
             ))}
           </div>
 
           {/* Error */}
           {error && (
-            <div style={{ margin: "0 28px 16px", padding: "12px 16px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "8px", color: "#DC2626", fontSize: "13px" }}>
+            <div className="mx-7 mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs flex items-center gap-2">
               ⚠️ {error}
-              <button onClick={fetchPosts} style={{ marginLeft: "10px", fontSize: "12px", color: "#155DFC", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Retry</button>
+              <button onClick={fetchPosts} className="ml-2 text-blue-600 bg-transparent border-none cursor-pointer underline text-xs">
+                Retry
+              </button>
             </div>
           )}
 
           {/* Table */}
-          <div style={{ margin: "0 28px", background: "#fff", borderRadius: "14px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #F1F5F9", overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <div className="mx-7 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #F1F5F9" }}>
+                  <tr className="bg-slate-50 border-b border-slate-100">
                     {["IMAGE", "TITLE & DESCRIPTION", "CATEGORY", "DATE", "ACTION"].map((h) => (
-                      <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: "10px", fontWeight: 700, color: "#94A3B8", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-wider whitespace-nowrap">
                         {h}
                       </th>
                     ))}
@@ -687,17 +529,25 @@ export default function AdminBlogpost() {
                     Array.from({ length: 4 }).map((_, i) => (
                       <tr key={i}>
                         {[80, 260, 120, 100, 140].map((w, j) => (
-                          <td key={j} style={{ padding: "14px 16px" }}>
-                            <div style={{ height: j === 1 ? "36px" : "16px", width: `${Math.min(w, 140)}px`, background: "#F1F5F9", borderRadius: "6px",
-                              backgroundImage: "linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)",
-                              backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+                          <td key={j} className="px-4 py-3.5">
+                            <div
+                              className="rounded-md"
+                              style={{
+                                height: j === 1 ? "36px" : "16px",
+                                width: `${Math.min(w, 140)}px`,
+                                background: "#F1F5F9",
+                                backgroundImage: "linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)",
+                                backgroundSize: "200% 100%",
+                                animation: "shimmer 1.4s infinite",
+                              }}
+                            />
                           </td>
                         ))}
                       </tr>
                     ))
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#94A3B8", fontSize: "14px" }}>
+                      <td colSpan={5} className="py-12 text-center text-slate-400 text-sm">
                         {search ? `No posts matching "${search}"` : "No posts found."}
                       </td>
                     </tr>
@@ -707,43 +557,35 @@ export default function AdminBlogpost() {
                       const cat    = post.category ?? post.category_name ?? "—";
                       const date   = post.date ?? post.published_at ?? "—";
                       return (
-                        <tr key={post.id ?? post.post_id} className="abp-row">
-                          <td style={{ padding: "12px 16px" }}>
+                        <tr key={post.id ?? post.post_id} className="border-b border-slate-50 hover:bg-blue-50/30 transition-colors">
+                          <td className="px-4 py-3">
                             {imgSrc ? (
-                              <img src={imgSrc} alt={post.title} style={{ width: "64px", height: "48px", borderRadius: "8px", objectFit: "cover", display: "block", border: "1px solid #F1F5F9" }} onError={(e) => { e.target.style.display = "none"; }} />
+                              <img src={imgSrc} alt={post.title} className="w-16 h-12 rounded-lg object-cover block border border-slate-100" onError={(e) => { e.target.style.display = "none"; }} />
                             ) : (
-                              <div style={{ width: "64px", height: "48px", borderRadius: "8px", background: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", color: "#CBD5E1" }}>🖼</div>
+                              <div className="w-16 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-xl text-slate-300">🖼</div>
                             )}
                           </td>
-                          <td style={{ padding: "12px 16px", maxWidth: "300px" }}>
-                            <div style={{ fontWeight: 600, color: "#0F172A", marginBottom: "3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</div>
-                            <div style={{ fontSize: "12px", color: "#94A3B8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                              {post.description ?? post.excerpt ?? ""}
-                            </div>
+                          <td className="px-4 py-3 max-w-[300px]">
+                            <div className="font-semibold text-slate-900 mb-0.5 truncate">{post.title}</div>
+                            <div className="text-xs text-slate-400 truncate">{post.description ?? post.excerpt ?? ""}</div>
                           </td>
-                          <td style={{ padding: "12px 16px" }}>
-                            <span style={{ fontSize: "11px", fontWeight: 600, padding: "4px 10px", borderRadius: "20px", background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", whiteSpace: "nowrap" }}>
+                          <td className="px-4 py-3">
+                            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                               {cat}
                             </span>
                           </td>
-                          <td style={{ padding: "12px 16px", color: "#64748B", whiteSpace: "nowrap", fontSize: "12px" }}>{date}</td>
-                          <td style={{ padding: "12px 16px" }}>
-                            <div style={{ display: "flex", gap: "6px" }}>
-                              <button
-                                className="abp-act-btn"
-                                onClick={() => openView(post)}
-                                style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #E2E8F0", background: "#F8FAFC", color: "#374151", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
-                              >View</button>
-                              <button
-                                className="abp-act-btn"
-                                onClick={() => openEdit(post)}
-                                style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #BFDBFE", background: "#EFF6FF", color: "#1D4ED8", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
-                              >Edit</button>
-                              <button
-                                className="abp-act-btn"
-                                onClick={() => openDelete(post)}
-                                style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
-                              >Delete</button>
+                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">{date}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1.5">
+                              <button onClick={() => openView(post)} className="px-3 py-1 rounded-md border border-slate-200 bg-slate-50 text-gray-700 text-xs font-semibold cursor-pointer hover:opacity-75 transition-opacity">
+                                View
+                              </button>
+                              <button onClick={() => openEdit(post)} className="px-3 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold cursor-pointer hover:opacity-75 transition-opacity">
+                                Edit
+                              </button>
+                              <button onClick={() => openDelete(post)} className="px-3 py-1 rounded-md border border-red-200 bg-red-50 text-red-600 text-xs font-semibold cursor-pointer hover:opacity-75 transition-opacity">
+                                Delete
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -755,18 +597,14 @@ export default function AdminBlogpost() {
             </div>
           </div>
 
-          {/* Count footer */}
+          {/* Footer count */}
           {!loading && filtered.length > 0 && (
-            <div style={{ padding: "10px 28px 0", fontSize: "12px", color: "#94A3B8" }}>
+            <div className="px-7 pt-2.5 text-xs text-slate-400">
               Showing {filtered.length} of {posts.length} post{posts.length !== 1 ? "s" : ""}
             </div>
           )}
         </main>
       </div>
-
-      <style>{`
-        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-      `}</style>
     </>
   );
 }

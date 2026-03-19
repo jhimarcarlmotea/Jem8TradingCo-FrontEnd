@@ -4,16 +4,16 @@ import AdminNav from "../components/AdminNav";
 
 // ── Axios base config ──────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/admin", // ← change to your Laravel API URL
-  withCredentials: true,                 // sends cookies / session
+  baseURL: "http://127.0.0.1:8000/api/admin",
+  withCredentials: true,
   headers: { "Content-Type": "application/json", Accept: "application/json" },
 });
 
 // ── Status display config ──────────────────────────────────────────────────────
 const statusConfig = {
-  pending: { bg: "#DAF5FF", border: "#B9CFF8", color: "#2563EB", label: "New" },
-  read:    { bg: "#FAF1E3", border: "#F8E1BC", color: "#D97706", label: "Replied" },
-  replied: { bg: "#E4F6F0", border: "#BAEADA", color: "#059669", label: "Resolved" },
+  pending: { badge: "bg-[#DAF5FF] border border-[#B9CFF8] text-blue-600",  label: "New"      },
+  read:    { badge: "bg-[#FAF1E3] border border-[#F8E1BC] text-amber-600", label: "Replied"  },
+  replied: { badge: "bg-[#E4F6F0] border border-[#BAEADA] text-emerald-600", label: "Resolved" },
 };
 
 const TAB_MAP = {
@@ -27,10 +27,8 @@ const TAB_MAP = {
 // ── Reply Modal ────────────────────────────────────────────────────────────────
 function ReplyModal({ contact, onClose, onReplied }) {
   const [replyMessage, setReplyMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-
-  console.log(contact)
+  const [sending, setSending]           = useState(false);
+  const [error, setError]               = useState("");
 
   const handleSend = async () => {
     if (!replyMessage.trim()) return;
@@ -48,27 +46,15 @@ function ReplyModal({ contact, onClose, onReplied }) {
   };
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999,
-    }}>
-      <div style={{
-        background: "#fff", borderRadius: "16px", padding: "28px 28px 24px",
-        width: "min(520px,90vw)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-      }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+    <div className="fixed inset-0 bg-black/35 flex items-center justify-center z-[999]">
+      <div className="bg-white rounded-2xl px-7 pt-7 pb-6 w-[min(520px,90vw)] shadow-2xl">
+        <h2 className="m-0 mb-1 text-base font-bold text-gray-900">
           Reply to {contact.first_name} {contact.last_name}
         </h2>
-        <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#6B7280" }}>
-          {contact.email}
-        </p>
+        <p className="m-0 mb-4 text-xs text-gray-500">{contact.email}</p>
 
         {/* Original message */}
-        <div style={{
-          background: "#F9FAFB", border: "1px solid #E5E7EB",
-          borderRadius: "8px", padding: "12px 14px", marginBottom: "14px",
-          fontSize: "13px", color: "#374151",
-        }}>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-3 mb-3.5 text-sm text-gray-700">
           <strong>Original:</strong> {contact.message}
         </div>
 
@@ -77,29 +63,24 @@ function ReplyModal({ contact, onClose, onReplied }) {
           onChange={(e) => setReplyMessage(e.target.value)}
           placeholder="Type your reply here…"
           rows={5}
-          style={{
-            width: "100%", boxSizing: "border-box", borderRadius: "8px",
-            border: "1px solid #D1D5DB", padding: "10px 12px",
-            fontSize: "13px", resize: "vertical", outline: "none",
-            fontFamily: "inherit",
-          }}
+          className="w-full box-border rounded-lg border border-gray-300 px-3 py-2.5 text-sm resize-y outline-none font-[inherit]"
         />
 
-        {error && (
-          <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#DC2626" }}>{error}</p>
-        )}
+        {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "14px" }}>
-          <button onClick={onClose} style={{
-            padding: "7px 18px", borderRadius: "7px",
-            border: "1px solid #D1D5DB", background: "#fff",
-            color: "#374151", fontSize: "13px", cursor: "pointer",
-          }}>Cancel</button>
-          <button onClick={handleSend} disabled={sending || !replyMessage.trim()} style={{
-            padding: "7px 18px", borderRadius: "7px",
-            border: "none", background: sending ? "#93C5FD" : "#155DFC",
-            color: "#fff", fontSize: "13px", fontWeight: 600, cursor: sending ? "not-allowed" : "pointer",
-          }}>
+        <div className="flex justify-end gap-2 mt-3.5">
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending || !replyMessage.trim()}
+            className={`px-4 py-1.5 rounded-lg border-none text-white text-xs font-semibold transition-colors
+              ${sending || !replyMessage.trim() ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 cursor-pointer"}`}
+          >
             {sending ? "Sending…" : "Send Reply"}
           </button>
         </div>
@@ -110,15 +91,14 @@ function ReplyModal({ contact, onClose, onReplied }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function AdminContactMessages() {
-  const [sidebarOpen, setSidebarOpen]   = useState(false);
-  const [activeTab, setActiveTab]       = useState("All");
-  const [messages, setMessages]         = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState("");
-  const [replyTarget, setReplyTarget]   = useState(null);
-  const [deletingId, setDeletingId]     = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab]     = useState("All");
+  const [messages, setMessages]       = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState("");
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [deletingId, setDeletingId]   = useState(null);
 
-  // ── Fetch all contacts ──────────────────────────────────────────────────────
   const fetchMessages = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -134,7 +114,6 @@ export default function AdminContactMessages() {
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this message?")) return;
     setDeletingId(id);
@@ -148,14 +127,12 @@ export default function AdminContactMessages() {
     }
   };
 
-  // ── After reply sent, mark as replied locally ───────────────────────────────
   const handleReplied = (id) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === id ? { ...m, status: "replied" } : m))
     );
   };
 
-  // ── Tab counts ──────────────────────────────────────────────────────────────
   const countFor = (key) => {
     if (key === "All" || key === "Live") return messages.length;
     return messages.filter((m) => m.status === TAB_MAP[key]).length;
@@ -165,7 +142,6 @@ export default function AdminContactMessages() {
     key: k, label: k, count: k !== "Live" ? countFor(k) : null,
   }));
 
-  // ── Filtered list ───────────────────────────────────────────────────────────
   const filtered =
     activeTab === "All" || activeTab === "Live"
       ? messages
@@ -173,11 +149,6 @@ export default function AdminContactMessages() {
 
   return (
     <>
-      <style>{`
-        @media (min-width: 768px) { .acm-burger { display: none !important; } }
-        @media (max-width: 767px)  { .acm-burger { display: inline !important; } }
-      `}</style>
-
       {replyTarget && (
         <ReplyModal
           contact={replyTarget}
@@ -186,62 +157,46 @@ export default function AdminContactMessages() {
         />
       )}
 
-      <div style={{
-        display: "flex", minHeight: "100vh", background: "#EAF2ED",
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
-      }}>
+      <div className="flex min-h-screen bg-[#EAF2ED] font-sans">
         <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        <main style={{ flex: 1, padding: "28px 24px", overflowX: "hidden", minWidth: 0 }}>
+        <main className="flex-1 px-6 py-7 overflow-x-hidden min-w-0">
 
           {/* ── Top bar ── */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+          <div className="flex items-center gap-3 mb-6">
             <button
-              className="acm-burger"
+              className="lg:hidden bg-transparent border-none text-[22px] cursor-pointer text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100"
               onClick={() => setSidebarOpen(true)}
-              style={{
-                display: "none", background: "none", border: "none",
-                fontSize: "22px", cursor: "pointer", color: "#374151",
-                padding: "4px 8px", borderRadius: "6px",
-              }}
-            >☰</button>
+            >
+              ☰
+            </button>
             <div>
-              <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#111827", margin: 0 }}>
-                Contact Messages
-              </h1>
-              <p style={{ fontSize: "13px", color: "#6B6A6A", margin: "4px 0 0" }}>
+              <h1 className="text-xl font-bold text-gray-900 m-0">Contact Messages</h1>
+              <p className="text-xs text-[#6B6A6A] mt-1 mb-0">
                 View and respond to messages from customers
               </p>
             </div>
-            {/* Refresh button */}
             <button
               onClick={fetchMessages}
-              style={{
-                marginLeft: "auto", padding: "6px 14px", borderRadius: "8px",
-                border: "1px solid #D1D5DB", background: "#fff",
-                color: "#374151", fontSize: "12px", cursor: "pointer",
-              }}
+              className="ml-auto px-3.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs cursor-pointer hover:bg-gray-50 transition-colors"
             >
               ↻ Refresh
             </button>
           </div>
 
           {/* ── Filter Tabs ── */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+          <div className="flex gap-2 mb-5 flex-wrap">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  style={{
-                    padding: "6px 14px", borderRadius: "20px",
-                    border: isActive ? "1px solid #155DFC" : "1px solid #D1D5DB",
-                    background: isActive ? "#155DFC" : "rgba(0,0,0,0.05)",
-                    color: isActive ? "#fff" : "#374151",
-                    fontSize: "13px", fontWeight: 500,
-                    cursor: "pointer", whiteSpace: "nowrap",
-                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap transition-colors
+                    ${isActive
+                      ? "bg-blue-600 border border-blue-600 text-white"
+                      : "bg-black/5 border border-gray-300 text-gray-700 hover:bg-black/10"
+                    }`}
                 >
                   {tab.label}{tab.count !== null ? ` (${tab.count})` : ""}
                 </button>
@@ -249,115 +204,84 @@ export default function AdminContactMessages() {
             })}
           </div>
 
-          {/* ── Loading / Error ── */}
+          {/* ── Loading ── */}
           {loading && (
-            <div style={{ textAlign: "center", padding: "40px", color: "#9CA3AF", fontSize: "14px" }}>
+            <div className="text-center py-10 text-gray-400 text-sm">
               Loading messages…
             </div>
           )}
 
+          {/* ── Error ── */}
           {error && !loading && (
-            <div style={{
-              background: "#FEF2F2", border: "1px solid #FCA5A5",
-              borderRadius: "10px", padding: "14px 18px",
-              color: "#DC2626", fontSize: "13px", marginBottom: "16px",
-            }}>
+            <div className="bg-red-50 border border-red-300 rounded-xl px-4 py-3.5 text-red-600 text-xs mb-4 flex items-center gap-2">
               ⚠️ {error}
-              <button onClick={fetchMessages} style={{
-                marginLeft: "12px", padding: "3px 10px", borderRadius: "6px",
-                border: "1px solid #FCA5A5", background: "#fff",
-                color: "#DC2626", fontSize: "12px", cursor: "pointer",
-              }}>Retry</button>
+              <button
+                onClick={fetchMessages}
+                className="ml-3 px-2.5 py-0.5 rounded-md border border-red-300 bg-white text-red-600 text-xs cursor-pointer hover:bg-red-50"
+              >
+                Retry
+              </button>
             </div>
           )}
 
           {/* ── Message Cards ── */}
           {!loading && !error && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div className="flex flex-col gap-3">
               {filtered.map((msg) => {
                 const cfg = statusConfig[msg.status] ?? statusConfig.pending;
                 return (
                   <div
                     key={msg.id}
-                    style={{
-                      background: "#fff", borderRadius: "14px",
-                      padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-                      display: "flex", alignItems: "flex-start", gap: "16px",
-                    }}
+                    className="bg-white rounded-2xl px-5 py-4 shadow-sm flex items-start gap-4"
                   >
                     {/* Avatar */}
-                    <div style={{
-                      width: "48px", height: "48px", borderRadius: "50%",
-                      background: "#E8E8E8", display: "flex",
-                      alignItems: "center", justifyContent: "center",
-                      fontSize: "20px", flexShrink: 0,
-                    }}>✉️</div>
+                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-xl shrink-0">
+                      ✉️
+                    </div>
 
                     {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        display: "flex", alignItems: "center",
-                        gap: "8px", flexWrap: "wrap", marginBottom: "4px",
-                      }}>
-                        <span style={{ fontWeight: 600, fontSize: "14px", color: "#111827" }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="font-semibold text-sm text-gray-900">
                           {msg.first_name} {msg.last_name}
                         </span>
-                        <span style={{ fontSize: "13px", color: "#787878" }}>
-                          ({msg.email})
-                        </span>
-                        <span style={{
-                          padding: "3px 10px", borderRadius: "20px",
-                          fontSize: "12px", fontWeight: 600,
-                          background: cfg.bg, border: `1px solid ${cfg.border}`,
-                          color: cfg.color, whiteSpace: "nowrap",
-                        }}>
+                        <span className="text-xs text-[#787878]">({msg.email})</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${cfg.badge}`}>
                           {cfg.label}
                         </span>
                       </div>
 
                       {msg.phone_number && (
-                        <div style={{ fontSize: "12px", color: "#9CA3AF", marginBottom: "3px" }}>
+                        <div className="text-xs text-gray-400 mb-0.5">
                           📞 {msg.phone_number}
                         </div>
                       )}
 
-                      <div style={{
-                        fontSize: "13px", color: "#666565",
-                        whiteSpace: "nowrap", overflow: "hidden",
-                        textOverflow: "ellipsis", maxWidth: "600px",
-                      }}>
+                      <div className="text-xs text-[#666565] truncate max-w-[600px]">
                         {msg.message}
                       </div>
                     </div>
 
                     {/* Date + Actions */}
-                    <div style={{
-                      display: "flex", flexDirection: "column",
-                      alignItems: "flex-end", gap: "10px", flexShrink: 0,
-                    }}>
-                      <span style={{ fontSize: "12px", color: "#9CA3AF", whiteSpace: "nowrap" }}>
+                    <div className="flex flex-col items-end gap-2.5 shrink-0">
+                      <span className="text-xs text-gray-400 whitespace-nowrap">
                         {new Date(msg.created_at).toLocaleString()}
                       </span>
-                      <div style={{ display: "flex", gap: "8px" }}>
+                      <div className="flex gap-2">
                         <button
                           onClick={() => setReplyTarget(msg)}
-                          style={{
-                            padding: "5px 14px", borderRadius: "6px",
-                            border: "1px solid #D1D5DB", background: "#fff",
-                            color: "#374151", fontSize: "12px", fontWeight: 500, cursor: "pointer",
-                          }}
-                        >Reply</button>
+                          className="px-3.5 py-1 rounded-md border border-gray-300 bg-white text-gray-700 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors"
+                        >
+                          Reply
+                        </button>
                         <button
                           onClick={() => handleDelete(msg.id)}
                           disabled={deletingId === msg.id}
-                          style={{
-                            padding: "5px 10px", borderRadius: "6px",
-                            border: "1px solid #FCA5A5", background: "#FEF2F2",
-                            color: "#DC2626", fontSize: "13px",
-                            cursor: deletingId === msg.id ? "not-allowed" : "pointer",
-                            opacity: deletingId === msg.id ? 0.6 : 1,
-                          }}
-                        >🗑</button>
+                          className={`px-2.5 py-1 rounded-md border border-red-300 bg-red-50 text-red-600 text-sm transition-opacity
+                            ${deletingId === msg.id ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-red-100"}`}
+                        >
+                          🗑
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -365,11 +289,7 @@ export default function AdminContactMessages() {
               })}
 
               {filtered.length === 0 && (
-                <div style={{
-                  background: "#fff", borderRadius: "14px", padding: "40px",
-                  textAlign: "center", color: "#9CA3AF", fontSize: "14px",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-                }}>
+                <div className="bg-white rounded-2xl p-10 text-center text-gray-400 text-sm shadow-sm">
                   No messages found.
                 </div>
               )}
@@ -378,23 +298,22 @@ export default function AdminContactMessages() {
 
           {/* ── Pagination ── */}
           {!loading && !error && (
-            <div style={{
-              display: "flex", justifyContent: "space-between",
-              alignItems: "center", marginTop: "20px",
-              fontSize: "12px", color: "#9CA3AF",
-            }}>
+            <div className="flex justify-between items-center mt-5 text-xs text-gray-400">
               <span>
                 Showing {filtered.length} message{filtered.length !== 1 ? "s" : ""}
               </span>
-              <div style={{ display: "flex", gap: "6px" }}>
+              <div className="flex gap-1.5">
                 {[1, 2, 3].map((p) => (
-                  <button key={p} style={{
-                    width: "28px", height: "28px", borderRadius: "6px",
-                    border: p === 1 ? "none" : "1px solid #E5E7EB",
-                    background: p === 1 ? "#155DFC" : "#fff",
-                    color: p === 1 ? "#fff" : "#374151",
-                    fontSize: "12px", cursor: "pointer", fontWeight: 500,
-                  }}>{p}</button>
+                  <button
+                    key={p}
+                    className={`w-7 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors
+                      ${p === 1
+                        ? "bg-blue-600 text-white border-none"
+                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                      }`}
+                  >
+                    {p}
+                  </button>
                 ))}
               </div>
             </div>
