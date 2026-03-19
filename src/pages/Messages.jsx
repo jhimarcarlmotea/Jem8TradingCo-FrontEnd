@@ -61,6 +61,7 @@ export default function Messages() {
   const [input, setInput]               = useState("");
   const [searchQuery, setSearchQuery]   = useState("");
   const [unauthenticated, setUnauthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const bottomRef                       = useRef(null);
 
   const thread = threads.find((t) => t.id === activeThread);
@@ -104,7 +105,7 @@ export default function Messages() {
         const msgsResp = await getChatMessages(activeThread);
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
         setThreads((prev) =>
-          prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages } : t))
+          prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages.length > 0 ? serverMessages : t.messages } : t))
         );
       } catch (err2) {
         console.warn("Failed to refresh messages after send:", err2);
@@ -140,7 +141,8 @@ export default function Messages() {
       try {
         // quick check to ensure session auth is valid
         try {
-          await api.get("/me");
+          const meResp = await api.get("/me");
+          if (meResp && meResp.data) setCurrentUser(meResp.data);
         } catch (mErr) {
           // ignore — will surface when requesting rooms
         }
@@ -163,7 +165,12 @@ export default function Messages() {
             lastTime: r.last_time || "",
             messages: Array.isArray(r.messages) ? r.messages : [],
           }));
-          setThreads(mapped);
+          setThreads((prev) =>
+            mapped.map((m) => ({
+              ...m,
+              messages: Array.isArray(m.messages) && m.messages.length > 0 ? m.messages : (prev.find((p) => p.id === m.id)?.messages || []),
+            }))
+          );
           setActiveThread(mapped[0]?.id ?? 1);
         }
       } catch (err) {
@@ -171,7 +178,8 @@ export default function Messages() {
         const msg = err && err.message ? err.message : String(err);
         if (msg === "Unauthenticated.") {
           try {
-            await api.get("/sanctum/csrf-cookie");
+            // CSRF endpoint is served from the backend root (not under /api)
+            await api.get("http://127.0.0.1:8000/sanctum/csrf-cookie", { withCredentials: true });
             // retry once
             const roomsResp2 = await getChatRooms();
             const rooms2 = Array.isArray(roomsResp2) ? roomsResp2 : roomsResp2.rooms || roomsResp2.chatrooms || [];
@@ -187,7 +195,12 @@ export default function Messages() {
                 lastTime: r.last_time || "",
                 messages: Array.isArray(r.messages) ? r.messages : [],
               }));
-              setThreads(mapped);
+              setThreads((prev) =>
+                mapped.map((m) => ({
+                  ...m,
+                  messages: Array.isArray(m.messages) && m.messages.length > 0 ? m.messages : (prev.find((p) => p.id === m.id)?.messages || []),
+                }))
+              );
               setActiveThread(mapped[0]?.id ?? 1);
               return;
             }
@@ -214,7 +227,7 @@ export default function Messages() {
         const msgsResp = await getChatMessages(activeThread);
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
         if (!mounted) return;
-        setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages } : t)));
+        setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages.length > 0 ? serverMessages : t.messages } : t)));
       } catch (err) {
         // if API not available, keep local mock
       }
@@ -240,6 +253,18 @@ export default function Messages() {
   });
 
   const totalUnread = threads.reduce((s, t) => s + t.unread, 0);
+
+  const formatMsgTime = (msg) => {
+    const t = msg?.time || msg?.created_at || msg?.createdAt || msg?.createdAt;
+    if (!t) return "";
+    try {
+      return new Date(t).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    } catch (e) {
+      return String(t);
+    }
+  };
+
+  const getMsgText = (msg) => msg?.text || msg?.messages || msg?.message || "";
 
   return (
     <div className="msg-page">
@@ -290,11 +315,11 @@ export default function Messages() {
               {filteredThreads.length === 0 ? (
                 <div className="msg-thread-empty">No conversations found.</div>
               ) : (
-                filteredThreads.map((t) => {
+                filteredThreads.map((t, threadIdx) => {
                   const lastMsg = t.messages[t.messages.length - 1];
                   return (
                     <div
-                      key={t.id}
+                      key={t.id ?? `thread-${threadIdx}-${t.name}`}
                       className={`msg-thread-item${activeThread === t.id ? " active" : ""}${t.unread > 0 ? " unread" : ""}`}
                       onClick={() => openThread(t.id)}
                     >
@@ -308,7 +333,7 @@ export default function Messages() {
                           <span className="msg-thread-item__time">{t.lastTime}</span>
                         </div>
                         <div className="msg-thread-item__preview">
-                          {lastMsg?.img ? "📷 Photo" : lastMsg?.text}
+                          {lastMsg?.img ? "📷 Photo" : (lastMsg?.text || lastMsg?.messages || lastMsg?.message || "")}
                         </div>
                       </div>
                       {t.unread > 0 && (
@@ -340,17 +365,24 @@ export default function Messages() {
 
             {/* Messages */}
             <div className="msg-chat__messages">
-              {thread?.messages.map((msg) => (
+              {thread?.messages.map((msg, msgIdx) => {
+                const isFromMe = msg?.from === "me" || (currentUser && (
+                  msg.user_id === currentUser.id ||
+                  msg.account_id === currentUser.id ||
+                  msg.sender_id === currentUser.id ||
+                  (msg.account && msg.account.id === currentUser.id)
+                ));
+                return (
                 <div
-                  key={msg.id}
-                  className={`msg-bubble-row${msg.from === "me" ? " msg-bubble-row--me" : ""}`}
+                  key={msg.id ?? `msg-${msgIdx}-${msg.time || msg.from || ''}`}
+                  className={`msg-bubble-row${isFromMe ? " msg-bubble-row--me" : ""}`}
                 >
-                  {msg.from !== "me" && (
+                  {!isFromMe && (
                     <div className="msg-bubble__avatar" style={{ background: thread.avatarBg }}>
                       {thread.avatar}
                     </div>
                   )}
-                  <div className={`msg-bubble${msg.from === "me" ? " msg-bubble--me" : ""}`}>
+                  <div className={`msg-bubble${isFromMe ? " msg-bubble--me" : ""}`}>
                     {msg.img && (
                       <img
                         src={msg.img}
@@ -359,11 +391,12 @@ export default function Messages() {
                         onError={(e) => { e.target.style.display = "none"; }}
                       />
                     )}
-                    {msg.text && <p>{msg.text}</p>}
-                    <span className="msg-bubble__time">{msg.time}</span>
+                    <p>{getMsgText(msg)}</p>
+                    <span className="msg-bubble__time">{formatMsgTime(msg)}</span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
               <div ref={bottomRef} />
             </div>
 

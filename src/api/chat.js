@@ -2,7 +2,12 @@ import api from "./axios";
 
 export async function postChatMessage(payload) {
   try {
-    const response = await api.post("/chat/messages", payload);
+    // backend expects { chatroom_id, messages }
+    const body = {
+      chatroom_id: payload.chatroom_id || payload.chatroomId || payload.chatroom || null,
+      messages: payload.messages || payload.text || payload.message || payload,
+    };
+    const response = await api.post("/chat/messages", body, { withCredentials: true });
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) throw error.response.data;
@@ -12,7 +17,8 @@ export async function postChatMessage(payload) {
 
 export async function getChatRooms() {
   try {
-    const response = await api.get("/chat/messages");
+    // backend route for rooms is /chat/rooms
+    const response = await api.get("/chat/rooms", { withCredentials: true });
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) throw error.response.data;
@@ -22,7 +28,8 @@ export async function getChatRooms() {
 
 export async function getChatMessages(chatroomId) {
   try {
-    const response = await api.get(`/chat/messages/${chatroomId}`);
+    // backend exposes messages via query param: /chat/messages?chatroom_id=...
+    const response = await api.get(`/chat/messages`, { params: { chatroom_id: chatroomId }, withCredentials: true });
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) throw error.response.data;
