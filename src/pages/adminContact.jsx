@@ -105,7 +105,6 @@ export default function AdminContactMessages() {
     try {
       const res = await api.get("/contacts");
       setMessages(res.data.data ?? []);
-      console.log(res)
     } catch (e) {
       setError(e.response?.data?.message || "Failed to load messages.");
     } finally {

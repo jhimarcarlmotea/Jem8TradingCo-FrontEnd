@@ -2,20 +2,20 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import AdminNav from "../components/AdminNav";
 
-const BASE = "http://127.0.0.1:8000";
-
+// ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: `${BASE}/api`,
+  baseURL: import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api",
   withCredentials: true,
   headers: {
     Accept: "application/json",
+    "Content-Type": "application/json",
     "X-Requested-With": "XMLHttpRequest",
   },
 });
 
 const roles = ["User", "Admin"];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const fullName = (u) =>
   [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "—";
 
@@ -26,13 +26,13 @@ const fmtDate = (iso) => {
   });
 };
 
-// ── Shared classes ────────────────────────────────────────────────────────────
+// ─── Shared classes ───────────────────────────────────────────────────────────
 const inputCls  = "w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white outline-none box-border font-[inherit] placeholder-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/8 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
 const labelCls  = "block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide";
 const btnCancel = "px-5 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer hover:bg-gray-50 hover:text-slate-900 transition-colors font-[inherit] disabled:opacity-50 disabled:cursor-not-allowed";
 const btnSave   = "px-5 py-2 rounded-lg border-none bg-blue-600 text-sm font-semibold text-white cursor-pointer shadow-[0_2px_8px_rgba(37,99,235,0.3)] hover:bg-blue-700 hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(37,99,235,0.4)] transition-all font-[inherit] disabled:opacity-50 disabled:cursor-not-allowed";
 
-// ── Modal shell ───────────────────────────────────────────────────────────────
+// ─── Modal shell ──────────────────────────────────────────────────────────────
 function ModalOverlay({ children, onClose, narrow }) {
   return (
     <div
@@ -62,13 +62,12 @@ function ModalHeader({ title, onClose, disabled }) {
   );
 }
 
-// ── Edit Modal ────────────────────────────────────────────────────────────────
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
 function EditModal({ account, onClose, onSave, saving }) {
   const [form, setForm]         = useState(null);
   const [fetching, setFetching] = useState(true);
   const [fetchErr, setFetchErr] = useState(false);
 
-  // Fetch fresh data via GET /api/showUser/{id}
   useEffect(() => {
     setFetching(true);
     setFetchErr(false);
@@ -78,8 +77,7 @@ function EditModal({ account, onClose, onSave, saving }) {
         const data = res.data?.data ?? res.data;
         setForm({ ...data });
       })
-      .catch((err) => {
-        console.error("Failed to load user:", err);
+      .catch(() => {
         setForm({ ...account });
         setFetchErr(true);
       })
@@ -89,7 +87,6 @@ function EditModal({ account, onClose, onSave, saving }) {
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  // Field names match API response keys exactly
   const fields = [
     { label: "First Name",   name: "first_name",   placeholder: "Enter first name",   type: "text"  },
     { label: "Last Name",    name: "last_name",    placeholder: "Enter last name",    type: "text"  },
@@ -148,9 +145,9 @@ function EditModal({ account, onClose, onSave, saving }) {
   );
 }
 
-// ── Role Modal ────────────────────────────────────────────────────────────────
+// ─── Role Modal ───────────────────────────────────────────────────────────────
 function RoleModal({ account, onClose, onSave, saving }) {
-  const [selectedRole, setSelectedRole] = useState(account.role);
+  const [selectedRole, setSelectedRole] = useState(account.role ?? "User");
 
   return (
     <ModalOverlay onClose={!saving ? onClose : undefined} narrow>
@@ -193,7 +190,7 @@ function RoleModal({ account, onClose, onSave, saving }) {
   );
 }
 
-// ── Delete Modal ──────────────────────────────────────────────────────────────
+// ─── Delete Modal ─────────────────────────────────────────────────────────────
 function DeleteModal({ account, onClose, onConfirm, saving }) {
   return (
     <div
@@ -226,7 +223,7 @@ function DeleteModal({ account, onClose, onConfirm, saving }) {
   );
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+// ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ message, type, onDismiss }) {
   useEffect(() => {
     const t = setTimeout(onDismiss, 3000);
@@ -244,7 +241,7 @@ function Toast({ message, type, onDismiss }) {
   );
 }
 
-// ── Skeleton rows ─────────────────────────────────────────────────────────────
+// ─── Skeleton rows ────────────────────────────────────────────────────────────
 function SkeletonRows() {
   return Array.from({ length: 5 }).map((_, i) => (
     <tr key={i} className="border-b border-slate-50">
@@ -266,7 +263,7 @@ function SkeletonRows() {
   ));
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminAccountManagement() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accounts, setAccounts]       = useState([]);
@@ -282,7 +279,7 @@ export default function AdminAccountManagement() {
   const showToast = (message, type = "success") => setToast({ message, type });
   const hideToast = useCallback(() => setToast(null), []);
 
-  // ── GET /api/showAllUser ──
+  // ── GET /api/showAllUser ──────────────────────────────────────────────────────
   const fetchAccounts = useCallback(() => {
     setLoading(true);
     setFetchError(false);
@@ -292,21 +289,17 @@ export default function AdminAccountManagement() {
         const data = res.data?.data ?? res.data;
         setAccounts(Array.isArray(data) ? data : []);
       })
-      .catch((err) => {
-        console.error("Failed to fetch accounts:", err);
-        setFetchError(true);
-      })
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
-  // ── Derived stats ──
+  // ── Derived stats ─────────────────────────────────────────────────────────────
   const totalAccounts = accounts.length;
   const totalAdmins   = accounts.filter((a) => a.role === "Admin").length;
   const totalUsers    = accounts.filter((a) => a.role === "User").length;
 
-  // Search across first_name, last_name, email, phone_number
   const filtered = accounts.filter((a) => {
     const q = search.toLowerCase();
     return (
@@ -323,7 +316,7 @@ export default function AdminAccountManagement() {
     { label: "Users",        value: loading ? "—" : totalUsers,    sub: "Standard access"  },
   ];
 
-  // ── PUT /api/accounts/{id} — full edit ──
+  // ── PUT /api/accounts/{id} — full edit ────────────────────────────────────────
   const handleEditSave = (form) => {
     setSaving(true);
     api
@@ -341,14 +334,11 @@ export default function AdminAccountManagement() {
         setEditModal(null);
         showToast("Account updated successfully.");
       })
-      .catch((err) => {
-        console.error("Update failed:", err);
-        showToast("Failed to update account.", "error");
-      })
+      .catch(() => showToast("Failed to update account.", "error"))
       .finally(() => setSaving(false));
   };
 
-  // ── PUT /api/accounts/{id} — role only ──
+  // ── PUT /api/accounts/{id} — role only ───────────────────────────────────────
   const handleRoleSave = (role) => {
     setSaving(true);
     api
@@ -361,14 +351,11 @@ export default function AdminAccountManagement() {
         setRoleModal(null);
         showToast("Role updated successfully.");
       })
-      .catch((err) => {
-        console.error("Role update failed:", err);
-        showToast("Failed to update role.", "error");
-      })
+      .catch(() => showToast("Failed to update role.", "error"))
       .finally(() => setSaving(false));
   };
 
-  // ── DELETE /api/accounts/{id} ──
+  // ── DELETE /api/accounts/{id} ─────────────────────────────────────────────────
   const handleDelete = () => {
     setSaving(true);
     api
@@ -378,10 +365,7 @@ export default function AdminAccountManagement() {
         setDeleteModal(null);
         showToast("Account deleted successfully.");
       })
-      .catch((err) => {
-        console.error("Delete failed:", err);
-        showToast("Failed to delete account.", "error");
-      })
+      .catch(() => showToast("Failed to delete account.", "error"))
       .finally(() => setSaving(false));
   };
 
@@ -399,16 +383,18 @@ export default function AdminAccountManagement() {
 
           {/* Top Bar */}
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3.5">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden bg-white border border-gray-200 text-base cursor-pointer text-slate-500 px-2.5 py-1.5 rounded-md shadow-sm hover:bg-gray-50 hover:text-slate-900 transition-all"
-            >☰</button>
+            <div className="flex items-center">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden bg-white border border-gray-200 text-base cursor-pointer text-slate-500 px-2.5 py-1.5 rounded-md shadow-sm hover:bg-gray-50 hover:text-slate-900 transition-all"
+              >☰</button>
+            </div>
             <div className="relative ml-auto">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">🔍</span>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search accounts…"
+                placeholder="Search Account..."
                 className="py-2 pl-8 pr-4 rounded-lg border border-gray-200 text-sm font-[inherit] text-slate-900 outline-none bg-white w-60 shadow-sm placeholder-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/8 transition-all max-md:w-44"
               />
             </div>
@@ -473,21 +459,15 @@ export default function AdminAccountManagement() {
 
                   {!loading && !fetchError && filtered.map((account) => (
                     <tr key={account.id} className="border-b border-slate-50 last:border-b-0 hover:[&_td]:bg-[#F8FBFF] transition-colors">
-
-                      {/* first_name + last_name + email */}
                       <td className="px-5 py-4 align-middle">
                         <div className="text-sm font-bold text-slate-900 mb-0.5">{fullName(account)}</div>
                         <div className="text-xs text-slate-400">{account.email}</div>
                       </td>
-
-                      {/* phone_number */}
                       <td className="px-5 py-4 align-middle">
                         <span className="text-sm text-slate-500 font-mono font-medium">
                           {account.phone_number ?? "—"}
                         </span>
                       </td>
-
-                      {/* role */}
                       <td className="px-5 py-4 align-middle">
                         <span className={`inline-flex items-center px-3.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap
                           ${account.role === "Admin"
@@ -497,15 +477,11 @@ export default function AdminAccountManagement() {
                           {account.role ?? "User"}
                         </span>
                       </td>
-
-                      {/* created_at formatted */}
                       <td className="px-5 py-4 align-middle">
                         <span className="text-sm text-slate-500 font-mono font-medium whitespace-nowrap">
                           {fmtDate(account.created_at)}
                         </span>
                       </td>
-
-                      {/* Actions */}
                       <td className="px-5 py-4 align-middle">
                         <div className="flex gap-2 items-center flex-wrap">
                           <button
