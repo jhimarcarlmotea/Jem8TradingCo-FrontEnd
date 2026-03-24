@@ -1,72 +1,111 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminNav from '../components/AdminNav';
-
-const contacts = [
-  {
-    id: 1,
-    name: "Ms. Akiko Serrano",
-    avatar: "AS",
-    avatarBg: "linear-gradient(135deg, #F59E0B, #EF4444)",
-    preview: "Testing Message Goes Here.",
-    date: "February 21, 2026",
-    unread: false,
-    messages: [
-      { id: 1, from: "them", text: "Testing Message Goes Here.", time: "8:14 am", status: "Delivered" },
-    ],
-    orderRef: null,
-  },
-  {
-    id: 2,
-    name: "Thomas Naguit",
-    avatar: "TN",
-    avatarBg: "linear-gradient(135deg, #3B82F6, #8B5CF6)",
-    preview: "Hello, Ma'am. Is this product available po? Thanks in advanced",
-    date: "February 21, 2026",
-    unread: true,
-    messages: [
-      { id: 1, from: "them", text: "Hello, Ma'am. Is this product available po? Thanks in advanced", time: "8:14 am", status: "Delivered" },
-      { id: 2, from: "me", text: "Good morning po, Yes po sir, the product is available po", time: "8:14 am", status: "Delivered" },
-    ],
-    orderRef: { label: "SAMPLE PRODUCT x2", price: "₱1,000", orderId: "Order - 001 - 5166", date: "February 20, 2026", qty: "0 cash", location: "Makati City" },
-  },
-  {
-    id: 3, name: "Ms. Sheila R. Acibar", avatar: "SA", avatarBg: "linear-gradient(135deg, #10B981, #3B82F6)",
-    preview: "Testing Message Goes Here.", date: "February 20, 2026", unread: false,
-    messages: [{ id: 1, from: "them", text: "Testing Message Goes Here.", time: "9:00 am", status: "Delivered" }], orderRef: null,
-  },
-  {
-    id: 4, name: "Ms. Sheila R. Acibar", avatar: "SA", avatarBg: "linear-gradient(135deg, #10B981, #3B82F6)",
-    preview: "Testing Message Goes Here.", date: "February 20, 2026", unread: false,
-    messages: [{ id: 1, from: "them", text: "Testing Message Goes Here.", time: "9:00 am", status: "Delivered" }], orderRef: null,
-  },
-  {
-    id: 5, name: "Ms. Sheila R. Acibar", avatar: "SA", avatarBg: "linear-gradient(135deg, #10B981, #3B82F6)",
-    preview: "Testing Message Goes Here.", date: "February 20, 2026", unread: false,
-    messages: [{ id: 1, from: "them", text: "Testing Message Goes Here.", time: "9:00 am", status: "Delivered" }], orderRef: null,
-  },
-  {
-    id: 6, name: "Ms. Sheila R. Acibar", avatar: "SA", avatarBg: "linear-gradient(135deg, #10B981, #3B82F6)",
-    preview: "Testing Message Goes Here.", date: "February 20, 2026", unread: false,
-    messages: [{ id: 1, from: "them", text: "Testing Message Goes Here.", time: "9:00 am", status: "Delivered" }], orderRef: null,
-  },
-];
+import { getChatRooms, getChatMessages, postChatMessage } from "../api/chat";
+import api from "../api/axios";
 
 export default function AdminMessages() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedId, setSelectedId]   = useState(2);
+  const [selectedId, setSelectedId]   = useState(null);
   const [inboxTab, setInboxTab]       = useState("All");
   const [inputText, setInputText]     = useState("");
+  const [contacts, setContacts]       = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const selected = contacts.find((c) => c.id === selectedId);
+
+  // Helper: robustly extract user id and admin flag from API responses
+  const getUserId = (u) => u?.id ?? u?.user_id ?? u?.data?.id ?? u?.data?.user_id ?? null;
+  const isAdminUser = (u) => !!(
+    (u && (u.is_admin || u.isAdmin || u.role === "admin")) ||
+    (u && u.data && (u.data.is_admin || u.data.isAdmin || u.data.role === "admin"))
+  );
+
+  const getMsgText = (msg) => {
+    if (!msg) return "";
+    return msg.text || msg.message || msg.messages || msg.msg || "";
+  };
+
+  const formatMsgTime = (msg) => {
+    const t = msg?.time || msg?.created_at || msg?.createdAt || msg?.timestamp;
+    if (!t) return "";
+    try {
+      return new Date(t).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    } catch (e) {
+      return String(t);
+    }
+  };
+
+  const getContactEmail = (room) => {
+    if (!room) return "";
+    return room.email || room.user?.email || room.participants?.[0]?.email || room.contact_email || (room.name ? room.name.toLowerCase().replace(/\s+/g, "") + "@gmail.com" : "");
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        try {
+          const meResp = await api.get("/me");
+          if (meResp && meResp.data) setCurrentUser(meResp.data);
+        } catch (mErr) { /* ignore if unauthenticated */ }
+
+        const resp = await getChatRooms();
+        const rooms = Array.isArray(resp) ? resp : resp.rooms || resp.chatrooms || [];
+        if (!mounted) return;
+        const mapped = rooms.map((r) => ({
+          id: r.id || r.chatroom_id || r.room_id,
+          name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
+          avatar: (r.name || "").charAt(0).toUpperCase() || "A",
+          avatarBg: r.avatarBg || "linear-gradient(135deg, #4d7b65, #3b82f6)",
+          preview: r.last_message?.text || r.preview || "",
+          date: r.last_time || r.date || "",
+          unread: !!r.unread,
+          messages: Array.isArray(r.messages) ? r.messages : [],
+          orderRef: r.orderRef || null,
+        }));
+        setContacts(mapped);
+        if (mapped.length > 0) setSelectedId((id) => id ?? mapped[0].id);
+      } catch (err) {
+        console.warn("Failed to load admin chat rooms:", err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const filteredContacts =
     inboxTab === "All"     ? contacts
     : inboxTab === "Unread" ? contacts.filter((c) => c.unread)
     : contacts.filter((c) => !c.unread);
 
-  const handleSend = () => {
-    if (inputText.trim()) setInputText("");
+  const handleSend = async () => {
+    const text = inputText.trim();
+    if (!text || !selectedId) return;
+    try {
+      await postChatMessage({ chatroom_id: selectedId, text });
+      setInputText("");
+      try {
+        const msgsResp = await getChatMessages(selectedId);
+        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+        setContacts((prev) => prev.map((c) => c.id === selectedId ? { ...c, messages: serverMessages } : c));
+      } catch (e) { /* ignore refresh error */ }
+    } catch (err) {
+      console.error("Failed to send admin message:", err);
+    }
   };
+
+  useEffect(() => {
+    if (!selectedId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const msgsResp = await getChatMessages(selectedId);
+        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+        if (!mounted) return;
+        setContacts((prev) => prev.map((c) => c.id === selectedId ? { ...c, messages: serverMessages } : c));
+      } catch (err) { /* keep existing */ }
+    })();
+    return () => { mounted = false; };
+  }, [selectedId]);
 
   return (
     <div className="flex min-h-screen bg-[#F0F7F2] font-sans">
@@ -120,7 +159,7 @@ export default function AdminMessages() {
               {filteredContacts.map((contact) => (
                 <div
                   key={contact.id}
-                  onClick={() => setSelectedId(contact.id)}
+                  onClick={() => { setSelectedId(contact.id); setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, unread: false } : c)); }}
                   className={`flex items-start gap-2.5 px-4 py-3 cursor-pointer transition-all relative
                     ${selectedId === contact.id
                       ? "bg-blue-50 border-l-[3px] border-blue-600"
@@ -173,10 +212,8 @@ export default function AdminMessages() {
                       {selected.avatar}
                     </div>
                     <div>
-                      <div className="font-semibold text-sm text-gray-900">{selected.name}</div>
-                      <div className="text-[11px] text-gray-400">
-                        {selected.name.toLowerCase().replace(/\s+/g, "") + "@gmail.com"}
-                      </div>
+                      <div className="font-semibold text-sm text-gray-900">{selected.name || selected.fullName || "Chat"}</div>
+                      <div className="text-[11px] text-gray-400">{getContactEmail(selected)}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -208,47 +245,58 @@ export default function AdminMessages() {
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                  {selected.messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex items-end gap-2 ${msg.from === "me" ? "justify-end" : "justify-start"}`}
-                    >
-                      {msg.from === "them" && (
-                        <div
-                          className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-[11px] font-bold"
-                          style={{ background: selected.avatarBg }}
-                        >
-                          {selected.avatar}
-                        </div>
-                      )}
+                  {Array.isArray(selected.messages) && selected.messages.map((msg) => {
+                    const currentUserId = getUserId(currentUser);
+                    const currentIsAdmin = isAdminUser(currentUser);
 
-                      <div className="max-w-[65%]">
-                        <div
-                          className={`px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm
-                            ${msg.from === "me"
-                              ? "bg-blue-600 text-white rounded-2xl rounded-br-sm border-none"
-                              : "bg-white text-gray-700 rounded-2xl rounded-bl-sm border border-gray-100"
-                            }`}
-                        >
-                          {msg.time && (
-                            <div className={`text-[10px] mb-1 ${msg.from === "me" ? "text-white/70" : "text-gray-400"}`}>
-                              {selected.name.split(" ")[0]} {msg.time}
-                            </div>
-                          )}
-                          {msg.text}
+                    let fromMe = false;
+                    if (currentUserId) {
+                      if (currentIsAdmin) {
+                        fromMe = !!(msg.is_admin || msg.sender === "admin" || msg.from === "admin" || msg.from === "me");
+                      } else {
+                        fromMe = !!(
+                          msg?.from === "me" ||
+                          msg.user_id === currentUserId ||
+                          msg.account_id === currentUserId ||
+                          msg.sender_id === currentUserId ||
+                          (msg.account && msg.account.id === currentUserId)
+                        );
+                      }
+                    } else {
+                      fromMe = msg?.from === "me" || msg.sender === "admin" || msg.is_admin;
+                    }
+
+                    // flip display: treat the computed `fromMe` as opposite for layout (left/right)
+                    const displayFromMe = !fromMe;
+                    const senderName = msg.sender_name || msg.sender?.name || (fromMe ? (currentUser?.name || currentUser?.data?.first_name || "Admin") : selected.name?.split(" ")[0]);
+                    return (
+                      <div key={msg.id || msg.created_at || Math.random()} className={`flex items-end gap-2 ${displayFromMe ? "justify-end" : "justify-start"}`}>
+                        {!displayFromMe && (
+                          <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-[11px] font-bold" style={{ background: selected.avatarBg }}>
+                            {selected.avatar}
+                          </div>
+                        )}
+
+                        <div className="max-w-[65%]">
+                          <div className={`px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm ${fromMe ? "bg-blue-600 text-white rounded-2xl rounded-br-sm border-none" : "bg-white text-gray-700 rounded-2xl rounded-bl-sm border border-gray-100"}`}>
+                            {formatMsgTime(msg) && (
+                              <div className={`text-[10px] mb-1 ${fromMe ? "text-white/70" : "text-gray-400"}`}>
+                                {senderName} {formatMsgTime(msg)}
+                              </div>
+                            )}
+                            {getMsgText(msg)}
+                          </div>
+                          <div className={`text-[10px] text-gray-400 mt-1 ${fromMe ? "text-right" : "text-left"}`}>
+                            {msg.status}
+                          </div>
                         </div>
-                        <div className={`text-[10px] text-gray-400 mt-1 ${msg.from === "me" ? "text-right" : "text-left"}`}>
-                          {msg.status}
-                        </div>
+
+                        {fromMe && (
+                          <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-[11px] font-bold bg-gradient-to-br from-blue-500 to-purple-600">AD</div>
+                        )}
                       </div>
-
-                      {msg.from === "me" && (
-                        <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-[11px] font-bold bg-gradient-to-br from-blue-500 to-purple-600">
-                          AD
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Input bar */}

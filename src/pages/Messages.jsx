@@ -64,6 +64,13 @@ export default function Messages() {
 
   const thread = threads.find((t) => t.id === activeThread);
 
+  // Helper: robustly extract user id and admin flag from API responses
+  const getUserId = (u) => u?.id ?? u?.user_id ?? u?.data?.id ?? u?.data?.user_id ?? null;
+  const isAdminUser = (u) => !!(
+    (u && (u.is_admin || u.isAdmin || u.role === "admin")) ||
+    (u && u.data && (u.data.is_admin || u.data.isAdmin || u.data.role === "admin"))
+  );
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -384,20 +391,36 @@ export default function Messages() {
             {/* Messages area */}
             <div className="flex-1 overflow-y-auto px-[24px] py-[20px] flex flex-col gap-[14px]">
               {thread?.messages.map((msg, msgIdx) => {
-                const isFromMe = msg?.from === "me" || (currentUser && (
-                  msg.user_id === currentUser.id ||
-                  msg.account_id === currentUser.id ||
-                  msg.sender_id === currentUser.id ||
-                  (msg.account && msg.account.id === currentUser.id)
-                ));
+                const currentUserId = getUserId(currentUser);
+                const currentIsAdmin = isAdminUser(currentUser);
+
+                let isFromMe = false;
+                if (currentUserId) {
+                  if (currentIsAdmin) {
+                    isFromMe = !!(msg.is_admin || msg.sender === "admin" || msg.from === "admin" || msg.from === "me");
+                  } else {
+                    isFromMe = !!(
+                      msg?.from === "me" ||
+                      msg.user_id === currentUserId ||
+                      msg.account_id === currentUserId ||
+                      msg.sender_id === currentUserId ||
+                      (msg.account && msg.account.id === currentUserId)
+                    );
+                  }
+                } else {
+                  isFromMe = msg?.from === "me" || msg.sender === "admin" || msg.is_admin;
+                }
+
+                // flip display: treat the computed `isFromMe` as opposite for layout (left/right)
+                const displayIsFromMe = !isFromMe;
 
                 return (
                   <div
                     key={msg.id ?? `msg-${msgIdx}-${msg.time || msg.from || ""}`}
-                    className={`flex items-end gap-[10px] ${isFromMe ? "flex-row-reverse" : "flex-row"}`}
+                    className={`flex items-end gap-[10px] ${displayIsFromMe ? "flex-row-reverse" : "flex-row"}`}
                   >
                     {/* Sender avatar (only for received) */}
-                    {!isFromMe && (
+                    {!displayIsFromMe && (
                       <div
                         className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0 mb-[4px]"
                         style={{ background: thread.avatarBg }}
@@ -408,7 +431,7 @@ export default function Messages() {
 
                     {/* Bubble */}
                     <div
-                      className={`flex flex-col max-w-[68%] ${isFromMe ? "items-end" : "items-start"}`}
+                      className={`flex flex-col max-w-[68%] ${displayIsFromMe ? "items-end" : "items-start"}`}
                     >
                       {msg.img && (
                         <img
