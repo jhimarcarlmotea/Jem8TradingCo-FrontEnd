@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminNav from '../components/AdminNav';
-import api from "../api/axios"; 
+import api from "../api/axios";
 
 // ── Fetch ───────────────────────────────────────────────────────────────────────
 async function fetchDashboard() {
@@ -19,9 +19,9 @@ const timeAgo = (dateStr) => {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return "Just now";
-  if (m < 60) return `${m} minutes ago`;
+  if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} hours ago`;
+  if (h < 24) return `${h}h ago`;
   return new Date(dateStr).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 };
 
@@ -29,9 +29,10 @@ const timeAgo = (dateStr) => {
 function DonutChart({ data }) {
   const total = data.reduce((s, d) => s + d.pct, 0) || 1;
   let cumulative = 0;
-  const r = 45, cx = 55, cy = 55, stroke = 18, circ = 2 * Math.PI * r;
+  const r = 44, cx = 56, cy = 56, stroke = 16, circ = 2 * Math.PI * r;
   return (
-    <svg width="110" height="110" viewBox="0 0 110 110">
+    <svg width="112" height="112" viewBox="0 0 112 112">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth={stroke} />
       {data.map((d, i) => {
         const pct = d.pct / total;
         const dash = pct * circ;
@@ -41,10 +42,11 @@ function DonutChart({ data }) {
         return (
           <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.color}
             strokeWidth={stroke} strokeDasharray={`${dash} ${gap}`} strokeDashoffset={offset}
-            style={{ transform: "rotate(-90deg)", transformOrigin: "55px 55px" }} />
+            strokeLinecap="round"
+            style={{ transform: "rotate(-90deg)", transformOrigin: "56px 56px", transition: "stroke-dasharray 0.6s ease" }} />
         );
       })}
-      <text x="55" y="59" textAnchor="middle" fontSize="11" fontWeight="700" fill="#111827">100%</text>
+      <text x="56" y="60" textAnchor="middle" fontSize="12" fontWeight="700" fill="#0F172A" fontFamily="'DM Sans', sans-serif">100%</text>
     </svg>
   );
 }
@@ -52,14 +54,19 @@ function DonutChart({ data }) {
 function BarChart({ data }) {
   const max = Math.max(...data.map(d => d.value), 1);
   return (
-    <div className="flex items-end h-[120px] gap-2 px-1">
+    <div className="flex items-end gap-1.5 px-1" style={{ height: 110 }}>
       {data.map((d, i) => (
         <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
           <div className="flex-1 w-full flex items-end">
-            <div className="w-full rounded-t-sm transition-all duration-500"
-              style={{ height: `${(d.value / max) * 100}%`, background: d.color, minHeight: "4px" }} />
+            <div className="w-full rounded-t-md transition-all duration-700"
+              style={{
+                height: `${(d.value / max) * 100}%`,
+                background: d.color,
+                minHeight: 4,
+                opacity: 0.85,
+              }} />
           </div>
-          <span className="text-[10px] text-gray-400 whitespace-nowrap">{d.label}</span>
+          <span style={{ fontSize: 9, color: "#94A3B8", whiteSpace: "nowrap" }}>{d.label}</span>
         </div>
       ))}
     </div>
@@ -80,60 +87,181 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
       y: h - (v / max) * (h - 10) - 5,
     }));
 
-  const path = (pts) =>
-    pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const smoothPath = (pts) => {
+    if (pts.length < 2) return "";
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 1; i < pts.length; i++) {
+      const cp1x = pts[i-1].x + (pts[i].x - pts[i-1].x) / 3;
+      const cp1y = pts[i-1].y;
+      const cp2x = pts[i].x - (pts[i].x - pts[i-1].x) / 3;
+      const cp2y = pts[i].y;
+      d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${pts[i].x} ${pts[i].y}`;
+    }
+    return d;
+  };
 
   const thisPts = coords(thisVals);
   const lastPts = coords(lastVals);
-  const d1 = path(thisPts);
-  const d2 = path(lastPts);
+  const d1 = smoothPath(thisPts);
+  const d2 = smoothPath(lastPts);
 
   return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h + 20}`} style={{ overflow: "visible" }}>
+    <svg width="100%" viewBox={`0 0 ${w} ${h + 22}`} style={{ overflow: "visible" }}>
       <defs>
-        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.18" />
           <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* Area fill for this year */}
       <path d={`${d1} L ${thisPts[thisPts.length-1].x} ${h} L ${thisPts[0].x} ${h} Z`}
-        fill="url(#lineGrad)" />
-      {/* Last year line */}
-      <path d={d2} fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeDasharray="4 3"
+        fill="url(#areaGrad)" />
+      <path d={d2} fill="none" stroke="#CBD5E1" strokeWidth="1.5" strokeDasharray="4 3"
         strokeLinecap="round" strokeLinejoin="round" />
-      {/* This year line */}
       <path d={d1} fill="none" stroke="#3B82F6" strokeWidth="2.5"
         strokeLinecap="round" strokeLinejoin="round" />
       {thisPts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#3B82F6" />
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="4" fill="white" stroke="#3B82F6" strokeWidth="2" />
+        </g>
       ))}
       {labels.map((l, i) => (
-        <text key={i} x={thisPts[i].x} y={h + 16} textAnchor="middle" fontSize="9" fill="#9CA3AF">{l}</text>
+        <text key={i} x={thisPts[i].x} y={h + 17} textAnchor="middle" fontSize="9" fill="#94A3B8">{l}</text>
       ))}
     </svg>
   );
 }
 
-// ── Shared helpers ─────────────────────────────────────────────────────────────
-const cardCls  = "bg-white rounded-2xl shadow-sm p-5";
-const titleCls = "text-sm font-semibold text-gray-700 mb-4";
-const badgeCls = (status) =>
-  `px-2.5 py-0.5 rounded-full text-[11px] font-semibold inline-block
-   ${status === "Completed" || status === "delivered"
-     ? "bg-emerald-100 text-emerald-600"
-     : status === "on_the_way"
-     ? "bg-blue-100 text-blue-600"
-     : status === "ready"
-     ? "bg-violet-100 text-violet-600"
-     : "bg-red-100 text-red-600"}`;
+// ── Design tokens ──────────────────────────────────────────────────────────────
+const CHART_COLORS = ["#3B82F6","#10B981","#8B5CF6","#F59E0B","#EC4899","#06B6D4","#EF4444","#14B8A6","#F97316","#6366F1"];
 
-const CHART_COLORS = ["#06B6D4","#10B981","#3B82F6","#8B5CF6","#EC4899","#F59E0B","#EF4444","#14B8A6","#F97316","#6366F1"];
-
-// ── Skeleton loader ────────────────────────────────────────────────────────────
-function Skeleton({ className = "" }) {
-  return <div className={`animate-pulse bg-gray-100 rounded-lg ${className}`} />;
+// ── Skeleton ───────────────────────────────────────────────────────────────────
+function Skeleton({ className = "", style = {} }) {
+  return (
+    <div
+      className={`animate-pulse rounded-xl ${className}`}
+      style={{ background: "linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%)", backgroundSize: "200% 100%", ...style }}
+    />
+  );
 }
+
+// ── Badge ──────────────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }) => {
+  const map = {
+    Completed: { bg: "#ECFDF5", color: "#059669", label: "Completed" },
+    delivered: { bg: "#ECFDF5", color: "#059669", label: "Delivered" },
+    on_the_way:{ bg: "#EFF6FF", color: "#2563EB", label: "On the way" },
+    ready:     { bg: "#F5F3FF", color: "#7C3AED", label: "Ready" },
+    Pending:   { bg: "#FFF7ED", color: "#D97706", label: "Pending" },
+    Unpaid:    { bg: "#FEF2F2", color: "#DC2626", label: "Unpaid" },
+    Paid:      { bg: "#ECFDF5", color: "#059669", label: "Paid" },
+  };
+  const s = map[status] ?? { bg: "#F8FAFC", color: "#64748B", label: status };
+  return (
+    <span style={{
+      background: s.bg,
+      color: s.color,
+      fontSize: 10,
+      fontWeight: 600,
+      padding: "3px 9px",
+      borderRadius: 20,
+      whiteSpace: "nowrap",
+      letterSpacing: "0.2px",
+    }}>
+      {s.label}
+    </span>
+  );
+};
+
+// ── Card ───────────────────────────────────────────────────────────────────────
+const Card = ({ children, style = {}, className = "" }) => (
+  <div
+    className={className}
+    style={{
+      background: "#FFFFFF",
+      borderRadius: 16,
+      padding: "20px 22px",
+      boxShadow: "0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.04)",
+      border: "1px solid rgba(226,232,240,0.8)",
+      ...style,
+    }}
+  >
+    {children}
+  </div>
+);
+
+const CardTitle = ({ children, action }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+    <span style={{ fontSize: 13, fontWeight: 600, color: "#374151", letterSpacing: "0.1px" }}>{children}</span>
+    {action}
+  </div>
+);
+
+// ── Stat Card ──────────────────────────────────────────────────────────────────
+const StatCard = ({ label, value, sub, icon, gradient, loading }) => (
+  <div style={{
+    background: "#FFFFFF",
+    borderRadius: 16,
+    padding: "18px 20px",
+    boxShadow: "0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.04)",
+    border: "1px solid rgba(226,232,240,0.8)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+    cursor: "default",
+  }}
+  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(15,23,42,0.10), 0 8px 24px rgba(15,23,42,0.06)"; }}
+  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.04)"; }}
+  >
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4, fontWeight: 500, letterSpacing: "0.3px", textTransform: "uppercase" }}>{label}</div>
+      {loading
+        ? <Skeleton style={{ height: 28, width: 80, marginBottom: 4 }} />
+        : <div style={{ fontSize: 24, fontWeight: 700, color: "#0F172A", lineHeight: 1.1, letterSpacing: "-0.5px" }}>{value}</div>
+      }
+      <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>{sub}</div>
+    </div>
+    <div style={{
+      width: 44, height: 44, borderRadius: 12,
+      background: gradient,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 18, flexShrink: 0,
+    }}>
+      {icon}
+    </div>
+  </div>
+);
+
+// ── Section divider ────────────────────────────────────────────────────────────
+const Divider = () => (
+  <div style={{ height: 1, background: "#F1F5F9", margin: "12px 0" }} />
+);
+
+// ── Avatar ─────────────────────────────────────────────────────────────────────
+const Avatar = ({ name, index, size = 32 }) => {
+  const colors = ["#3B82F6","#10B981","#8B5CF6","#F59E0B","#EC4899","#06B6D4","#EF4444"];
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      background: colors[index % colors.length],
+      display: "flex", alignItems: "center", justifyContent: "center",
+      color: "white", fontSize: size * 0.38, fontWeight: 700,
+      flexShrink: 0,
+      boxShadow: `0 0 0 2px white, 0 0 0 3px ${colors[index % colors.length]}30`,
+    }}>
+      {(name?.[0] ?? "?").toUpperCase()}
+    </div>
+  );
+};
+
+// ── Metric row ─────────────────────────────────────────────────────────────────
+const MetricRow = ({ label, value, color = "#0F172A" }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+    <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>{label}</span>
+    <span style={{ fontSize: 20, fontWeight: 700, color, letterSpacing: "-0.3px" }}>{value}</span>
+  </div>
+);
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
@@ -159,7 +287,7 @@ export default function AdminDashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Derived data ─────────────────────────────────────────────────────────────
+  // ── Derived ──────────────────────────────────────────────────────────────────
   const views    = data?.views    ?? {};
   const accounts = data?.accounts ?? {};
   const orders   = data?.orders   ?? {};
@@ -169,382 +297,434 @@ export default function AdminDashboard() {
   const products = data?.products ?? {};
   const notifs   = data?.notifications ?? {};
 
-  // Stats cards
   const stats = [
-    { label: "Total Views",    value: num(views.total_views),   sub: `Today: ${num(views.today_views)}`,   accent: "text-blue-600",    bg: "bg-blue-50"    },
-    { label: "Total Visits",   value: num(views.total_visits),  sub: `Today: ${num(views.today_visits)}`,  accent: "text-amber-600",   bg: "bg-amber-50"   },
-    { label: "New This Month", value: num(accounts.new_this_month), sub: `Today: ${num(accounts.new_today)}`, accent: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Total Accounts", value: num(accounts.total),      sub: `Verified: ${num(accounts.verified)}`, accent: "text-violet-700",  bg: "bg-violet-50"  },
+    { label: "Total Views",    value: num(views.total_views),        sub: `Today: ${num(views.today_views)}`,       icon: "👁",  gradient: "linear-gradient(135deg, #EFF6FF, #DBEAFE)" },
+    { label: "Total Visits",   value: num(views.total_visits),       sub: `Today: ${num(views.today_visits)}`,      icon: "🧭",  gradient: "linear-gradient(135deg, #FFFBEB, #FEF3C7)" },
+    { label: "New This Month", value: num(accounts.new_this_month),  sub: `Today: ${num(accounts.new_today)}`,      icon: "👤",  gradient: "linear-gradient(135deg, #ECFDF5, #D1FAE5)" },
+    { label: "Total Accounts", value: num(accounts.total),           sub: `Verified: ${num(accounts.verified)}`,   icon: "✅",  gradient: "linear-gradient(135deg, #F5F3FF, #EDE9FE)" },
   ];
 
-  // Sales bar chart: monthly revenue this year
   const salesChartData = Object.entries(sales.monthly_chart ?? {}).map(([m, v], i) => ({
     label: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m)-1] ?? m,
     value: Number(v),
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  // Traffic by address bar chart
   const trafficChartData = Object.entries(traffic.users_by_address ?? {}).slice(0,6).map(([addr, v], i) => ({
     label: addr.length > 8 ? addr.slice(0,8)+"…" : addr,
     value: Number(v),
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  // Marketing donut
   const marketingData = Object.entries(traffic.revenue_by_address ?? {}).slice(0,5).map(([addr, v], i) => ({
     city: addr,
-    pct:  Number(v),
+    pct: Number(v),
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
   const marketingTotal = marketingData.reduce((s, d) => s + d.pct, 0) || 1;
   const marketingWithPct = marketingData.map(d => ({ ...d, pct: parseFloat(((d.pct / marketingTotal) * 100).toFixed(1)) }));
 
   return (
-    <div className="flex min-h-screen bg-[#F0F7F2] font-sans">
+    <div style={{ display: "flex", minHeight: "100vh", background: "#F8FAFC", fontFamily: "'DM Sans', 'Nunito', system-ui, sans-serif" }}>
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <main className="flex-1 min-w-0 px-5 py-6 overflow-x-hidden">
+      <main style={{ flex: 1, minWidth: 0, padding: "24px 28px", overflowX: "hidden" }}>
 
-        {/* Top bar */}
-        <div className="flex items-center gap-3 mb-6">
+        {/* ── Top bar ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
           <button
-            className="lg:hidden bg-transparent border-none text-[22px] cursor-pointer text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100"
+            style={{ display: "none", background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#374151", padding: "6px 8px", borderRadius: 8 }}
+            className="lg:hidden"
             onClick={() => setSidebarOpen(true)}
           >☰</button>
-          <h1 className="text-xl font-bold text-gray-900 m-0">Dashboard</h1>
-          {loading && <span className="text-xs text-gray-400 animate-pulse">Loading…</span>}
-          {error   && <span className="text-xs text-red-500">⚠ {error}</span>}
+          <div style={{ flex: 1 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0, letterSpacing: "-0.4px" }}>Dashboard</h1>
+            <p style={{ fontSize: 12, color: "#94A3B8", margin: 0, marginTop: 2 }}>Welcome back — here's what's happening today.</p>
+          </div>
+          {loading && (
+            <span style={{ fontSize: 11, color: "#94A3B8", background: "#F1F5F9", padding: "4px 10px", borderRadius: 20, animation: "pulse 1.5s infinite" }}>
+              Loading…
+            </span>
+          )}
+          {error && (
+            <span style={{ fontSize: 11, color: "#DC2626", background: "#FEF2F2", padding: "4px 10px", borderRadius: 20 }}>
+              ⚠ {error}
+            </span>
+          )}
         </div>
 
-        {/* ── Stats ── */}
-        <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        {/* ── Stats row ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: 20 }}>
           {stats.map((stat) => (
-            <div key={stat.label} className="bg-white rounded-xl px-4 py-4 flex items-center justify-between shadow-sm">
-              <div>
-                <div className="text-[11px] text-gray-400 mb-1">{stat.label}</div>
-                {loading
-                  ? <Skeleton className="h-7 w-20 mb-1" />
-                  : <div className={`text-[22px] font-bold ${stat.accent}`}>{stat.value}</div>
-                }
-                <div className="text-[11px] text-gray-400 mt-1">{stat.sub}</div>
-              </div>
-              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center text-lg`}>
-                {stat.accent.includes("blue") ? "👁" : stat.accent.includes("amber") ? "🧭" : stat.accent.includes("emerald") ? "👤" : "✅"}
-              </div>
-            </div>
+            <StatCard key={stat.label} {...stat} loading={loading} />
           ))}
         </div>
 
         {/* ── Main columns ── */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <div style={{ display: "flex", flexDirection: "row", gap: 16, alignItems: "flex-start" }}>
 
-          {/* Left */}
-          <div className="flex-1 min-w-0 flex flex-col gap-4">
+          {/* ── Left column ── */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
 
-            {/* Line chart: new accounts per month */}
-            <div className={cardCls}>
-              <div className="flex justify-between items-center mb-2">
-                <div className={titleCls}>Total Users Overview</div>
-                <div className="flex gap-3 text-[11px] text-gray-400">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> This year</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> Last year</span>
+            {/* Line chart */}
+            <Card>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Total Users Overview</span>
+                <div style={{ display: "flex", gap: 14, fontSize: 11, color: "#94A3B8" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6", display: "inline-block" }} />
+                    This year
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#CBD5E1", display: "inline-block" }} />
+                    Last year
+                  </span>
                 </div>
               </div>
-              <div className="flex gap-2 text-[10px] text-gray-400 mb-1">
-                <span className="text-blue-600 font-semibold text-xs">New Accounts / Month</span>
-              </div>
-              <div className="flex gap-2">
-                <div className="flex flex-col justify-between text-[10px] text-gray-400 pb-4">
-                  <span>High</span><span></span><span>Low</span><span>0</span>
+              <div style={{ fontSize: 11, color: "#3B82F6", fontWeight: 600, marginBottom: 10 }}>New Accounts / Month</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontSize: 9, color: "#CBD5E1", paddingBottom: 18, gap: 20, paddingTop: 2 }}>
+                  <span>Hi</span><span>Mid</span><span>Lo</span>
                 </div>
-                <div className="flex-1">
+                <div style={{ flex: 1 }}>
                   {loading
-                    ? <Skeleton className="h-24 w-full" />
+                    ? <Skeleton style={{ height: 96, width: "100%" }} />
                     : <LineChart thisYear={accounts.new_per_month ?? {}} lastYear={{}} />
                   }
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* Recent Orders */}
-            <div className={cardCls}>
-              <div className="flex justify-between items-center mb-3">
-                <div className={titleCls}>Recent Orders</div>
-                <div className="text-[11px] text-gray-400">
-                  Total: <span className="font-semibold text-gray-700">{num(orders.total)}</span>
-                  &nbsp;· Paid: <span className="font-semibold text-emerald-600">{num(orders.paid)}</span>
-                  &nbsp;· Unpaid: <span className="font-semibold text-red-500">{num(orders.unpaid)}</span>
+            <Card>
+              <CardTitle action={
+                <div style={{ fontSize: 11, color: "#94A3B8" }}>
+                  Total: <strong style={{ color: "#374151" }}>{num(orders.total)}</strong>
+                  <span style={{ margin: "0 5px", color: "#E2E8F0" }}>·</span>
+                  Paid: <strong style={{ color: "#059669" }}>{num(orders.paid)}</strong>
+                  <span style={{ margin: "0 5px", color: "#E2E8F0" }}>·</span>
+                  Unpaid: <strong style={{ color: "#DC2626" }}>{num(orders.unpaid)}</strong>
                 </div>
-              </div>
-              <div className="flex flex-col gap-2.5">
+              }>
+                Recent Orders
+              </CardTitle>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                 {loading
-                  ? [1,2,3,4].map(i => <Skeleton key={i} className="h-14 w-full" />)
+                  ? [1,2,3,4].map(i => <Skeleton key={i} style={{ height: 56, width: "100%", marginBottom: 8 }} />)
                   : (orders.recent ?? []).map((order, i, arr) => (
                   <div key={order.checkout_id}
-                    className={`flex items-center gap-3 pb-2.5 ${i < arr.length - 1 ? "border-b border-gray-100" : ""}`}>
-                    <div className="w-11 h-11 rounded-lg shrink-0 bg-gray-100 flex items-center justify-center text-[22px]">
-                      🛒
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <span className="font-medium text-xs text-gray-900">
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "12px 0",
+                      borderBottom: i < arr.length - 1 ? "1px solid #F1F5F9" : "none",
+                    }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                      background: "linear-gradient(135deg, #EFF6FF, #DBEAFE)",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+                    }}>🛒</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <span style={{ fontWeight: 600, fontSize: 12, color: "#0F172A" }}>
                           {order.first_name} {order.last_name}
                         </span>
-                        <span className="text-[11px] text-gray-400 shrink-0">{timeAgo(order.created_at)}</span>
+                        <span style={{ fontSize: 10, color: "#94A3B8", flexShrink: 0 }}>{timeAgo(order.created_at)}</span>
                       </div>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs text-gray-500">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
+                        <span style={{ fontSize: 11, color: "#64748B" }}>
                           {order.paid_at ? peso(order.paid_amount) : "Unpaid"} · {order.payment_method}
                         </span>
-                        <span className={badgeCls(order.paid_at ? "Completed" : "Pending")}>
-                          {order.paid_at ? "Paid" : "Unpaid"}
-                        </span>
+                        <StatusBadge status={order.paid_at ? "Paid" : "Unpaid"} />
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
-            {/* Charts grid */}
-            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+            {/* ── Metric cards grid ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
 
-              {/* Products card */}
-              <div className={cardCls}>
-                <div className={titleCls}>📦 Products</div>
+              {/* Products */}
+              <Card>
+                <CardTitle>📦 Products</CardTitle>
                 {loading
-                  ? <Skeleton className="h-16 w-full" />
-                  : <div className="flex gap-6 flex-wrap">
+                  ? <Skeleton style={{ height: 60, width: "100%" }} />
+                  : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
                     {[
-                      { l: "Total",     v: products.total,     color: "text-gray-900"   },
-                      { l: "On Sale",   v: products.on_sale,   color: "text-emerald-600"},
-                      { l: "Low Stock", v: products.low_stock, color: "text-amber-600"  },
-                      { l: "Out Stock", v: products.out_stock, color: "text-red-600"    },
+                      { l: "Total",     v: products.total,     color: "#0F172A"   },
+                      { l: "On Sale",   v: products.on_sale,   color: "#059669"   },
+                      { l: "Low Stock", v: products.low_stock, color: "#D97706"   },
+                      { l: "Out Stock", v: products.out_stock, color: "#DC2626"   },
                     ].map(p => (
                       <div key={p.l}>
-                        <div className="text-[11px] text-gray-400">{p.l}</div>
-                        <div className={`text-2xl font-bold ${p.color}`}>{num(p.v)}</div>
+                        <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 2 }}>{p.l}</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: p.color, letterSpacing: "-0.5px" }}>{num(p.v)}</div>
                       </div>
                     ))}
                   </div>
                 }
-              </div>
+              </Card>
 
               {/* Orders this week */}
-              <div className={cardCls}>
-                <div className={titleCls}>🛒 Orders · This Week</div>
+              <Card>
+                <CardTitle>🛒 Orders · This Week</CardTitle>
                 {loading
-                  ? <Skeleton className="h-16 w-full" />
-                  : <div className="flex gap-4 flex-wrap">
+                  ? <Skeleton style={{ height: 60, width: "100%" }} />
+                  : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {[
-                      { l: "Total",   v: orders.weekly_total  },
-                      { l: "Paid",    v: orders.weekly_paid   },
-                      { l: "Unpaid",  v: orders.weekly_unpaid },
+                      { l: "Total",  v: orders.weekly_total,  color: "#0F172A" },
+                      { l: "Paid",   v: orders.weekly_paid,   color: "#059669" },
+                      { l: "Unpaid", v: orders.weekly_unpaid, color: "#DC2626" },
                     ].map(o => (
-                      <div key={o.l}>
-                        <div className="text-[11px] text-gray-400">{o.l}</div>
-                        <div className="text-xl font-bold text-gray-900">{num(o.v)}</div>
+                      <div key={o.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "#64748B" }}>{o.l}</span>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: o.color }}>{num(o.v)}</span>
                       </div>
                     ))}
                   </div>
                 }
-              </div>
+              </Card>
 
               {/* Delivery status */}
-              <div className={cardCls}>
-                <div className={titleCls}>🚚 Delivery Status</div>
+              <Card>
+                <CardTitle>🚚 Delivery Status</CardTitle>
                 {loading
-                  ? <Skeleton className="h-16 w-full" />
-                  : <div className="flex gap-3 flex-wrap">
+                  ? <Skeleton style={{ height: 60, width: "100%" }} />
+                  : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
                     {[
-                      { l: "Processing", v: orders.processing, color: "text-amber-600"  },
-                      { l: "Ready",      v: orders.ready,      color: "text-violet-600" },
-                      { l: "On the Way", v: orders.on_the_way, color: "text-blue-600"   },
-                      { l: "Delivered",  v: orders.delivered,  color: "text-emerald-600"},
+                      { l: "Processing", v: orders.processing, color: "#D97706"  },
+                      { l: "Ready",      v: orders.ready,      color: "#7C3AED"  },
+                      { l: "On the Way", v: orders.on_the_way, color: "#2563EB"  },
+                      { l: "Delivered",  v: orders.delivered,  color: "#059669"  },
                     ].map(s => (
                       <div key={s.l}>
-                        <div className="text-[10px] text-gray-400">{s.l}</div>
-                        <div className={`text-xl font-bold ${s.color}`}>{num(s.v)}</div>
+                        <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 2 }}>{s.l}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{num(s.v)}</div>
                       </div>
                     ))}
                   </div>
                 }
-              </div>
+              </Card>
 
-              {/* Sales revenue summary */}
-              <div className={cardCls}>
-                <div className={titleCls}>💰 Revenue</div>
+              {/* Revenue */}
+              <Card>
+                <CardTitle>💰 Revenue</CardTitle>
                 {loading
-                  ? <Skeleton className="h-16 w-full" />
-                  : <div className="flex gap-4 flex-wrap">
+                  ? <Skeleton style={{ height: 60, width: "100%" }} />
+                  : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {[
                       { l: "Total",      v: peso(sales.total)      },
                       { l: "This Month", v: peso(sales.this_month) },
                       { l: "Today",      v: peso(sales.today)      },
                     ].map(s => (
-                      <div key={s.l}>
-                        <div className="text-[11px] text-gray-400">{s.l}</div>
-                        <div className="text-sm font-bold text-gray-900">{s.v}</div>
+                      <div key={s.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "#64748B" }}>{s.l}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{s.v}</span>
                       </div>
                     ))}
                   </div>
                 }
-              </div>
+              </Card>
 
               {/* Sales bar chart */}
-              <div className={cardCls}>
-                <div className={titleCls}>📊 Sales This Year</div>
+              <Card>
+                <CardTitle>📊 Sales This Year</CardTitle>
                 {loading
-                  ? <Skeleton className="h-28 w-full" />
+                  ? <Skeleton style={{ height: 110, width: "100%" }} />
                   : salesChartData.length > 0
                     ? <BarChart data={salesChartData} />
-                    : <p className="text-xs text-gray-400">No sales data yet.</p>
+                    : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No sales data yet.</p>
                 }
-              </div>
+              </Card>
 
-              {/* Traffic by address */}
-              <div className={cardCls}>
-                <div className={titleCls}>📍 Traffic by Address</div>
+              {/* Traffic bar chart */}
+              <Card>
+                <CardTitle>📍 Traffic by Address</CardTitle>
                 {loading
-                  ? <Skeleton className="h-28 w-full" />
+                  ? <Skeleton style={{ height: 110, width: "100%" }} />
                   : trafficChartData.length > 0
                     ? <BarChart data={trafficChartData} />
-                    : <p className="text-xs text-gray-400">No traffic data yet.</p>
+                    : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No traffic data yet.</p>
                 }
-              </div>
+              </Card>
 
-              {/* Marketing donut — spans 2 cols */}
-              <div className={`${cardCls} col-span-2`}>
-                <div className={titleCls}>🗺 Revenue by Location</div>
+              {/* Marketing donut — full width */}
+              <Card style={{ gridColumn: "1 / -1" }}>
+                <CardTitle>🗺 Revenue by Location</CardTitle>
                 {loading
-                  ? <div className="flex gap-6"><Skeleton className="w-[110px] h-[110px] rounded-full" /><Skeleton className="flex-1 h-20" /></div>
+                  ? <div style={{ display: "flex", gap: 24 }}>
+                      <Skeleton style={{ width: 112, height: 112, borderRadius: "50%" }} />
+                      <Skeleton style={{ flex: 1, height: 80 }} />
+                    </div>
                   : marketingWithPct.length > 0
-                    ? <div className="flex items-center gap-6">
+                    ? <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
                         <DonutChart data={marketingWithPct} />
-                        <div className="flex-1">
-                          {marketingWithPct.map(m => (
-                            <div key={m.city} className="flex justify-between items-center mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: m.color }} />
-                                <span className="text-xs text-gray-700 truncate max-w-[120px]">{m.city}</span>
+                        <div style={{ flex: 1 }}>
+                          {marketingWithPct.map((m, i) => (
+                            <div key={m.city} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: i < marketingWithPct.length - 1 ? 10 : 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ width: 10, height: 10, borderRadius: "50%", background: m.color, display: "inline-block", flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, color: "#374151", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.city}</span>
                               </div>
-                              <span className="text-xs font-semibold text-gray-900">{m.pct}%</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{ width: 80, height: 4, borderRadius: 4, background: "#F1F5F9", overflow: "hidden" }}>
+                                  <div style={{ width: `${m.pct}%`, height: "100%", background: m.color, borderRadius: 4 }} />
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "#0F172A", minWidth: 36, textAlign: "right" }}>{m.pct}%</span>
+                              </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                    : <p className="text-xs text-gray-400">No location data yet.</p>
+                    : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No location data yet.</p>
                 }
-              </div>
+              </Card>
 
             </div>
           </div>
 
           {/* ── Right column ── */}
-          <div className="hidden lg:flex w-[260px] min-w-[260px] flex-col gap-4">
+          <div style={{ width: 260, minWidth: 260, display: "flex", flexDirection: "column", gap: 14 }} className="hidden lg:flex">
 
             {/* Notifications */}
-            <div className={cardCls}>
-              <div className="flex justify-between items-center mb-3">
-                <div className={titleCls}>Notifications</div>
-                {notifs.unread > 0 && (
-                  <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">
-                    {notifs.unread} unread
+            <Card>
+              <CardTitle action={
+                notifs.unread > 0 && (
+                  <span style={{ fontSize: 10, background: "#FEE2E2", color: "#DC2626", fontWeight: 600, padding: "2px 8px", borderRadius: 20 }}>
+                    {notifs.unread} new
                   </span>
-                )}
+                )
+              }>
+                Notifications
+              </CardTitle>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {loading
+                  ? [1,2,3].map(i => <Skeleton key={i} style={{ height: 48, width: "100%", marginBottom: 4 }} />)
+                  : (notifs.recent ?? []).map((n, i) => (
+                  <div key={n.notification_id ?? i}
+                    style={{
+                      display: "flex", gap: 10, alignItems: "flex-start",
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      background: !n.is_read ? "#EFF6FF" : "transparent",
+                      transition: "background 0.15s",
+                    }}>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                      background: !n.is_read ? "#DBEAFE" : "#F1F5F9",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                    }}>
+                      {n.type === "order" ? "🛒" : n.type === "user" ? "👤" : n.type === "product" ? "📦" : "🔔"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#0F172A", lineHeight: 1.3 }}>{n.title}</div>
+                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.message}</div>
+                      <div style={{ fontSize: 10, color: "#CBD5E1", marginTop: 1 }}>{timeAgo(n.created_at)}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              {loading
-                ? [1,2,3].map(i => <Skeleton key={i} className="h-12 w-full mb-2" />)
-                : (notifs.recent ?? []).map((n, i) => (
-                <div key={n.notification_id ?? i}
-                  className={`flex gap-2.5 items-start p-2 rounded-lg ${!n.is_read ? "bg-blue-50" : ""}`}>
-                  <div className="w-[30px] h-[30px] rounded-lg bg-gray-100 flex items-center justify-center text-sm shrink-0">
-                    {n.type === "order" ? "🛒" : n.type === "user" ? "👤" : n.type === "product" ? "📦" : "🔔"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-900 leading-tight">{n.title}</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5 truncate">{n.message}</div>
-                    <div className="text-[10px] text-gray-300">{timeAgo(n.created_at)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            </Card>
 
             {/* Latest Customers */}
-            <div className={cardCls}>
-              <div className={titleCls}>Latest Customers</div>
-              {loading
-                ? [1,2,3].map(i => <Skeleton key={i} className="h-10 w-full mb-2" />)
-                : (accounts.recent ?? []).map((acc, i) => (
-                <div key={acc.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: `hsl(${i * 60 + 200}, 70%, 60%)` }}>
-                    {(acc.first_name?.[0] ?? "?").toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-gray-900 truncate">
-                      {acc.first_name} {acc.last_name}
+            <Card>
+              <CardTitle>Latest Customers</CardTitle>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {loading
+                  ? [1,2,3].map(i => <Skeleton key={i} style={{ height: 40, width: "100%", marginBottom: 6 }} />)
+                  : (accounts.recent ?? []).map((acc, i) => (
+                  <div key={acc.id}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 10, transition: "background 0.12s", cursor: "default" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#F8FAFC"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    <Avatar name={acc.first_name} index={i} size={32} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {acc.first_name} {acc.last_name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#94A3B8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{acc.email}</div>
                     </div>
-                    <div className="text-[10px] text-gray-400 truncate">{acc.email}</div>
+                    <span style={{
+                      fontSize: 9, fontWeight: 600, padding: "2px 7px", borderRadius: 20, flexShrink: 0,
+                      background: acc.email_verified_at ? "#ECFDF5" : "#F1F5F9",
+                      color: acc.email_verified_at ? "#059669" : "#94A3B8",
+                    }}>
+                      {acc.email_verified_at ? "Verified" : "Unverified"}
+                    </span>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${acc.email_verified_at ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-500"}`}>
-                    {acc.email_verified_at ? "Verified" : "Unverified"}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </Card>
 
             {/* Recent Contacts */}
-            <div className={cardCls}>
-              <div className="flex justify-between items-center mb-3">
-                <div className={titleCls}>Contacts</div>
-                <span className="text-[11px] text-gray-400">
-                  Pending: <span className="font-semibold text-amber-600">{num(contacts.pending)}</span>
+            <Card>
+              <CardTitle action={
+                <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                  Pending: <strong style={{ color: "#D97706" }}>{num(contacts.pending)}</strong>
                 </span>
-              </div>
-              {loading
-                ? [1,2,3].map(i => <Skeleton key={i} className="h-10 w-full mb-2" />)
-                : (contacts.recent ?? []).map((c, i) => (
-                <div key={c.message_id ?? i} className="flex items-start gap-2.5 px-1 py-2 border-b border-gray-50 last:border-0">
-                  <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: `hsl(${i * 80 + 150}, 60%, 65%)` }}>
-                    {(c.first_name?.[0] ?? "?").toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-medium text-gray-800">{c.first_name} {c.last_name}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold
-                        ${c.status === "replied" ? "bg-emerald-100 text-emerald-600"
-                          : c.status === "read"  ? "bg-blue-100 text-blue-600"
-                          : "bg-amber-100 text-amber-600"}`}>
-                        {c.status}
-                      </span>
+              }>
+                Contacts
+              </CardTitle>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {loading
+                  ? [1,2,3].map(i => <Skeleton key={i} style={{ height: 40, width: "100%", marginBottom: 6 }} />)
+                  : (contacts.recent ?? []).map((c, i, arr) => (
+                  <div key={c.message_id ?? i}
+                    style={{
+                      display: "flex", alignItems: "flex-start", gap: 10,
+                      padding: "8px 0",
+                      borderBottom: i < arr.length - 1 ? "1px solid #F8FAFC" : "none",
+                    }}>
+                    <Avatar name={c.first_name} index={i + 3} size={30} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#0F172A" }}>{c.first_name} {c.last_name}</span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 600, padding: "2px 6px", borderRadius: 20,
+                          background: c.status === "replied" ? "#ECFDF5" : c.status === "read" ? "#EFF6FF" : "#FFFBEB",
+                          color: c.status === "replied" ? "#059669" : c.status === "read" ? "#2563EB" : "#D97706",
+                        }}>
+                          {c.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.message}</div>
                     </div>
-                    <div className="text-[10px] text-gray-400 truncate">{c.message}</div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </Card>
 
             {/* Recent Products */}
-            <div className={cardCls}>
-              <div className={titleCls}>📦 Recent Products</div>
-              {loading
-                ? [1,2,3].map(i => <Skeleton key={i} className="h-10 w-full mb-2" />)
-                : (products.recent ?? []).map((p, i) => (
-                <div key={p.product_id ?? i} className="flex items-center gap-2.5 px-1 py-2 border-b border-gray-50 last:border-0">
-                  <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-sm shrink-0">📦</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-gray-800 truncate">{p.product_name}</div>
-                    <div className="text-[10px] text-gray-400">{peso(p.price)} · Stock: {p.product_stocks}</div>
+            <Card>
+              <CardTitle>📦 Recent Products</CardTitle>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {loading
+                  ? [1,2,3].map(i => <Skeleton key={i} style={{ height: 40, width: "100%", marginBottom: 6 }} />)
+                  : (products.recent ?? []).map((p, i, arr) => (
+                  <div key={p.product_id ?? i}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 0",
+                      borderBottom: i < arr.length - 1 ? "1px solid #F8FAFC" : "none",
+                    }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                      background: "linear-gradient(135deg, #F0FDF4, #DCFCE7)",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+                    }}>📦</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.product_name}</div>
+                      <div style={{ fontSize: 10, color: "#94A3B8" }}>{peso(p.price)} · Stock: {p.product_stocks}</div>
+                    </div>
+                    {p.isSale && (
+                      <span style={{ fontSize: 9, background: "#FEE2E2", color: "#DC2626", fontWeight: 700, padding: "2px 6px", borderRadius: 20, flexShrink: 0 }}>SALE</span>
+                    )}
                   </div>
-                  {p.isSale && (
-                    <span className="text-[9px] bg-red-100 text-red-600 font-semibold px-1.5 py-0.5 rounded-full">SALE</span>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </Card>
 
           </div>
         </div>
