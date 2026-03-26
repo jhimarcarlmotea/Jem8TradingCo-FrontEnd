@@ -25,12 +25,15 @@ export const loginUser = async (credentials) => {
   try {
     const { data } = await api.post("/login", credentials);
 
+    // I-save ang token
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+    }
+
     toast.success("Login successful ✅");
     return data;
   } catch (error) {
-    const message =
-      error.response?.data?.message || "Login failed ❌";
-
+    const message = error.response?.data?.message || "Login failed ❌";
     toast.error(message);
     throw error.response?.data || { message };
   }
