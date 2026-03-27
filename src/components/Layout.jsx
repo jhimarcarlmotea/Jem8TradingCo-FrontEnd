@@ -14,6 +14,7 @@ export function Header() {
   const [scrolled, setScrolled]     = useState(false);
   const { totalItems }              = useCart();
   const [isLog, setIsLog]           = useState(false);
+  const [profileImage, setProfileImage] = useState(null); 
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -21,11 +22,19 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+    useEffect(() => {
+    const handler = (e) => setProfileImage(e.detail.url);
+    window.addEventListener("profile-photo-updated", handler);
+    return () => window.removeEventListener("profile-photo-updated", handler);
+  }, []);
+
   useEffect(() => {
     const checkLogin = async () => {
       try {
         const res = await axios.get("http://127.0.0.1:8000/api/me", { withCredentials: true });
         setIsLog(res.data);
+        // Pull the image from the same response
+        setProfileImage(res.data?.profile_image ?? res.data?.data?.profile_image ?? null);
       } catch {
         setIsLog(false);
       }
@@ -384,14 +393,27 @@ export function Header() {
               <button style={S.loginBtn} onClick={() => navigate("/login")}>
                 Login
               </button>
-            ) : (
+                ) : (
               <button
                 style={S.avatarBtn}
                 onClick={() => navigate("/Profilepersonal")}
                 aria-label="My Profile"
                 title="My Profile"
               >
-                J
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="Profile"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  "J"
+                )}
               </button>
             )}
 

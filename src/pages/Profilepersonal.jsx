@@ -420,6 +420,8 @@ function ProfilePhoto({ user, onUploadSuccess }) {
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
+    
+
     if (!file) return;
 
     // Client-side guard: max 2 MB, jpg/png only
@@ -443,6 +445,7 @@ function ProfilePhoto({ user, onUploadSuccess }) {
       const newUrl = res.data?.profile_image_url ?? res.data?.data?.profile_image ?? null;
       toast.success("Profile photo updated!");
       if (onUploadSuccess) onUploadSuccess(newUrl);
+      window.dispatchEvent(new CustomEvent("profile-photo-updated", { detail: { url: newUrl } }));
     } catch (err) {
       console.error(err);
       toast.error("Failed to upload photo. Please try again.");
