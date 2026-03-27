@@ -1,66 +1,71 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { postChatMessage, getChatRooms, getChatMessages } from "../api/chat";
 import api from "../api/axios";
 
 /* ── Seed conversations ── */
-const INITIAL_THREADS = [
-  {
-    id: 1,
-    name: "JEM 8 Circle Admin",
-    avatar: "J",
-    avatarBg: "#4d7b65",
-    isAdmin: true,
-    unread: 2,
-    lastTime: "Just now",
-    messages: [
-      { id: 1, from: "admin", text: "Good morning! Thanks for contacting us. How can we help you today?",              time: "9:01 AM" },
-      { id: 2, from: "me",    text: "Hi! I'd like to request a price list for office supplies.",                       time: "9:03 AM" },
-      { id: 3, from: "admin", text: "Of course! Please send us your company name and the items you need a quotation for and we'll prepare one right away.", time: "9:04 AM" },
-      { id: 4, from: "admin", text: "Also, is this for regular or bulk ordering?",                                     time: "9:04 AM" },
-      { id: 5, from: "me",    text: "It's for bulk ordering. Around 50 units of various stationery items.",            time: "9:06 AM" },
-      { id: 6, from: "admin", text: "Perfect! We have great bulk pricing. I'll prepare the quotation and send it to your email within the day. 😊", time: "9:07 AM" },
-      { id: 7, from: "admin", img: "/img/image-dollar-executive-diary-2024-2.png", text: "Here's a preview of our best-selling Executive Diary — ₱450 for single, discounted for bulk.", time: "9:08 AM" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Sales Team",
-    avatar: "S",
-    avatarBg: "#6366f1",
-    isAdmin: false,
-    unread: 0,
-    lastTime: "Yesterday",
-    messages: [
-      { id: 1, from: "admin", text: "Hello! Your order #JEM-001 has been confirmed and is being processed. Expected delivery: 2–3 business days.", time: "Yesterday" },
-      { id: 2, from: "me",    text: "Thank you! Can I track my order?", time: "Yesterday" },
-      { id: 3, from: "admin", text: "Sure! Head to My Orders in your profile to see live status updates.", time: "Yesterday" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Delivery Support",
-    avatar: "D",
-    avatarBg: "#f59e0b",
-    isAdmin: false,
-    unread: 1,
-    lastTime: "Mon",
-    messages: [
-      { id: 1, from: "admin", text: "Your delivery is scheduled for tomorrow between 10am–2pm. Please ensure someone is available to receive it.", time: "Mon" },
-    ],
-  },
-];
+// Start with no mock threads — require successful `/me` auth to load conversations
+
+// const INITIAL_THREADS = [
+//   {
+//     id: 1,
+//     name: "JEM 8 Circle Admin",
+//     avatar: "J",
+//     avatarBg: "#4d7b65",
+//     isAdmin: true,
+//     unread: 2,
+//     lastTime: "Just now",
+//     messages: [
+//       { id: 1, from: "admin", text: "Good morning! Thanks for contacting us. How can we help you today?",              time: "9:01 AM" },
+//       { id: 2, from: "me",    text: "Hi! I'd like to request a price list for office supplies.",                       time: "9:03 AM" },
+//       { id: 3, from: "admin", text: "Of course! Please send us your company name and the items you need a quotation for and we'll prepare one right away.", time: "9:04 AM" },
+//       { id: 4, from: "admin", text: "Also, is this for regular or bulk ordering?",                                     time: "9:04 AM" },
+//       { id: 5, from: "me",    text: "It's for bulk ordering. Around 50 units of various stationery items.",            time: "9:06 AM" },
+//       { id: 6, from: "admin", text: "Perfect! We have great bulk pricing. I'll prepare the quotation and send it to your email within the day. 😊", time: "9:07 AM" },
+//       { id: 7, from: "admin", img: "/img/image-dollar-executive-diary-2024-2.png", text: "Here's a preview of our best-selling Executive Diary — ₱450 for single, discounted for bulk.", time: "9:08 AM" },
+//     ],
+//   },
+//   {
+//     id: 2,
+//     name: "Sales Team",
+//     avatar: "S",
+//     avatarBg: "#6366f1",
+//     isAdmin: false,
+//     unread: 0,
+//     lastTime: "Yesterday",
+//     messages: [
+//       { id: 1, from: "admin", text: "Hello! Your order #JEM-001 has been confirmed and is being processed. Expected delivery: 2–3 business days.", time: "Yesterday" },
+//       { id: 2, from: "me",    text: "Thank you! Can I track my order?", time: "Yesterday" },
+//       { id: 3, from: "admin", text: "Sure! Head to My Orders in your profile to see live status updates.", time: "Yesterday" },
+//     ],
+//   },
+//   {
+//     id: 3,
+//     name: "Delivery Support",
+//     avatar: "D",
+//     avatarBg: "#f59e0b",
+//     isAdmin: false,
+//     unread: 1,
+//     lastTime: "Mon",
+//     messages: [
+//       { id: 1, from: "admin", text: "Your delivery is scheduled for tomorrow between 10am–2pm. Please ensure someone is available to receive it.", time: "Mon" },
+//     ],
+//   },
+// ];
+const INITIAL_THREADS = [];
 
 const FILTER_TABS = ["Inbox", "Unread", "Done"];
 
 export default function Messages() {
   const [threads, setThreads]           = useState(INITIAL_THREADS);
-  const [activeThread, setActiveThread] = useState(1);
+  const [activeThread, setActiveThread] = useState(null);
   const [activeTab, setActiveTab]       = useState("Inbox");
   const [input, setInput]               = useState("");
   const [searchQuery, setSearchQuery]   = useState("");
   const [unauthenticated, setUnauthenticated] = useState(false);
   const [currentUser, setCurrentUser]   = useState(null);
   const bottomRef                       = useRef(null);
+  const navigate = useNavigate();
 
   const thread = threads.find((t) => t.id === activeThread);
 
@@ -73,23 +78,31 @@ export default function Messages() {
 
   // Filter messages returned from server so we don't show another user's messages
   const filterMessagesForUser = (messages, currentUid) => {
-    if (!Array.isArray(messages)) return [];
-    // If we don't know the current user yet, don't filter — show what server returned.
-    if (!currentUid) return messages;
-    return messages.filter((m) => {
-      const mid = m?.user_id ?? m?.userId ?? m?.sender_id ?? m?.account_id ?? null;
-      if (mid != null) return String(mid) === String(currentUid);
-      // allow admin/system messages or explicit 'me' markers
-      if (m?.from === "admin" || m?.sender === "admin" || m?.from === "me") return true;
-      // also allow messages with no user_id if they include a recognized marker (fallback)
-      return false;
-    });
+    // Do not filter messages by user id here — when authenticated, show all
+    // messages returned for the chatroom (both sender and receiver).
+    // Server should return only the chatroom's messages.
+    return Array.isArray(messages) ? messages : [];
   };
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeThread, thread?.messages?.length]);
+
+  // If unauthenticated, hide messages and prompt to login
+  if (unauthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#f8fafb]" style={{ paddingTop: "var(--header-h)" }}>
+        <div style={{ width: 720, padding: 28, borderRadius: 12, background: "white", boxShadow: "0 8px 40px rgba(0,0,0,0.06)", textAlign: "center" }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>Sign in to view your messages</h3>
+          <p style={{ color: "#64748b", marginBottom: 18 }}>You must be signed in to the account that owns these conversations. Please log in to continue.</p>
+          <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+            <button onClick={() => navigate('/login')} style={{ background: '#1a1a1a', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Sign in</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSend = async () => {
     const text = input.trim();
@@ -191,7 +204,7 @@ export default function Messages() {
               messages: Array.isArray(m.messages) && m.messages.length > 0 ? m.messages : (prev.find((p) => p.id === m.id)?.messages || []),
             }))
           );
-          setActiveThread(mapped[0]?.id ?? 1);
+          setActiveThread(mapped[0]?.id ?? null);
         }
       } catch (err) {
         const msg = err && err.message ? err.message : String(err);
@@ -234,12 +247,14 @@ export default function Messages() {
                   messages: Array.isArray(m.messages) && m.messages.length > 0 ? m.messages : (prev.find((p) => p.id === m.id)?.messages || []),
                 }))
               );
-              setActiveThread(mapped[0]?.id ?? 1);
+              setActiveThread(mapped[0]?.id ?? null);
               return;
             }
           } catch (e) { /* fall through */ }
+          // mark unauthenticated and keep threads empty so messages stay hidden
           setUnauthenticated(true);
-          console.warn("Unauthenticated while loading chat rooms — using local mock threads");
+          setThreads([]);
+          console.warn("Unauthenticated while loading chat rooms — messages hidden until login");
         } else {
           console.warn("Failed to load chat rooms:", msg);
         }
@@ -250,7 +265,7 @@ export default function Messages() {
 
   // Fetch messages when active thread changes
   useEffect(() => {
-    if (!activeThread) return;
+    if (!activeThread || !currentUser) return;
     let mounted = true;
     (async () => {
         try {
