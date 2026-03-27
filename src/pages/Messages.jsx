@@ -71,6 +71,21 @@ export default function Messages() {
     (u && u.data && (u.data.is_admin || u.data.isAdmin || u.data.role === "admin"))
   );
 
+  // Filter messages returned from server so we don't show another user's messages
+  const filterMessagesForUser = (messages, currentUid) => {
+    if (!Array.isArray(messages)) return [];
+    // If we don't know the current user yet, don't filter — show what server returned.
+    if (!currentUid) return messages;
+    return messages.filter((m) => {
+      const mid = m?.user_id ?? m?.userId ?? m?.sender_id ?? m?.account_id ?? null;
+      if (mid != null) return String(mid) === String(currentUid);
+      // allow admin/system messages or explicit 'me' markers
+      if (m?.from === "admin" || m?.sender === "admin" || m?.from === "me") return true;
+      // also allow messages with no user_id if they include a recognized marker (fallback)
+      return false;
+    });
+  };
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -132,17 +147,35 @@ export default function Messages() {
     let mounted = true;
     (async () => {
       try {
+        let meResp = null;
         try {
-          const meResp = await api.get("/me");
+          meResp = await api.get("/me");
           if (meResp && meResp.data) setCurrentUser(meResp.data);
         } catch (mErr) { /* ignore */ }
 
         const roomsResp = await getChatRooms();
         const rooms = Array.isArray(roomsResp) ? roomsResp : roomsResp.rooms || roomsResp.chatrooms || [];
+        // Defensive filter: only include rooms that involve the current user
+          const currentUid = getUserId(meResp?.data || currentUser);
+          const currentUid2 = getUserId(meResp?.data || currentUser);
+        const safeRooms = rooms.filter((r) => {
+          if (!currentUid) return true; // unknown user -> don't filter here
+          if (r.user_id == currentUid || r.userId == currentUid || r.owner_id == currentUid) return true;
+          if (Array.isArray(r.participants)) {
+            // participants may be ids or objects
+            if (r.participants.includes && r.participants.includes(currentUid)) return true;
+            if (r.participants.some && r.participants.some((p) => (p && (p.id || p.user_id) == currentUid))) return true;
+          }
+          if (Array.isArray(r.members)) return r.members.some((m) => (m.id || m.user_id) == currentUid);
+          if (Array.isArray(r.participant_ids)) return r.participant_ids.includes(currentUid);
+          return false;
+        });
         if (!mounted) return;
 
-        if (rooms.length > 0) {
-          const mapped = rooms.map((r) => ({
+        // (debug logs removed)
+
+        if (safeRooms.length > 0) {
+          const mapped = safeRooms.map((r) => ({
             id: r.id || r.chatroom_id || r.room_id,
             name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
             avatar: (r.name || "").charAt(0).toUpperCase() || "J",
@@ -150,7 +183,7 @@ export default function Messages() {
             isAdmin: !!r.is_admin,
             unread: r.unread || 0,
             lastTime: r.last_time || "",
-            messages: Array.isArray(r.messages) ? r.messages : [],
+            messages: Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid) : [],
           }));
           setThreads((prev) =>
             mapped.map((m) => ({
@@ -168,8 +201,24 @@ export default function Messages() {
             const roomsResp2 = await getChatRooms();
             const rooms2 = Array.isArray(roomsResp2) ? roomsResp2 : roomsResp2.rooms || roomsResp2.chatrooms || [];
             if (!mounted) return;
-            if (rooms2.length > 0) {
-              const mapped = rooms2.map((r) => ({
+            // Defensive filter on retry as well
+            const currentUid2 = getUserId(meResp?.data || currentUser);
+            const safeRooms2 = rooms2.filter((r) => {
+              if (!currentUid2) return true;
+              if (r.user_id == currentUid2 || r.userId == currentUid2 || r.owner_id == currentUid2) return true;
+              if (Array.isArray(r.participants)) {
+                if (r.participants.includes && r.participants.includes(currentUid2)) return true;
+                if (r.participants.some && r.participants.some((p) => (p && (p.id || p.user_id) == currentUid2))) return true;
+              }
+              if (Array.isArray(r.members)) return r.members.some((m) => (m.id || m.user_id) == currentUid2);
+              if (Array.isArray(r.participant_ids)) return r.participant_ids.includes(currentUid2);
+              return false;
+            });
+            // Debug: show retry raw rooms and filtered result
+            // (debug logs removed)
+
+            if (safeRooms2.length > 0) {
+              const mapped = safeRooms2.map((r) => ({
                 id: r.id || r.chatroom_id || r.room_id,
                 name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
                 avatar: (r.name || "").charAt(0).toUpperCase() || "J",
@@ -177,7 +226,7 @@ export default function Messages() {
                 isAdmin: !!r.is_admin,
                 unread: r.unread || 0,
                 lastTime: r.last_time || "",
-                messages: Array.isArray(r.messages) ? r.messages : [],
+                  messages: Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid2) : [],
               }));
               setThreads((prev) =>
                 mapped.map((m) => ({
@@ -204,12 +253,14 @@ export default function Messages() {
     if (!activeThread) return;
     let mounted = true;
     (async () => {
-      try {
-        const msgsResp = await getChatMessages(activeThread);
-        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
-        if (!mounted) return;
-        setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages.length > 0 ? serverMessages : t.messages } : t)));
-      } catch (err) { /* keep local mock */ }
+        try {
+          const msgsResp = await getChatMessages(activeThread);
+          const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+          const currentUidForFetch = getUserId(currentUser);
+          const safeMsgs = filterMessagesForUser(serverMessages, currentUidForFetch);
+          if (!mounted) return;
+          setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: safeMsgs.length > 0 ? safeMsgs : t.messages } : t)));
+        } catch (err) { /* keep local mock */ }
     })();
     return () => { mounted = false; };
   }, [activeThread]);
@@ -395,24 +446,26 @@ export default function Messages() {
                 const currentIsAdmin = isAdminUser(currentUser);
 
                 let isFromMe = false;
-                if (currentUserId) {
-                  if (currentIsAdmin) {
-                    isFromMe = !!(msg.is_admin || msg.sender === "admin" || msg.from === "admin" || msg.from === "me");
+                if (msg) {
+                  if (currentUserId) {
+                    if (currentIsAdmin) {
+                      isFromMe = !!(msg.is_admin || msg.sender === "admin" || msg.from === "admin");
+                    } else {
+                      isFromMe = !!(
+                        msg.from === "me" ||
+                        msg.user_id === currentUserId ||
+                        msg.account_id === currentUserId ||
+                        msg.sender_id === currentUserId ||
+                        (msg.account && msg.account.id === currentUserId)
+                      );
+                    }
                   } else {
-                    isFromMe = !!(
-                      msg?.from === "me" ||
-                      msg.user_id === currentUserId ||
-                      msg.account_id === currentUserId ||
-                      msg.sender_id === currentUserId ||
-                      (msg.account && msg.account.id === currentUserId)
-                    );
+                    isFromMe = !!(msg.from === "me");
                   }
-                } else {
-                  isFromMe = msg?.from === "me" || msg.sender === "admin" || msg.is_admin;
                 }
 
-                // flip display: treat the computed `isFromMe` as opposite for layout (left/right)
-                const displayIsFromMe = !isFromMe;
+                // Use computed `isFromMe` directly for layout (left/right)
+                const displayIsFromMe = isFromMe;
 
                 return (
                   <div
