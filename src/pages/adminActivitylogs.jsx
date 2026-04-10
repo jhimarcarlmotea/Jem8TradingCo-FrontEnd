@@ -36,13 +36,131 @@ const CATEGORY_ICONS = {
   other:    "📋",
 };
 
+// ── Timezone for display (Asia/Manila = UTC+8) ────────────────────────────────
+const DISPLAY_TZ = "Asia/Manila";
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Convert an ISO 8601 string (with +08:00 offset supplied by the API) into a
+ * human-readable date-group label in Asia/Manila timezone.
+ *
+ * Falls back to the raw `logged_at` string (e.g. "Jul 15 at 2:30 PM") from the
+ * API if the ISO string is missing or unparseable.
+ */
+function groupLabel(log) {
+  // Prefer logged_at_iso (ISO 8601 with +08:00 offset) for reliable parsing
+  const iso = log.logged_at_iso;
+  if (iso) {
+    try {
+      return new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        weekday: "long",
+        year:    "numeric",
+        month:   "long",
+        day:     "numeric",
+      }).format(new Date(iso));
+    } catch {
+      // fall through
+    }
+  }
+
+  // Fallback: derive from logged_at_date (YYYY-MM-DD) if available
+  if (log.logged_at_date) {
+    try {
+      // Append T00:00:00+08:00 so the parser treats it as Manila midnight
+      const d = new Date(`${log.logged_at_date}T00:00:00+08:00`);
+      return new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        weekday: "long",
+        year:    "numeric",
+        month:   "long",
+        day:     "numeric",
+      }).format(d);
+    } catch {
+      return log.logged_at_date;
+    }
+  }
+
+  // Last resort: server-formatted string (e.g. "Jul 15 at 2:30 PM")
+  return log.logged_at ?? "Unknown date";
+}
+
+/**
+ * Format a time string for the right-side column.
+ * Uses logged_at_time from the API (already Manila-formatted, e.g. "2:30 PM").
+ * If that's absent, derives from the ISO string.
+ */
+function displayTime(log) {
+  if (log.logged_at_time) return log.logged_at_time;
+
+  if (log.logged_at_iso) {
+    try {
+      return new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        hour:     "numeric",
+        minute:   "2-digit",
+        hour12:   true,
+      }).format(new Date(log.logged_at_iso));
+    } catch {
+      // fall through
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Format the inline timestamp ("Jul 15 at 2:30 PM") for the log item body.
+ */
+function displayInline(log) {
+  // API already returns this formatted: "Jul 15 at 2:30 PM"
+  if (log.logged_at) return log.logged_at;
+
+  if (log.logged_at_iso) {
+    try {
+      const date = new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        month:    "short",
+        day:      "numeric",
+      }).format(new Date(log.logged_at_iso));
+
+      const time = new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        hour:     "numeric",
+        minute:   "2-digit",
+        hour12:   true,
+      }).format(new Date(log.logged_at_iso));
+
+      return `${date} at ${time}`;
+    } catch {
+      // fall through
+    }
+  }
+
+  return "—";
+}
 
 function buildBadge(log) {
   if (log.product_unique_code) return log.product_unique_code.toUpperCase();
   if (log.reference_table && log.reference_id)
     return `${log.reference_table.toUpperCase()} - ${String(log.reference_id).padStart(3, "0")}`;
   return log.category?.toUpperCase() ?? "LOG";
+}
+
+/**
+ * Group a flat array of log items by their Manila-localised date label.
+ * We do the grouping on the frontend using logged_at_iso so we're not dependent
+ * on the server-side grouping (which can lag if the server clock is misconfigured).
+ */
+function groupLogsByDate(logs) {
+  const map = {};
+  for (const log of logs) {
+    const label = groupLabel(log);
+    if (!map[label]) map[label] = [];
+    map[label].push(log);
+  }
+  return map;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -109,7 +227,7 @@ function LogItem({ log, onDelete }) {
 
           {/* Timestamp + category pill */}
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[11px] text-slate-400 font-mono">{log.logged_at}</span>
+            <span className="text-[11px] text-slate-400 font-mono">{displayInline(log)}</span>
             <span className="inline-flex items-center px-2 py-px rounded bg-gray-50 border border-gray-200 text-[10px] font-bold text-slate-400 tracking-wide uppercase">
               {cat}
             </span>
@@ -120,7 +238,7 @@ function LogItem({ log, onDelete }) {
       {/* Right */}
       <div className="flex flex-col items-end gap-2.5 shrink-0 max-md:flex-row max-md:items-center max-md:w-full max-md:justify-between">
         <span className="text-xs font-medium text-slate-400 font-mono whitespace-nowrap">
-          {log.logged_at_time}
+          {displayTime(log)}
         </span>
         <button
           onClick={() => onDelete(log.id)}
@@ -220,7 +338,12 @@ export default function AdminActivityLog() {
   const [sidebarOpen,   setSidebarOpen]   = useState(false);
   const [activeTab,     setActiveTab]     = useState("All");
   const [search,        setSearch]        = useState("");
+
+  // Raw flat list from API — we do client-side grouping for reliable TZ display
+  const [logs,          setLogs]          = useState([]);
+  // Grouped map derived from logs
   const [grouped,       setGrouped]       = useState({});
+
   const [pagination,    setPagination]    = useState(null);
   const [page,          setPage]          = useState(1);
   const [loading,       setLoading]       = useState(false);
@@ -244,7 +367,14 @@ export default function AdminActivityLog() {
       });
 
       if (res.data.status === "success") {
-        setGrouped(res.data.data.grouped ?? {});
+        // The server returns grouped logs — flatten them so we can re-group
+        // on the frontend using the ISO timestamp for correct TZ handling.
+        const serverGrouped = res.data.data.grouped ?? {};
+        const flat = Object.values(serverGrouped).flat();
+
+        // Re-group using client-side Manila TZ conversion
+        setLogs(flat);
+        setGrouped(groupLogsByDate(flat));
         setPagination(res.data.data.pagination ?? null);
       }
     } catch (err) {
@@ -290,7 +420,7 @@ export default function AdminActivityLog() {
     }
   };
 
-  const totalLogs = Object.values(grouped).reduce((sum, arr) => sum + arr.length, 0);
+  const totalLogs = logs.length;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

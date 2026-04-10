@@ -31,6 +31,10 @@ const TYPE_LABEL_MAP = {
   3: 'Full',
 };
 
+// ── Accepted MIME types for restore ─────────────────────────────────────────
+const RESTORE_ACCEPT = '.sql,.zip';
+const MAX_RESTORE_MB = 200;
+
 const backupCards = [
   {
     key: 'full',
@@ -69,7 +73,7 @@ const backupCards = [
   {
     key: 'restore',
     title: 'Upload & Restore',
-    desc: 'Restore from a backup file',
+    desc: 'Restore from .sql or .zip backup',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#155dfc" strokeWidth="1.8">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -96,7 +100,6 @@ const formatDate = (isoString) => {
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} - ${pad(h % 12 || 12)}:${pad(d.getMinutes())} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-// ✅ PRIMARY KEY FIX: model uses backup_id not id
 const normaliseBackup = (raw) => {
   const id = raw.backup_id ?? raw.id;
   return {
@@ -109,6 +112,30 @@ const normaliseBackup = (raw) => {
   };
 };
 
+/**
+ * Client-side validation before uploading a restore file.
+ * Returns an error string or null if valid.
+ */
+const validateRestoreFile = (file) => {
+  if (!file) return 'No file selected.';
+
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (!['sql', 'zip'].includes(ext)) {
+    return `Invalid file type ".${ext}". Only .sql or .zip backup files are accepted.`;
+  }
+
+  const maxBytes = MAX_RESTORE_MB * 1024 * 1024;
+  if (file.size > maxBytes) {
+    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed is ${MAX_RESTORE_MB} MB.`;
+  }
+
+  if (file.size === 0) {
+    return 'The selected file is empty.';
+  }
+
+  return null;
+};
+
 // ── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner({ lg = false }) {
   return (
@@ -118,23 +145,188 @@ function Spinner({ lg = false }) {
   );
 }
 
+// ── Restore progress modal ────────────────────────────────────────────────────
+function RestoreProgressModal({ fileName, stage }) {
+  const stages = [
+    { key: 'uploading',   label: 'Uploading backup file…'         },
+    { key: 'extracting',  label: 'Extracting archive…'            },
+    { key: 'db',          label: 'Importing database…'            },
+    { key: 'files',       label: 'Restoring media files…'         },
+    { key: 'done',        label: 'Restore complete!'              },
+  ];
+
+  const currentIndex = stages.findIndex((s) => s.key === stage);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl px-8 pt-8 pb-7 w-full max-w-[400px] shadow-2xl flex flex-col items-center text-center">
+        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 text-3xl">
+          {stage === 'done' ? '✅' : '⏳'}
+        </div>
+        <h3
+          className="font-semibold text-[17px] text-[#111111] m-0 mb-1"
+          style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+        >
+          {stage === 'done' ? 'Restore Complete' : 'Restoring Backup…'}
+        </h3>
+        <p
+          className="text-[12px] text-[#888] m-0 mb-5 truncate max-w-full px-2"
+          style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+        >
+          {fileName}
+        </p>
+
+        {/* Stage progress */}
+        <div className="w-full flex flex-col gap-2 text-left">
+          {stages.map((s, idx) => {
+            const done    = idx < currentIndex || stage === 'done';
+            const active  = idx === currentIndex && stage !== 'done';
+            return (
+              <div
+                key={s.key}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all ${
+                  done   ? 'bg-green-50 text-green-700' :
+                  active ? 'bg-blue-50 text-blue-700 font-semibold' :
+                           'text-gray-300'
+                }`}
+                style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+              >
+                <span className="text-base leading-none">
+                  {done ? '✓' : active ? <Spinner /> : '○'}
+                </span>
+                {s.label}
+              </div>
+            );
+          })}
+        </div>
+
+        {stage !== 'done' && (
+          <p className="text-[11px] text-[#aaa] mt-4 m-0" style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}>
+            This may take a few minutes. Do not close this tab.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Restore confirm modal ─────────────────────────────────────────────────────
+function RestoreConfirmModal({ file, onCancel, onConfirm }) {
+  const ext    = file?.name.split('.').pop()?.toLowerCase();
+  const isZip  = ext === 'zip';
+  const sizeMB = file ? (file.size / 1024 / 1024).toFixed(2) : '—';
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/45 z-[200] flex items-center justify-center p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl px-7 pt-8 pb-6 w-full max-w-[420px] shadow-2xl flex flex-col items-center text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-2xl">
+          ⚠️
+        </div>
+        <h3
+          className="font-semibold text-[17px] text-[#111111] m-0 mb-2"
+          style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+        >
+          Restore from Backup?
+        </h3>
+
+        {/* File details */}
+        <div
+          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 text-left text-[12px] text-[#555]"
+          style={{ fontFamily: 'Inter, monospace' }}
+        >
+          <div className="flex justify-between gap-2 mb-1">
+            <span className="text-gray-400">File</span>
+            <span className="font-medium text-[#222] truncate max-w-[230px]" title={file?.name}>{file?.name}</span>
+          </div>
+          <div className="flex justify-between gap-2 mb-1">
+            <span className="text-gray-400">Type</span>
+            <span className="font-medium text-[#222] uppercase">{ext}</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-gray-400">Size</span>
+            <span className="font-medium text-[#222]">{sizeMB} MB</span>
+          </div>
+        </div>
+
+        {/* What will be restored */}
+        <div
+          className="w-full mb-4 text-left text-[12px]"
+          style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+        >
+          <p className="text-[#666] m-0 mb-2 font-semibold">This restore will:</p>
+          <ul className="m-0 pl-4 text-[#555] space-y-1 list-disc">
+            {(isZip || ext === 'sql') && (
+              <li>Import the SQL database dump (overwriting existing data)</li>
+            )}
+            {isZip && (
+              <>
+                <li>Extract and restore media folders:<br />
+                  <span className="font-mono text-[11px] text-blue-600">
+                    blog_images, featured_images, products, profile_images
+                  </span>
+                  <span className="text-[#999]"> (and others if present)</span>
+                </li>
+                <li>Overwrite files in <span className="font-mono text-[11px]">storage/app/public/</span></li>
+              </>
+            )}
+          </ul>
+        </div>
+
+        <p
+          className="text-[12px] text-red-500 font-semibold m-0 mb-5"
+          style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+        >
+          ⚠️ This action cannot be undone. Make sure you have a current backup before proceeding.
+        </p>
+
+        <div className="flex gap-2.5 w-full">
+          <button
+            className="flex-1 h-[38px] rounded-lg bg-transparent border border-[#cccccc] text-[#333333] text-[13px] font-medium cursor-pointer hover:bg-[#f5f5f5]"
+            style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="flex-1 h-[38px] rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer border-none hover:bg-blue-700 transition-colors"
+            style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+            onClick={onConfirm}
+          >
+            Restore Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 export default function AdminBackup() {
-  const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [backups,      setBackups]      = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [runningKey,   setRunningKey]   = useState(null);
-  const [restoring,    setRestoring]    = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [toastMsg,     setToastMsg]     = useState('');
-  const [toastType,    setToastType]    = useState('success');
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [backups,        setBackups]        = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [runningKey,     setRunningKey]     = useState(null);
+  const [deleteTarget,   setDeleteTarget]   = useState(null);
+  const [toastMsg,       setToastMsg]       = useState('');
+  const [toastType,      setToastType]      = useState('success');
+
+  // ── Restore state ──────────────────────────────────────────────────────────
+  const [pendingRestoreFile, setPendingRestoreFile] = useState(null); // waiting for confirm
+  const [restoreStage,       setRestoreStage]       = useState(null); // null | 'uploading' | 'extracting' | 'db' | 'files' | 'done'
+
   const fileInputRef = useRef(null);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   const showToast = useCallback((msg, type = 'success') => {
     setToastMsg(msg);
     setToastType(type);
-    setTimeout(() => setToastMsg(''), 3500);
+    setTimeout(() => setToastMsg(''), 4000);
   }, []);
 
   // ── Fetch history ──────────────────────────────────────────────────────────
@@ -158,7 +350,10 @@ export default function AdminBackup() {
 
   // ── Run backup ─────────────────────────────────────────────────────────────
   const handleRunNow = async (key) => {
-    if (key === 'restore') { fileInputRef.current?.click(); return; }
+    if (key === 'restore') {
+      fileInputRef.current?.click();
+      return;
+    }
     setRunningKey(key);
     try {
       const res = await api.post('/admin/backups/run', { backup_type: BACKUP_TYPE_MAP[key] });
@@ -180,31 +375,90 @@ export default function AdminBackup() {
     }
   };
 
-  // ── Upload & Restore ───────────────────────────────────────────────────────
-  const handleFileRestore = async (e) => {
+  // ── File picker → validate → show confirm ─────────────────────────────────
+  const handleFilePicked = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    // Reset input so the same file can be picked again later
     e.target.value = '';
-    setRestoring(true);
+    if (!file) return;
+
+    const validationError = validateRestoreFile(file);
+    if (validationError) {
+      showToast(validationError, 'error');
+      return;
+    }
+
+    // Show confirmation modal with file details
+    setPendingRestoreFile(file);
+  };
+
+  // ── Execute restore after user confirms ───────────────────────────────────
+  const executeRestore = async () => {
+    const file = pendingRestoreFile;
+    setPendingRestoreFile(null);
+
+    if (!file) return;
+
+    const ext   = file.name.split('.').pop()?.toLowerCase();
+    const isZip = ext === 'zip';
+
+    // Start progress UI
+    setRestoreStage('uploading');
+
     try {
       const formData = new FormData();
       formData.append('backup_file', file);
-      const res = await api.post('/admin/backups/restore', formData, {
+
+      // Simulate multi-stage progress (server does it all in one request,
+      // but we step the UI to keep user informed)
+      const stageTimer = (stage, delayMs) =>
+        new Promise((res) => setTimeout(() => { setRestoreStage(stage); res(); }, delayMs));
+
+      const uploadPromise = api.post('/admin/backups/restore', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 600_000, // 10 min for large backups
       });
-      if (res.data.status === 'success') {
-        showToast(`✓ Restore from "${file.name}" completed successfully`);
-        fetchHistory(true);
+
+      // Visual stage progression (optimistic, actual work happens server-side)
+      if (isZip) {
+        await stageTimer('extracting', 1200);
+        await stageTimer('db', 2500);
+        await stageTimer('files', 4500);
       } else {
+        await stageTimer('db', 1000);
+      }
+
+      const res = await uploadPromise;
+
+      if (res.data.status === 'success') {
+        setRestoreStage('done');
+
+        // Auto-dismiss after 2.5s
+        setTimeout(() => {
+          setRestoreStage(null);
+          showToast(`✓ Restore from "${file.name}" completed successfully`);
+          fetchHistory(true);
+        }, 2500);
+      } else {
+        setRestoreStage(null);
         const msg = typeof res.data.message === 'object'
           ? Object.values(res.data.message).flat().join(' ')
           : (res.data.message ?? 'Restore failed');
         showToast(msg, 'error');
       }
     } catch (err) {
-      showToast(err.response?.data?.message ?? 'Network error – restore could not be completed', 'error');
-    } finally {
-      setRestoring(false);
+      setRestoreStage(null);
+
+      // Extract error from validation (422) or server (500)
+      const errData = err.response?.data;
+      if (errData?.type === 'validation' && errData?.message) {
+        const msgs = typeof errData.message === 'object'
+          ? Object.values(errData.message).flat().join(' ')
+          : errData.message;
+        showToast(`Validation: ${msgs}`, 'error');
+      } else {
+        showToast(errData?.message ?? 'Network error – restore could not be completed', 'error');
+      }
     }
   };
 
@@ -266,7 +520,6 @@ export default function AdminBackup() {
     }
   };
 
-  // ── Refresh ────────────────────────────────────────────────────────────────
   const handleRefresh = () => {
     fetchHistory();
     showToast('✓ Backup list refreshed');
@@ -305,7 +558,7 @@ export default function AdminBackup() {
                 Backup &amp; Recovery
               </h2>
               <p className="text-sm text-[#6b6a6a] m-0" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
-                Manage database and file backups
+                Manage database and file backups · Accepts .sql and .zip restore files
               </p>
             </div>
             <button
@@ -320,6 +573,22 @@ export default function AdminBackup() {
               </svg>
               Refresh
             </button>
+          </div>
+
+          {/* ── Restore info banner ── */}
+          <div
+            className="mb-6 flex items-start gap-3 px-4 py-3 rounded-xl border border-blue-200 bg-blue-50 text-[13px] text-blue-700"
+            style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+          >
+            <span className="text-base mt-0.5">ℹ️</span>
+            <div>
+              <span className="font-semibold">Restore supports:</span>
+              {' '}<span className="font-mono bg-blue-100 px-1 rounded">.sql</span> plain SQL dumps and
+              {' '}<span className="font-mono bg-blue-100 px-1 rounded">.zip</span> full backups.
+              ZIP archives are automatically extracted — the database is imported and media folders
+              (<span className="font-mono text-[12px]">blog_images, featured_images, products, profile_images</span>)
+              are restored to their correct storage paths.
+            </div>
           </div>
 
           {/* ── Backup action cards ── */}
@@ -341,33 +610,36 @@ export default function AdminBackup() {
                 <button
                   className="inline-flex items-center gap-1.5 h-8 px-3.5 border-none rounded-md bg-transparent text-[13px] font-medium text-[#1458b8] cursor-pointer transition-colors self-start mt-auto hover:bg-[#eff6ff] disabled:opacity-65 disabled:cursor-not-allowed"
                   onClick={() => handleRunNow(card.key)}
-                  disabled={runningKey === card.key || (card.key === 'restore' && restoring)}
+                  disabled={runningKey === card.key || restoreStage !== null}
                   aria-label={`Run ${card.title}`}
                 >
-                  {(runningKey === card.key || (card.key === 'restore' && restoring)) ? (
+                  {runningKey === card.key ? (
                     <Spinner />
                   ) : (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polygon points="5 3 19 12 5 21 5 3"/>
+                      {card.key === 'restore'
+                        ? <><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>
+                        : <polygon points="5 3 19 12 5 21 5 3"/>
+                      }
                     </svg>
                   )}
                   {runningKey === card.key
                     ? 'Running…'
-                    : (card.key === 'restore' && restoring)
-                      ? 'Restoring…'
+                    : card.key === 'restore'
+                      ? 'Upload File'
                       : 'Run Now'}
                 </button>
               </div>
             ))}
           </div>
 
-          {/* Hidden file input for restore */}
+          {/* Hidden file input — accepts .sql and .zip */}
           <input
             ref={fileInputRef}
             type="file"
-            accept=".sql,.zip,.tar,.gz"
+            accept={RESTORE_ACCEPT}
             className="hidden"
-            onChange={handleFileRestore}
+            onChange={handleFilePicked}
           />
 
           {/* ── Backup history ── */}
@@ -464,6 +736,23 @@ export default function AdminBackup() {
 
         </div>
       </div>
+
+      {/* ── Restore confirm modal ── */}
+      {pendingRestoreFile && (
+        <RestoreConfirmModal
+          file={pendingRestoreFile}
+          onCancel={() => setPendingRestoreFile(null)}
+          onConfirm={executeRestore}
+        />
+      )}
+
+      {/* ── Restore progress modal ── */}
+      {restoreStage !== null && (
+        <RestoreProgressModal
+          fileName={pendingRestoreFile?.name ?? ''}
+          stage={restoreStage}
+        />
+      )}
 
       {/* ── Delete confirm modal ── */}
       {deleteTarget !== null && (
