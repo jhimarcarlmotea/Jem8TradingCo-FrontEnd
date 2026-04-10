@@ -54,6 +54,7 @@ const Overlay = ({ children, onClose, wide, extraWide }) => (
     </div>
   </div>
 );
+
 const ModalHeader = ({ title, subtitle, onClose }) => (
   <div className="sticky top-0 z-10 flex items-center justify-between px-6 pt-5 pb-4 bg-white border-b border-slate-100 rounded-t-2xl">
     <div>
@@ -168,7 +169,8 @@ const StatusToggle = ({ value, onChange, name }) => (
     </div>
   </div>
 );
-        const SaleToggle = ({ checked, onChange, name }) => (
+
+const SaleToggle = ({ checked, onChange, name }) => (
   <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-3 mb-5">
     <div>
       <div className="text-[13px] font-semibold text-gray-700">Mark as On Sale</div>
@@ -181,6 +183,7 @@ const StatusToggle = ({ value, onChange, name }) => (
     </label>
   </div>
 );
+
 const ColorDot = ({ color, size = "w-3 h-3" }) => {
   const dot = COLOR_DOT_MAP[color] || "#e2e8f0";
   const isGrad = dot.startsWith("linear");
@@ -210,18 +213,11 @@ const ColorSelect = ({ value, onChange, name, className = "" }) => (
 );
 
 // ────────────────────────────────────────────────────────────
-// Color Variants Editor — used in Add & Edit modals
-// Each variant = { color: string, stocks: number }
+// Color Variants Editor
 // ────────────────────────────────────────────────────────────
 const ColorVariantsEditor = ({ variants, onChange }) => {
-  const addVariant = () => {
-    onChange([...variants, { color: "", stocks: 0 }]);
-  };
-
-  const removeVariant = (i) => {
-    onChange(variants.filter((_, idx) => idx !== i));
-  };
-
+  const addVariant = () => onChange([...variants, { color: "", stocks: 0 }]);
+  const removeVariant = (i) => onChange(variants.filter((_, idx) => idx !== i));
   const updateVariant = (i, field, value) => {
     const next = variants.map((v, idx) => idx === i ? { ...v, [field]: value } : v);
     onChange(next);
@@ -241,7 +237,6 @@ const ColorVariantsEditor = ({ variants, onChange }) => {
           + Add Color
         </button>
       </div>
-
       {variants.length === 0 && (
         <div className="text-center py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-[12px]">
           No color variants — product will have no color assigned.
@@ -251,62 +246,331 @@ const ColorVariantsEditor = ({ variants, onChange }) => {
           </button>
         </div>
       )}
-
       <div className="flex flex-col gap-2">
         {variants.map((v, i) => (
           <div key={i} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-            {/* Color dot preview */}
-            {v.color ? (
-              <ColorDot color={v.color} size="w-5 h-5" />
-            ) : (
-              <span className="flex-shrink-0 w-5 h-5 border-2 border-dashed rounded-full border-slate-300" />
-            )}
-
-            {/* Color select */}
+            {v.color ? <ColorDot color={v.color} size="w-5 h-5" /> : <span className="flex-shrink-0 w-5 h-5 border-2 border-dashed rounded-full border-slate-300" />}
             <div className="relative flex-1">
-              <select
-                value={v.color}
-                onChange={e => updateVariant(i, "color", e.target.value)}
-                className="w-full px-2.5 py-[7px] border border-slate-200 rounded-lg text-[12px] bg-white outline-none appearance-none cursor-pointer pr-6"
-              >
+              <select value={v.color} onChange={e => updateVariant(i, "color", e.target.value)}
+                className="w-full px-2.5 py-[7px] border border-slate-200 rounded-lg text-[12px] bg-white outline-none appearance-none cursor-pointer pr-6">
                 <option value="">— No Color —</option>
-                {COLOR_OPTIONS.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[9px]">▾</div>
             </div>
-
-            {/* Stock input */}
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">Stocks:</span>
-              <input
-                type="number"
-                min="0"
-                value={v.stocks}
+              <input type="number" min="0" value={v.stocks}
                 onChange={e => updateVariant(i, "stocks", parseInt(e.target.value) || 0)}
-                className="w-20 px-2 py-[7px] border border-slate-200 rounded-lg text-[12px] text-slate-900 bg-white outline-none text-center focus:border-blue-400 transition-colors"
-              />
+                className="w-20 px-2 py-[7px] border border-slate-200 rounded-lg text-[12px] text-slate-900 bg-white outline-none text-center focus:border-blue-400 transition-colors" />
             </div>
-
-            {/* Remove */}
-            <button
-              type="button"
-              onClick={() => removeVariant(i)}
-              className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 cursor-pointer hover:bg-red-100 transition-colors text-[13px] shrink-0"
-            >
+            <button type="button" onClick={() => removeVariant(i)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 cursor-pointer hover:bg-red-100 transition-colors text-[13px] shrink-0">
               ×
             </button>
           </div>
         ))}
       </div>
-
       {variants.length > 0 && (
         <p className="text-[11px] text-slate-400 mt-2 mb-0">
           {variants.length} color variant{variants.length > 1 ? "s" : ""} — each will be saved as a separate product entry.
         </p>
       )}
     </div>
+  );
+};
+
+// ────────────────────────────────────────────────────────────
+// Export Modal
+// ────────────────────────────────────────────────────────────
+const ExportModal = ({ onClose, products, categories }) => {
+  const [format, setFormat] = useState(null); // null | "pdf" | "excel"
+  const [exporting, setExporting] = useState(false);
+
+  const resolveCat = (raw, fallback) =>
+    typeof raw === "object" && raw !== null
+      ? (raw.name ?? raw.category_name ?? fallback ?? "—")
+      : (raw ?? fallback ?? "—");
+
+  const getStatus = (status) =>
+    status === "pre_order" || status === "Pre-Order" ? "Pre-Order" : "In Stock";
+
+  const buildRows = () =>
+    products.map((p, i) => ({
+      "#": i + 1,
+      "Product Name": p.product_name ?? p.name ?? "—",
+      "Category":     resolveCat(p.category, p.category_name),
+      "Color":        p.color || "—",
+      "Size":         p.size || "—",
+      "Unit":         p.unit || "—",
+      "Status":       getStatus(p.status),
+      "On Sale":      p.isSale == 1 ? "Yes" : "No",
+      "Price (₱)":   parseFloat(p.price ?? 0).toFixed(2),
+      "Acq. Price (₱)": parseFloat(p.acquired_price ?? 0).toFixed(2),
+    }));
+
+  const exportExcel = () => {
+    setExporting(true);
+    try {
+      const rows = buildRows();
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      // Column widths
+      ws["!cols"] = [
+        { wch: 4 }, { wch: 36 }, { wch: 20 }, { wch: 12 },
+        { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 },
+        { wch: 14 }, { wch: 16 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Products");
+      XLSX.writeFile(wb, `products_export_${Date.now()}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      alert("Export failed: " + err.message);
+    } finally {
+      setExporting(false);
+      onClose();
+    }
+  };
+
+  const exportPDF = async () => {
+    setExporting(true);
+    try {
+      // Dynamically load jsPDF + autoTable from CDN
+      if (!window.jspdf) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      if (!window.jspdf?.jsPDF?.prototype?.autoTable) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 59);
+      doc.text("List of Products", 14, 16);
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Exported: ${new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}`, 14, 22);
+      doc.text(`Total: ${products.length} product(s)`, 14, 27);
+
+      const rows = buildRows();
+      const columns = Object.keys(rows[0] || {});
+
+      doc.autoTable({
+        startY: 32,
+        head: [columns],
+        body: rows.map(r => columns.map(c => r[c])),
+        styles: {
+          fontSize: 8,
+          cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
+          lineColor: [226, 232, 240],
+          lineWidth: 0.3,
+          font: "helvetica",
+          textColor: [30, 41, 59],
+        },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 8,
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        columnStyles: {
+          0: { cellWidth: 8,  halign: "center" },  // #
+          1: { cellWidth: 55 },                      // Product Name
+          2: { cellWidth: 32 },                      // Category
+          3: { cellWidth: 18 },                      // Color
+          4: { cellWidth: 18 },                      // Size
+          5: { cellWidth: 14 },                      // Unit
+          6: { cellWidth: 20 },                      // Status
+          7: { cellWidth: 14, halign: "center" },   // On Sale
+          8: { cellWidth: 22, halign: "right" },    // Price
+          9: { cellWidth: 22, halign: "right" },    // Acq. Price
+        },
+        didParseCell: (data) => {
+          // Color-code Status column
+          if (data.section === "body" && data.column.index === 6) {
+            if (data.cell.raw === "In Stock") {
+              data.cell.styles.textColor = [5, 150, 105];
+              data.cell.styles.fontStyle = "bold";
+            } else if (data.cell.raw === "Pre-Order") {
+              data.cell.styles.textColor = [217, 119, 6];
+              data.cell.styles.fontStyle = "bold";
+            }
+          }
+          // Color-code On Sale column
+          if (data.section === "body" && data.column.index === 7) {
+            if (data.cell.raw === "Yes") {
+              data.cell.styles.textColor = [180, 83, 9];
+              data.cell.styles.fontStyle = "bold";
+            }
+          }
+        },
+        margin: { left: 14, right: 14 },
+        tableLineColor: [203, 213, 225],
+        tableLineWidth: 0.3,
+      });
+
+      // Page numbers
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `Page ${i} of ${pageCount}`,
+          doc.internal.pageSize.getWidth() - 14,
+          doc.internal.pageSize.getHeight() - 8,
+          { align: "right" }
+        );
+      }
+
+      doc.save(`products_export_${Date.now()}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("PDF export failed: " + err.message);
+    } finally {
+      setExporting(false);
+      onClose();
+    }
+  };
+
+  const handleExport = () => {
+    if (format === "excel") exportExcel();
+    else if (format === "pdf") exportPDF();
+  };
+
+  return (
+    <Overlay onClose={onClose}>
+      <ModalHeader
+        title="Export Products"
+        subtitle={`${products.length} product(s) will be exported`}
+        onClose={onClose}
+      />
+      <div className="px-6 pt-5 pb-6">
+
+        <p className="text-[13px] text-slate-500 mb-4">
+          Choose a format to export your current product list:
+        </p>
+
+        {/* Format picker */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {/* Excel */}
+          <button
+            type="button"
+            onClick={() => setFormat("excel")}
+            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all text-left
+              ${format === "excel"
+                ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                : "border-slate-200 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/40"}`}
+          >
+            <div className="text-4xl">📊</div>
+            <div>
+              <div className={`text-[14px] font-bold mb-0.5 ${format === "excel" ? "text-emerald-700" : "text-slate-800"}`}>
+                Excel (.xlsx)
+              </div>
+              <div className="text-[11px] text-slate-400 leading-relaxed">
+                Spreadsheet format. Best for editing, filtering, and further data work.
+              </div>
+            </div>
+            {format === "excel" && (
+              <div className="self-start mt-auto px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
+                ✓ Selected
+              </div>
+            )}
+          </button>
+
+          {/* PDF */}
+          <button
+            type="button"
+            onClick={() => setFormat("pdf")}
+            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all text-left
+              ${format === "pdf"
+                ? "border-blue-500 bg-blue-50 shadow-sm"
+                : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"}`}
+          >
+            <div className="text-4xl">📄</div>
+            <div>
+              <div className={`text-[14px] font-bold mb-0.5 ${format === "pdf" ? "text-blue-700" : "text-slate-800"}`}>
+                PDF (.pdf)
+              </div>
+              <div className="text-[11px] text-slate-400 leading-relaxed">
+                Printable grid layout with all product details. Great for reports and sharing.
+              </div>
+            </div>
+            {format === "pdf" && (
+              <div className="self-start mt-auto px-2 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold">
+                ✓ Selected
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Preview of columns */}
+        {format && (
+          <div className="mb-5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              Columns included in export:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {["#", "Product Name", "Category", "Color", "Size", "Unit", "Status", "On Sale", "Price (₱)", "Acq. Price (₱)"].map(col => (
+                <span key={col} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] text-slate-600 font-medium">
+                  {col}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-gray-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={!format || exporting}
+            className={`flex-[2] py-2.5 border-none rounded-lg text-white text-[13px] font-bold transition-colors
+              ${!format || exporting
+                ? "bg-slate-300 cursor-not-allowed"
+                : format === "pdf"
+                  ? "bg-blue-600 cursor-pointer hover:bg-blue-700"
+                  : "bg-emerald-600 cursor-pointer hover:bg-emerald-700"}`}
+          >
+            {exporting
+              ? "Exporting…"
+              : !format
+                ? "Select a format first"
+                : format === "pdf"
+                  ? "⬇ Download PDF"
+                  : "⬇ Download Excel"}
+          </button>
+        </div>
+      </div>
+    </Overlay>
   );
 };
 
@@ -324,7 +588,6 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
   const [importSearch, setImportSearch] = useState("");
   const fileRef = useRef();
 
-  // Build a set of existing product name+color combos for duplicate detection
   const existingSet = useMemo(() => {
     const s = new Set();
     (existingProducts ?? []).forEach(p => {
@@ -351,25 +614,20 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
     for (let i = 0; i < json.length; i++) {
       const row = json[i];
       if (row.some(cell => String(cell).toLowerCase().includes("item description"))) {
-        headerIdx = i;
-        break;
+        headerIdx = i; break;
       }
     }
     if (headerIdx === -1) headerIdx = 0;
 
     const headers = json[headerIdx].map(h => String(h).toLowerCase().trim());
 
-    // ── FIX: colIdx with special handling so "size" never matches "size_color" ──
     const colIdx = (...names) => {
       for (const n of names) {
         const idx = headers.findIndex(h => {
           if (n === "size") {
-            // Must be exactly "size" OR contain "size" but NOT be a size_color/size/color combo column
             return h === "size" || (
-              h.includes("size") &&
-              !h.includes("size_color") &&
-              !h.includes("size/color") &&
-              !h.includes("size color")
+              h.includes("size") && !h.includes("size_color") &&
+              !h.includes("size/color") && !h.includes("size color")
             );
           }
           return h.includes(n);
@@ -384,15 +642,11 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
     const unitCol          = colIdx("unit");
     const acquiredPriceCol = colIdx("acquired", "cost", "buying", "acquired pri");
     const sellingPriceCol  = colIdx("selling", "price", "selling p");
-    const sizeCol          = colIdx("size");   // now correctly skips "size_color"
+    const sizeCol          = colIdx("size");
     const colorCol         = colIdx("color");
-
-    console.log("Column mapping:", { nameCol, sizeColorCol, unitCol, acquiredPriceCol, sellingPriceCol, sizeCol, colorCol });
 
     const rows = [];
     let keyIdx = 0;
-
-    // List of color words for detection (used only for SIZE_COLOR fallback)
     const colorWords = ["black", "white", "red", "blue", "green", "yellow", "orange", "purple", "pink", "gray", "brown", "beige", "maroon", "navy", "teal", "cyan", "magenta", "gold", "silver"];
 
     for (let i = headerIdx + 1; i < json.length; i++) {
@@ -400,47 +654,28 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
       const name = nameCol !== -1 ? String(row[nameCol] ?? "").trim() : "";
       if (!name) continue;
 
-      // ── Read dedicated SIZE and COLOR columns first ──
       let size     = sizeCol   !== -1 ? String(row[sizeCol]   ?? "").trim() : "";
       let colorRaw = colorCol  !== -1 ? String(row[colorCol]  ?? "").trim() : "";
       const sizeColor = sizeColorCol !== -1 ? String(row[sizeColorCol] ?? "").trim() : "";
 
-      // ── Only use SIZE_COLOR as fallback when BOTH dedicated columns are empty ──
       if (sizeColor && !size && !colorRaw) {
         const lowerSizeColor = sizeColor.toLowerCase();
         const hasColorWord = colorWords.some(cw => lowerSizeColor.includes(cw));
         const hasColorSeparator = lowerSizeColor.includes("or") || lowerSizeColor.includes("/") || lowerSizeColor.includes(",");
-
-        if (hasColorWord && hasColorSeparator) {
-          // e.g. "Black or White", "Red / White / Yellow"
-          colorRaw = sizeColor;
-        } else if (!hasColorWord) {
-          // e.g. "1-Gallon", "250ml", "Euro 36"
-          size = sizeColor;
-        } else {
-          // Single color word with no separator
-          colorRaw = sizeColor;
-        }
+        if (hasColorWord && hasColorSeparator) colorRaw = sizeColor;
+        else if (!hasColorWord) size = sizeColor;
+        else colorRaw = sizeColor;
       }
-      // If dedicated SIZE exists → size is already set, sizeColor is ignored for size
-      // If dedicated COLOR exists → colorRaw is already set, sizeColor is ignored for color
 
-      // Get price values — handle "375 1-Gallon" compound format
       let acquiredPrice = "";
       if (acquiredPriceCol !== -1) {
         const val = row[acquiredPriceCol];
         if (typeof val === "string" && val.includes(" ")) {
           const parts = val.trim().split(/\s+/);
           const possiblePrice = parseFloat(parts[0]);
-          if (!isNaN(possiblePrice)) {
-            acquiredPrice = possiblePrice;
-            if (!size && parts[1]) size = parts[1];
-          } else {
-            acquiredPrice = parseFloat(val) || "";
-          }
-        } else {
-          acquiredPrice = parseFloat(val) || "";
-        }
+          if (!isNaN(possiblePrice)) { acquiredPrice = possiblePrice; if (!size && parts[1]) size = parts[1]; }
+          else acquiredPrice = parseFloat(val) || "";
+        } else acquiredPrice = parseFloat(val) || "";
       }
 
       let sellingPrice = "";
@@ -449,57 +684,23 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
         if (typeof val === "string" && val.includes(" ")) {
           const parts = val.trim().split(/\s+/);
           const possiblePrice = parseFloat(parts[0]);
-          if (!isNaN(possiblePrice)) {
-            sellingPrice = possiblePrice;
-            if (!size && parts[1]) size = parts[1];
-          } else {
-            sellingPrice = parseFloat(val) || "";
-          }
-        } else {
-          sellingPrice = parseFloat(val) || "";
-        }
+          if (!isNaN(possiblePrice)) { sellingPrice = possiblePrice; if (!size && parts[1]) size = parts[1]; }
+          else sellingPrice = parseFloat(val) || "";
+        } else sellingPrice = parseFloat(val) || "";
       }
 
       const unit = unitCol !== -1 ? String(row[unitCol] ?? "").trim() : "";
-
-      // Split colors if multiple (e.g., "Black or White", "Red, White, Yellow")
       const colorList = splitColors(colorRaw);
 
-      console.log(`Processing: ${name}`, { size, colorRaw, colorList, unit, acquiredPrice, sellingPrice });
-
       if (colorList.length > 1) {
-        // Create a separate row for each color; size stays the same
         for (const c of colorList) {
-          rows.push({
-            _key: `row_${keyIdx++}`,
-            product_name:   name,
-            size,
-            color:          c,
-            unit,
-            acquired_price: acquiredPrice,
-            price:          sellingPrice,
-            category_id:    "",
-            description:    "",
-            isSale:         false,
-          });
+          rows.push({ _key: `row_${keyIdx++}`, product_name: name, size, color: c, unit, acquired_price: acquiredPrice, price: sellingPrice, category_id: "", description: "", isSale: false });
         }
       } else {
-        rows.push({
-          _key: `row_${keyIdx++}`,
-          product_name:   name,
-          size,
-          color:          colorList[0] || "",
-          unit,
-          acquired_price: acquiredPrice,
-          price:          sellingPrice,
-          category_id:    "",
-          description:    "",
-          isSale:         false,
-        });
+        rows.push({ _key: `row_${keyIdx++}`, product_name: name, size, color: colorList[0] || "", unit, acquired_price: acquiredPrice, price: sellingPrice, category_id: "", description: "", isSale: false });
       }
     }
 
-    console.log("Total rows parsed:", rows.length);
     return rows;
   };
 
@@ -507,8 +708,7 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
     if (!file) return;
     const name = file.name.toLowerCase();
     if (!name.endsWith(".xlsx") && !name.endsWith(".xls") && !name.endsWith(".csv")) {
-      alert("Please upload an Excel file (.xlsx, .xls, .csv)");
-      return;
+      alert("Please upload an Excel file (.xlsx, .xls, .csv)"); return;
     }
     try {
       const rows = await parseExcel(file);
@@ -521,38 +721,19 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
     }
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFile(e.dataTransfer.files[0]);
-  };
+  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); };
 
   const updateRow = (idx, field, value) => {
-    setEditableRows(prev => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
+    setEditableRows(prev => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next; });
   };
-
   const duplicateRow = (idx) => {
     setEditableRows(prev => {
       const next = [...prev];
-      const original = next[idx];
-      const newRow = {
-        ...original,
-        _key: `row_dup_${Date.now()}_${idx}`,
-        color: "",
-        stocks: 0,
-      };
-      next.splice(idx + 1, 0, newRow);
+      next.splice(idx + 1, 0, { ...next[idx], _key: `row_dup_${Date.now()}_${idx}`, color: "", stocks: 0 });
       return next;
     });
   };
-
-  const removeRow = (idx) => {
-    setEditableRows(prev => prev.filter((_, i) => i !== idx));
-  };
+  const removeRow = (idx) => setEditableRows(prev => prev.filter((_, i) => i !== idx));
 
   const applyDefaultCategory = () => {
     if (!defaultCategoryId) return;
@@ -562,19 +743,14 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
   const displayedRows = useMemo(() => {
     if (!importSearch.trim()) return editableRows.map((r, i) => ({ ...r, _origIdx: i }));
     const q = importSearch.toLowerCase();
-    return editableRows
-      .map((r, i) => ({ ...r, _origIdx: i }))
-      .filter(r => r.product_name.toLowerCase().includes(q));
+    return editableRows.map((r, i) => ({ ...r, _origIdx: i })).filter(r => r.product_name.toLowerCase().includes(q));
   }, [editableRows, importSearch]);
 
   const handleImport = async () => {
     const toImport = editableRows.filter(r => r.product_name && !isDuplicate(r));
-    if (!toImport.length) { alert("No rows to import (all rows are empty or already exist in the product list)."); return; }
+    if (!toImport.length) { alert("No rows to import."); return; }
     const missing = toImport.filter(r => !r.category_id);
-    if (missing.length) {
-      alert(`${missing.length} product(s) have no category. Please assign categories first.`);
-      return;
-    }
+    if (missing.length) { alert(`${missing.length} product(s) have no category.`); return; }
 
     setImporting(true);
     setStep("importing");
@@ -585,15 +761,15 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
       const row = toImport[i];
       try {
         const fd = new FormData();
-        fd.append("product_name",   row.product_name);
-        fd.append("category_id",    row.category_id);
+        fd.append("product_name", row.product_name);
+        fd.append("category_id", row.category_id);
         fd.append("product_stocks", 0);
-        fd.append("price",          row.price || 0);
+        fd.append("price", row.price || 0);
         fd.append("acquired_price", row.acquired_price || 0);
-        fd.append("unit",           row.unit || "");
-        fd.append("size",           row.size || "");
-        fd.append("description",    row.description || "");
-        fd.append("isSale",         row.isSale ? 1 : 0);
+        fd.append("unit", row.unit || "");
+        fd.append("size", row.size || "");
+        fd.append("description", row.description || "");
+        fd.append("isSale", row.isSale ? 1 : 0);
         if (row.color) fd.append("color", row.color);
         await axios.post(`${BASE}/api/admin/products`, fd, { withCredentials: true });
         res.created++;
@@ -620,15 +796,12 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
         subtitle={
           step === "upload"    ? "Upload an Excel file to bulk-import products" :
           step === "preview"   ? `${editableRows.length} row(s) found — review before importing` :
-          step === "importing" ? "Importing products…" :
-          "Import complete"
+          step === "importing" ? "Importing products…" : "Import complete"
         }
         onClose={onClose}
       />
-
       <div className="px-6 pt-5 pb-6">
 
-        {/* ── UPLOAD ── */}
         {step === "upload" && (
           <div>
             <div
@@ -642,10 +815,8 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
               <div className="mb-3 text-5xl">📊</div>
               <div className="text-[15px] font-bold text-slate-800 mb-1">Drop your Excel file here</div>
               <div className="text-[12px] text-slate-400">or click to browse — supports .xlsx, .xls, .csv</div>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
-                onChange={e => handleFile(e.target.files[0])} />
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => handleFile(e.target.files[0])} />
             </div>
-
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-[12px] text-blue-700">
               <div className="font-bold mb-1.5">📋 Expected columns:</div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -663,43 +834,27 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                   </div>
                 ))}
               </div>
-              <div className="mt-2 text-blue-500">
-                ✅ Products without color are imported as-is (color field left empty)
-              </div>
+              <div className="mt-2 text-blue-500">✅ Products without color are imported as-is</div>
             </div>
           </div>
         )}
 
-        {/* ── PREVIEW ── */}
         {step === "preview" && (
           <div>
             <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-[8px] bg-slate-50 mb-3">
               <span className="text-slate-400">🔍</span>
-              <input
-                type="text"
-                placeholder="Search products in this import…"
-                value={importSearch}
+              <input type="text" placeholder="Search products in this import…" value={importSearch}
                 onChange={e => setImportSearch(e.target.value)}
-                className="flex-1 text-[13px] text-gray-700 bg-transparent border-none outline-none"
-              />
+                className="flex-1 text-[13px] text-gray-700 bg-transparent border-none outline-none" />
               {importSearch && (
-                <button onClick={() => setImportSearch("")}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer border-none bg-transparent text-[13px] px-1">
-                  ✕
-                </button>
+                <button onClick={() => setImportSearch("")} className="text-slate-400 hover:text-slate-600 cursor-pointer border-none bg-transparent text-[13px] px-1">✕</button>
               )}
             </div>
-
             <div className="flex items-end gap-2 p-3 mb-4 border bg-amber-50 border-amber-200 rounded-xl">
               <div className="flex-1">
-                <label className="block text-[11px] font-semibold text-amber-800 mb-1 uppercase tracking-wide">
-                  Apply default category to unassigned rows
-                </label>
-                <select
-                  value={defaultCategoryId}
-                  onChange={e => setDefaultCategoryId(e.target.value)}
-                  className="w-full px-[10px] py-[8px] border border-amber-200 rounded-lg text-[13px] bg-white outline-none appearance-none cursor-pointer"
-                >
+                <label className="block text-[11px] font-semibold text-amber-800 mb-1 uppercase tracking-wide">Apply default category to unassigned rows</label>
+                <select value={defaultCategoryId} onChange={e => setDefaultCategoryId(e.target.value)}
+                  className="w-full px-[10px] py-[8px] border border-amber-200 rounded-lg text-[13px] bg-white outline-none appearance-none cursor-pointer">
                   <option value="">Select category…</option>
                   {categories.map(cat => (
                     <option key={cat.id ?? cat.category_id} value={cat.id ?? cat.category_id}>
@@ -708,25 +863,17 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                   ))}
                 </select>
               </div>
-              <button
-                onClick={applyDefaultCategory}
-                disabled={!defaultCategoryId}
-                className="px-4 py-[9px] rounded-lg bg-amber-500 text-white text-[13px] font-semibold cursor-pointer hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-              >
+              <button onClick={applyDefaultCategory} disabled={!defaultCategoryId}
+                className="px-4 py-[9px] rounded-lg bg-amber-500 text-white text-[13px] font-semibold cursor-pointer hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0">
                 Apply to All
               </button>
             </div>
-
             {duplicateCount > 0 && (
               <div className="flex items-center gap-2 px-3 py-2.5 mb-3 bg-orange-50 border border-orange-200 rounded-xl text-[12px] text-orange-700">
                 <span className="text-base">⚠️</span>
-                <span>
-                  <strong>{duplicateCount}</strong> row(s) already exist in your product list and will be <strong>skipped</strong> during import.
-                  They are highlighted in orange below.
-                </span>
+                <span><strong>{duplicateCount}</strong> row(s) already exist and will be <strong>skipped</strong>.</span>
               </div>
             )}
-
             <div className="max-h-[48vh] overflow-y-auto pr-1 mb-4">
               <table className="w-full text-[12px] border-collapse">
                 <thead className="sticky top-0 z-10">
@@ -743,95 +890,52 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                 </thead>
                 <tbody>
                   {displayedRows.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">No products match your search</td>
-                    </tr>
+                    <tr><td colSpan={8} className="py-8 text-center text-slate-400">No products match your search</td></tr>
                   )}
                   {displayedRows.map((row) => {
                     const idx = row._origIdx;
                     const dup = isDuplicate(row);
                     return (
-                      <tr
-                        key={row._key}
-                        className={`border-b border-slate-100 transition-opacity ${
-                          dup
-                            ? "bg-orange-50 opacity-70"
-                            : "bg-white hover:bg-blue-50/30"
-                        }`}
-                      >
+                      <tr key={row._key} className={`border-b border-slate-100 transition-opacity ${dup ? "bg-orange-50 opacity-70" : "bg-white hover:bg-blue-50/30"}`}>
                         <td className="p-1.5">
                           <div className="flex items-center gap-1.5">
-                            <input
-                              value={row.product_name}
-                              onChange={e => updateRow(idx, "product_name", e.target.value)}
-                              className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none focus:border-blue-400"
-                            />
-                            {dup && (
-                              <span title="Already exists in product list" className="text-orange-400 text-[14px] shrink-0 cursor-default">⚠</span>
-                            )}
+                            <input value={row.product_name} onChange={e => updateRow(idx, "product_name", e.target.value)}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none focus:border-blue-400" />
+                            {dup && <span title="Already exists" className="text-orange-400 text-[14px] shrink-0 cursor-default">⚠</span>}
                           </div>
                         </td>
                         <td className="p-1.5">
                           <div className="flex items-center gap-1.5">
                             {row.color && <ColorDot color={row.color} size="w-3 h-3" />}
                             <div className="relative flex-1">
-                              <select
-                                value={row.color || ""}
-                                onChange={e => updateRow(idx, "color", e.target.value)}
-                                className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none appearance-none cursor-pointer pr-6"
-                              >
+                              <select value={row.color || ""} onChange={e => updateRow(idx, "color", e.target.value)}
+                                className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none appearance-none cursor-pointer pr-6">
                                 <option value="">No Color</option>
-                                {COLOR_OPTIONS.map(c => (
-                                  <option key={c} value={c}>{c}</option>
-                                ))}
+                                {COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                               </select>
                               <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[9px]">▾</div>
                             </div>
                           </div>
                         </td>
                         <td className="p-1.5">
-                          <input
-                            value={row.size}
-                            onChange={e => updateRow(idx, "size", e.target.value)}
-                            placeholder="e.g. 500ml"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none focus:border-blue-400"
-                          />
+                          <input value={row.size} onChange={e => updateRow(idx, "size", e.target.value)} placeholder="e.g. 500ml"
+                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none focus:border-blue-400" />
                         </td>
                         <td className="p-1.5">
-                          <input
-                            value={row.unit}
-                            onChange={e => updateRow(idx, "unit", e.target.value)}
-                            placeholder="btl/pc"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none focus:border-blue-400"
-                          />
+                          <input value={row.unit} onChange={e => updateRow(idx, "unit", e.target.value)} placeholder="btl/pc"
+                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none focus:border-blue-400" />
                         </td>
                         <td className="p-1.5">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={row.price}
-                            onChange={e => updateRow(idx, "price", e.target.value)}
-                            placeholder="0.00"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none text-right focus:border-blue-400"
-                          />
+                          <input type="number" step="0.01" value={row.price} onChange={e => updateRow(idx, "price", e.target.value)} placeholder="0.00"
+                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none text-right focus:border-blue-400" />
                         </td>
                         <td className="p-1.5">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={row.acquired_price}
-                            onChange={e => updateRow(idx, "acquired_price", e.target.value)}
-                            placeholder="0.00"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none text-right focus:border-blue-400"
-                          />
+                          <input type="number" step="0.01" value={row.acquired_price} onChange={e => updateRow(idx, "acquired_price", e.target.value)} placeholder="0.00"
+                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none text-right focus:border-blue-400" />
                         </td>
                         <td className="p-1.5">
-                          <select
-                            value={row.category_id}
-                            onChange={e => updateRow(idx, "category_id", e.target.value)}
-                            className={`w-full px-2 py-1.5 border rounded-md text-[12px] outline-none appearance-none cursor-pointer
-                              ${!row.category_id ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
-                          >
+                          <select value={row.category_id} onChange={e => updateRow(idx, "category_id", e.target.value)}
+                            className={`w-full px-2 py-1.5 border rounded-md text-[12px] outline-none appearance-none cursor-pointer ${!row.category_id ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}>
                             <option value="">-- select --</option>
                             {categories.map(cat => (
                               <option key={cat.id ?? cat.category_id} value={cat.id ?? cat.category_id}>
@@ -842,20 +946,12 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                         </td>
                         <td className="p-1.5">
                           <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => duplicateRow(idx)}
-                              title="Add another color variant for this product"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-[15px] font-bold cursor-pointer hover:bg-blue-100 transition-colors shrink-0 leading-none"
-                            >
+                            <button type="button" onClick={() => duplicateRow(idx)} title="Add color variant"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-[15px] font-bold cursor-pointer hover:bg-blue-100 transition-colors shrink-0 leading-none">
                               +
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => removeRow(idx)}
-                              title="Remove this row"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 text-[13px] cursor-pointer hover:bg-red-100 transition-colors shrink-0"
-                            >
+                            <button type="button" onClick={() => removeRow(idx)} title="Remove row"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 text-[13px] cursor-pointer hover:bg-red-100 transition-colors shrink-0">
                               ×
                             </button>
                           </div>
@@ -866,59 +962,38 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                 </tbody>
               </table>
             </div>
-
             <div className="flex items-center justify-between text-[12px] text-slate-400 mb-4">
-              <span>
-                {importSearch
-                  ? `Showing ${displayedRows.length} of ${editableRows.length} rows`
-                  : `${importableCount} of ${editableRows.length} rows will be imported`}
-              </span>
+              <span>{importSearch ? `Showing ${displayedRows.length} of ${editableRows.length} rows` : `${importableCount} of ${editableRows.length} rows will be imported`}</span>
               <div className="flex items-center gap-3">
-                {duplicateCount > 0 && (
-                  <span className="text-orange-400">{duplicateCount} duplicate(s) will be skipped</span>
-                )}
-                <span className="text-red-400">
-                  {editableRows.filter(r => !r.category_id && !isDuplicate(r)).length} row(s) missing category
-                </span>
+                {duplicateCount > 0 && <span className="text-orange-400">{duplicateCount} duplicate(s) will be skipped</span>}
+                <span className="text-red-400">{editableRows.filter(r => !r.category_id && !isDuplicate(r)).length} row(s) missing category</span>
               </div>
             </div>
-
             <div className="flex gap-2.5">
               <button onClick={() => setStep("upload")}
                 className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-gray-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors">
                 ← Back
               </button>
-              <button
-                onClick={handleImport}
-                disabled={importing || importableCount === 0}
-                className="flex-[2] py-2.5 border-none rounded-lg bg-emerald-600 text-white text-[13px] font-bold cursor-pointer hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+              <button onClick={handleImport} disabled={importing || importableCount === 0}
+                className="flex-[2] py-2.5 border-none rounded-lg bg-emerald-600 text-white text-[13px] font-bold cursor-pointer hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 ⬆ Import {importableCount} Row(s)
               </button>
             </div>
           </div>
         )}
 
-        {/* ── IMPORTING ── */}
         {step === "importing" && (
           <div className="py-8 text-center">
             <div className="mb-4 text-4xl">⟳</div>
-            <div className="text-[15px] font-semibold text-slate-800 mb-3">
-              Importing {progress.done} of {progress.total}…
-            </div>
+            <div className="text-[15px] font-semibold text-slate-800 mb-3">Importing {progress.done} of {progress.total}…</div>
             <div className="w-full h-3 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full transition-all duration-300 bg-blue-600 rounded-full"
-                style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
-              />
+              <div className="h-full transition-all duration-300 bg-blue-600 rounded-full"
+                style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
             </div>
-            <div className="text-[12px] text-slate-400 mt-2">
-              {Math.round(progress.total ? (progress.done / progress.total) * 100 : 0)}%
-            </div>
+            <div className="text-[12px] text-slate-400 mt-2">{Math.round(progress.total ? (progress.done / progress.total) * 100 : 0)}%</div>
           </div>
         )}
 
-        {/* ── DONE ── */}
         {step === "done" && (
           <div className="py-4 text-center">
             <div className="mb-4 text-5xl">{results.failed === 0 ? "🎉" : "⚠️"}</div>
@@ -936,9 +1011,7 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
             {results.errors.length > 0 && (
               <div className="p-3 mb-4 overflow-y-auto text-left border border-red-100 bg-red-50 rounded-xl max-h-40">
                 <div className="text-[11px] font-semibold text-red-600 mb-1">Errors:</div>
-                {results.errors.map((e, i) => (
-                  <div key={i} className="text-[11px] text-red-500">{e}</div>
-                ))}
+                {results.errors.map((e, i) => <div key={i} className="text-[11px] text-red-500">{e}</div>)}
               </div>
             )}
             <button onClick={onClose}
@@ -968,6 +1041,7 @@ const AdminProducts = () => {
   const [showEditModal, setShowEditModal]       = useState(false);
   const [showDeleteModal, setShowDeleteModal]   = useState(false);
   const [showImportModal, setShowImportModal]   = useState(false);
+  const [showExportModal, setShowExportModal]   = useState(false); // ← NEW
   const [activeProduct, setActiveProduct]       = useState(null);
   const [activeImgIdx, setActiveImgIdx]         = useState(0);
 
@@ -975,29 +1049,25 @@ const AdminProducts = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [products, setProducts]                 = useState([]);
   const [productsLoading, setProductsLoading]   = useState(false);
-  const [productStats, setProductStats] = useState({ total: 0, inStock: 0, preOrder: 0 });
+  const [productStats, setProductStats]         = useState({ total: 0, inStock: 0, preOrder: 0 });
 
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting]     = useState(false);
   const [saving, setSaving]         = useState(false);
 
-  // ── Add form ──
   const BLANK_ADD = {
-  product_name: "", category_id: "", description: "",
-  price: "", acquired_price: "", unit: "", size: "", isSale: false, status: "in_stock",
+    product_name: "", category_id: "", description: "",
+    price: "", acquired_price: "", unit: "", size: "", isSale: false, status: "in_stock",
   };
   const [addForm, setAddForm]         = useState(BLANK_ADD);
   const [addImages, setAddImages]     = useState([]);
   const [addPreviews, setAddPreviews] = useState([]);
- 
 
-  // ── Edit form ──
   const [editForm, setEditForm]           = useState({ ...BLANK_ADD });
   const [newImages, setNewImages]         = useState([]);
   const [newPreviews, setNewPreviews]     = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const [editColor, setEditColor]         = useState("");
-  
 
   // ────────────────────────────────────────────
   // Data fetching
@@ -1010,10 +1080,10 @@ const AdminProducts = () => {
       const list = Array.isArray(data) ? data : [];
       setProducts(list);
       setProductStats({
-      total:    list.length,
-      inStock:  list.filter(p => (p.status ?? "in_stock") !== "pre_order").length,
-      preOrder: list.filter(p => (p.status ?? "") === "pre_order").length,
-    });
+        total:    list.length,
+        inStock:  list.filter(p => (p.status ?? "in_stock") !== "pre_order").length,
+        preOrder: list.filter(p => (p.status ?? "") === "pre_order").length,
+      });
     } catch (err) {
       console.error("Failed to fetch products:", err);
     } finally {
@@ -1050,21 +1120,19 @@ const AdminProducts = () => {
 
   const getStock  = (p) => parseInt(p.product_stocks ?? p.stock ?? 0);
   const getStatus = (status) => {
-  if (status === "pre_order" || status === "Pre-Order") return "Pre-Order";
-  return "In Stock";
-};
-
-const getStatusClass = (status) => ({
-  "Pre-Order": "bg-amber-50 text-amber-600 border border-yellow-300",
-  "In Stock":  "bg-emerald-50 text-emerald-600 border border-emerald-200",
-}[status] || "bg-emerald-50 text-emerald-600 border border-emerald-200");
+    if (status === "pre_order" || status === "Pre-Order") return "Pre-Order";
+    return "In Stock";
+  };
+  const getStatusClass = (status) => ({
+    "Pre-Order": "bg-amber-50 text-amber-600 border border-yellow-300",
+    "In Stock":  "bg-emerald-50 text-emerald-600 border border-emerald-200",
+  }[status] || "bg-emerald-50 text-emerald-600 border border-emerald-200");
 
   const resolveCat = (raw, fallback) =>
     typeof raw === "object" && raw !== null
       ? (raw.name ?? raw.category_name ?? fallback ?? "—")
       : (raw ?? fallback ?? "—");
 
-  // ── Filter + Sort ──
   const filteredProducts = useMemo(() => products
     .filter(p => {
       const name = (p.product_name ?? p.name ?? "").toLowerCase();
@@ -1090,7 +1158,6 @@ const getStatusClass = (status) => ({
 
   // ── Modal openers ──
   const openView = (product) => { setActiveProduct(product); setActiveImgIdx(0); setShowViewModal(true); };
-
   const openEdit = (product) => {
     setActiveProduct(product);
     setEditForm({
@@ -1110,7 +1177,6 @@ const getStatusClass = (status) => ({
     setRemovedImageIds([]);
     setShowEditModal(true);
   };
-
   const openDelete = (product) => { setActiveProduct(product); setShowDeleteModal(true); };
 
   // ── Add handlers ──
@@ -1131,27 +1197,19 @@ const getStatusClass = (status) => ({
   const submitAdd = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-
-    const buildFd = (color, stocks) => {
+    try {
       const fd = new FormData();
       fd.append("product_name",   addForm.product_name);
       fd.append("category_id",    addForm.category_id);
-      fd.append("status", addForm.status ?? "in_stock");
+      fd.append("status",         addForm.status ?? "in_stock");
       fd.append("description",    addForm.description);
       fd.append("price",          addForm.price);
       fd.append("acquired_price", addForm.acquired_price || 0);
       fd.append("unit",           addForm.unit);
       fd.append("size",           addForm.size);
       fd.append("isSale",         addForm.isSale ? 1 : 0);
-      if (color) fd.append("color", color);
       addImages.forEach(img => fd.append("images[]", img));
-      return fd;
-    };
-
-    try {
-      const fd = buildFd("", 0);
       await axios.post(`${BASE}/api/admin/products`, fd, { withCredentials: true });
-
       setShowAddModal(false);
       setAddForm(BLANK_ADD);
       setAddImages([]);
@@ -1194,7 +1252,7 @@ const getStatusClass = (status) => ({
     fd.append("acquired_price", editForm.acquired_price || 0);
     fd.append("unit",           editForm.unit);
     fd.append("size",           editForm.size);
-    fd.append("status", editForm.status ?? "in_stock");
+    fd.append("status",         editForm.status ?? "in_stock");
     fd.append("isSale",         editForm.isSale ? 1 : 0);
     if (editColor) fd.append("color", editColor);
     removedImageIds.forEach(id => fd.append("remove_images[]", id));
@@ -1241,6 +1299,15 @@ const getStatusClass = (status) => ({
     <div className="flex min-h-screen bg-[#F0F7F2] font-[system-ui,sans-serif]">
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
+      {/* ══ EXPORT MODAL ══ */}
+      {showExportModal && (
+        <ExportModal
+          onClose={() => setShowExportModal(false)}
+          products={filteredProducts}
+          categories={categories}
+        />
+      )}
+
       {/* ══ IMPORT MODAL ══ */}
       {showImportModal && (
         <ImportModal
@@ -1254,66 +1321,43 @@ const getStatusClass = (status) => ({
       {/* ══ ADD PRODUCT MODAL ══ */}
       {showAddModal && (
         <Overlay onClose={() => setShowAddModal(false)}>
-          <ModalHeader
-            title="Add New Product"
-            subtitle="Fill in the details to list a new product"
-            onClose={() => setShowAddModal(false)}
-          />
+          <ModalHeader title="Add New Product" subtitle="Fill in the details to list a new product" onClose={() => setShowAddModal(false)} />
           <form onSubmit={submitAdd} className="px-6 pt-5 pb-6">
             <ImageUploadZone id="addImgUpload" onchange={handleAddImages} previews={addPreviews} onRemove={removeAddImage} />
-
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="col-span-2">
                 <label className={labelCls}>Product Name</label>
                 <input name="product_name" placeholder="e.g. Scotch Brite Heavy-Duty Scrub Sponge"
-                  value={addForm.product_name} onChange={handleAddChange} required className="w-full px-[14px] py-[13px] border-2 border-blue-400 rounded-lg text-[15px] font-medium text-slate-900 bg-white outline-none box-border font-[inherit] focus:border-blue-600 transition-colors"/>
+                  value={addForm.product_name} onChange={handleAddChange} required
+                  className="w-full px-[14px] py-[13px] border-2 border-blue-400 rounded-lg text-[15px] font-medium text-slate-900 bg-white outline-none box-border font-[inherit] focus:border-blue-600 transition-colors" />
               </div>
               <div className="col-span-2">
-                <label className={labelCls}>
-                  Category
-                  {categoriesLoading && <span className="ml-1.5 text-[10px] text-slate-400 font-normal normal-case">Loading…</span>}
-                </label>
-                <CategorySelect name="category_id" value={addForm.category_id} onChange={handleAddChange}
-                  disabled={categoriesLoading} categories={categories} />
+                <label className={labelCls}>Category{categoriesLoading && <span className="ml-1.5 text-[10px] text-slate-400 font-normal normal-case">Loading…</span>}</label>
+                <CategorySelect name="category_id" value={addForm.category_id} onChange={handleAddChange} disabled={categoriesLoading} categories={categories} />
               </div>
               <div>
                 <label className={labelCls}>Price (₱)</label>
-                <input type="number" step="0.01" name="price" placeholder="0.00"
-                  value={addForm.price} onChange={handleAddChange} required className={inputCls} min="0" />
+                <input type="number" step="0.01" name="price" placeholder="0.00" value={addForm.price} onChange={handleAddChange} required className={inputCls} min="0" />
               </div>
               <div>
                 <label className={labelCls}>Acquired Price (₱)</label>
-                <input type="number" step="0.01" name="acquired_price" placeholder="0.00"
-                  value={addForm.acquired_price} onChange={handleAddChange} className={inputCls} min="0" />
+                <input type="number" step="0.01" name="acquired_price" placeholder="0.00" value={addForm.acquired_price} onChange={handleAddChange} className={inputCls} min="0" />
               </div>
               <div>
                 <label className={labelCls}>Unit</label>
-                <input name="unit" placeholder="e.g. btl, gal, pcs"
-                  value={addForm.unit} onChange={handleAddChange} className={inputCls} />
+                <input name="unit" placeholder="e.g. btl, gal, pcs" value={addForm.unit} onChange={handleAddChange} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Size</label>
-                <input name="size" placeholder="e.g. 500ml, 1L, 100 x 70mm"
-                  value={addForm.size} onChange={handleAddChange} className={inputCls} />
+                <input name="size" placeholder="e.g. 500ml, 1L, 100 x 70mm" value={addForm.size} onChange={handleAddChange} className={inputCls} />
               </div>
             </div>
-
             <div className="mb-4">
               <label className={labelCls}>Description</label>
-              <textarea name="description" placeholder="Describe your product…"
-                value={addForm.description} onChange={handleAddChange}
-                className={`${inputCls} h-20 resize-y`} />
+              <textarea name="description" placeholder="Describe your product…" value={addForm.description} onChange={handleAddChange} className={`${inputCls} h-20 resize-y`} />
             </div>
-
-            
-
-            <StatusToggle
-              value={addForm.status}
-              onChange={(val) => setAddForm(prev => ({ ...prev, status: val }))}
-            />
-
+            <StatusToggle value={addForm.status} onChange={(val) => setAddForm(prev => ({ ...prev, status: val }))} />
             <SaleToggle checked={addForm.isSale} onChange={handleAddChange} name="isSale" />
-
             <div className="flex gap-2.5">
               <button type="button" onClick={() => setShowAddModal(false)}
                 className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-gray-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors">
@@ -1332,29 +1376,17 @@ const getStatusClass = (status) => ({
       {/* ══ VIEW PRODUCT MODAL ══ */}
       {showViewModal && activeProduct && (
         <Overlay wide onClose={() => setShowViewModal(false)}>
-          <ModalHeader
-            title={activeProduct.product_name ?? activeProduct.name}
-            subtitle={resolveCat(activeProduct.category, activeProduct.category_name)}
-            onClose={() => setShowViewModal(false)}
-          />
+          <ModalHeader title={activeProduct.product_name ?? activeProduct.name} subtitle={resolveCat(activeProduct.category, activeProduct.category_name)} onClose={() => setShowViewModal(false)} />
           <div className="grid grid-cols-2 gap-5 px-6 pt-5 pb-6">
-            {/* Left: images */}
             <div>
               <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-200 aspect-square flex items-center justify-center mb-2.5 relative">
-                {viewMainSrc
-                  ? <img src={viewMainSrc} alt="main" className="object-contain w-full h-full" />
-                  : <span className="text-6xl text-slate-300">📄</span>
-                }
+                {viewMainSrc ? <img src={viewMainSrc} alt="main" className="object-contain w-full h-full" /> : <span className="text-6xl text-slate-300">📄</span>}
                 {activeProduct.isSale == 1 && (
                   <div className="absolute top-2.5 left-2.5 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">SALE</div>
                 )}
                 {(() => {
                   const st = getStatus(activeProduct.status);
-                  return (
-                    <span className={`${getStatusClass(st)} absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold`}>
-                      {st}
-                    </span>
-                  );
+                  return <span className={`${getStatusClass(st)} absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold`}>{st}</span>;
                 })()}
               </div>
               {viewImages.length > 1 && (
@@ -1368,45 +1400,32 @@ const getStatusClass = (status) => ({
                   ))}
                 </div>
               )}
-              {viewImages.length === 0 && (
-                <p className="m-0 text-xs text-center text-slate-400">No images uploaded</p>
-              )}
+              {viewImages.length === 0 && <p className="m-0 text-xs text-center text-slate-400">No images uploaded</p>}
             </div>
-
-            {/* Right: details */}
             <div className="flex flex-col gap-3.5">
               <div className="p-4 bg-slate-50 rounded-xl">
-                <div className="text-[28px] font-extrabold text-blue-600 mb-2">
-                  ₱{parseFloat(activeProduct.price ?? 0).toFixed(2)}
-                </div>
+                <div className="text-[28px] font-extrabold text-blue-600 mb-2">₱{parseFloat(activeProduct.price ?? 0).toFixed(2)}</div>
                 <p className="m-0 text-[13px] text-gray-500 leading-[1.7]">
                   {activeProduct.description || <em className="text-slate-300">No description.</em>}
                 </p>
               </div>
-
               <div className="grid grid-cols-2 gap-2.5">
                 {[
-                  { label: "Color",    value: activeProduct.color || "—",        icon: "🎨",
-                    extra: activeProduct.color
-                      ? <ColorDot color={activeProduct.color} size="w-4 h-4" />
-                      : null },
+                  { label: "Color",    value: activeProduct.color || "—", icon: "🎨", extra: activeProduct.color ? <ColorDot color={activeProduct.color} size="w-4 h-4" /> : null },
                   { label: "Category", value: resolveCat(activeProduct.category, activeProduct.category_name), icon: "🏷️" },
-                  { label: "Size",     value: activeProduct.size || "—",         icon: "📐" },
-                  { label: "Unit",     value: activeProduct.unit || "—",         icon: "⚖️" },
+                  { label: "Size",     value: activeProduct.size || "—", icon: "📐" },
+                  { label: "Unit",     value: activeProduct.unit || "—", icon: "⚖️" },
                   { label: "On Sale",  value: activeProduct.isSale == 1 ? "Yes" : "No", icon: "🏷" },
                 ].map(item => (
                   <div key={item.label} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-2.5">
                     <span className="text-lg">{item.icon}</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-[10px] text-slate-400 font-semibold uppercase">{item.label}</div>
-                      <div className="flex items-center gap-1.5 text-[13px] font-bold text-slate-900 truncate">
-                        {item.extra}{item.value}
-                      </div>
+                      <div className="flex items-center gap-1.5 text-[13px] font-bold text-slate-900 truncate">{item.extra}{item.value}</div>
                     </div>
                   </div>
                 ))}
               </div>
-
               <div className="bg-white border border-slate-200 rounded-xl px-4 py-3.5">
                 {[
                   ["Product ID",     `#${activeProduct.product_id}`],
@@ -1420,7 +1439,6 @@ const getStatusClass = (status) => ({
                   </div>
                 ))}
               </div>
-
               <div className="flex gap-2.5 mt-auto">
                 <button onClick={() => { setShowViewModal(false); openEdit(activeProduct); }}
                   className="flex-1 py-2.5 border-none rounded-lg bg-blue-600 text-white text-[13px] font-bold cursor-pointer hover:bg-blue-700 transition-colors">
@@ -1439,11 +1457,7 @@ const getStatusClass = (status) => ({
       {/* ══ EDIT PRODUCT MODAL ══ */}
       {showEditModal && activeProduct && (
         <Overlay onClose={() => setShowEditModal(false)}>
-          <ModalHeader
-            title="Edit Product"
-            subtitle={`Editing: ${activeProduct.product_name ?? activeProduct.name}`}
-            onClose={() => setShowEditModal(false)}
-          />
+          <ModalHeader title="Edit Product" subtitle={`Editing: ${activeProduct.product_name ?? activeProduct.name}`} onClose={() => setShowEditModal(false)} />
           <form onSubmit={submitEdit} className="px-6 pt-5 pb-6">
             {(activeProduct.images ?? []).length > 0 && (
               <div className="mb-4">
@@ -1451,101 +1465,69 @@ const getStatusClass = (status) => ({
                 <p className="text-[11px] text-slate-400 mt-0 mb-2">Click to mark for removal</p>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
                   {(activeProduct.images ?? []).map((img, i) => {
-                    const src     = `${BASE}/storage/${img.image_path}`;
+                    const src = `${BASE}/storage/${img.image_path}`;
                     const removed = removedImageIds.includes(img.image_id);
                     return (
                       <div key={img.id ?? i} onClick={() => toggleRemoveExisting(img.image_id)}
                         className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer
                           ${removed ? "border-2 border-red-500" : i === 0 ? "border-2 border-blue-600" : "border border-slate-200"}`}>
-                        <img src={src} alt=""
-                          className={`w-full h-full object-cover block transition-opacity duration-200 ${removed ? "opacity-30" : "opacity-100"}`} />
-                        {i === 0 && !removed && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-blue-600 text-white text-[9px] font-bold text-center py-0.5">MAIN</div>
-                        )}
-                        {removed && (
-                          <div className="absolute inset-0 flex items-center justify-center text-xl">🗑</div>
-                        )}
+                        <img src={src} alt="" className={`w-full h-full object-cover block transition-opacity duration-200 ${removed ? "opacity-30" : "opacity-100"}`} />
+                        {i === 0 && !removed && <div className="absolute bottom-0 left-0 right-0 bg-blue-600 text-white text-[9px] font-bold text-center py-0.5">MAIN</div>}
+                        {removed && <div className="absolute inset-0 flex items-center justify-center text-xl">🗑</div>}
                       </div>
                     );
                   })}
                 </div>
-                {removedImageIds.length > 0 && (
-                  <p className="text-[11px] text-red-500 mt-1.5 mb-0">{removedImageIds.length} image(s) marked for removal.</p>
-                )}
+                {removedImageIds.length > 0 && <p className="text-[11px] text-red-500 mt-1.5 mb-0">{removedImageIds.length} image(s) marked for removal.</p>}
               </div>
             )}
-
-            <ImageUploadZone id="editImgUpload" onchange={handleNewImages} previews={newPreviews}
-              onRemove={removeNewImage} label="Add More Images" />
-
+            <ImageUploadZone id="editImgUpload" onchange={handleNewImages} previews={newPreviews} onRemove={removeNewImage} label="Add More Images" />
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="col-span-2">
                 <label className={labelCls}>Product Name</label>
-                <input name="product_name" value={editForm.product_name}
-                  onChange={handleEditChange} required className={inputCls} />
+                <input name="product_name" value={editForm.product_name} onChange={handleEditChange} required className={inputCls} />
               </div>
               <div className="col-span-2">
                 <label className={labelCls}>Category</label>
-                <CategorySelect name="category_id" value={editForm.category_id}
-                  onChange={handleEditChange} disabled={categoriesLoading} categories={categories} />
+                <CategorySelect name="category_id" value={editForm.category_id} onChange={handleEditChange} disabled={categoriesLoading} categories={categories} />
               </div>
-
               <div>
                 <label className={labelCls}>Color <span className="font-normal normal-case text-slate-400">(optional)</span></label>
                 <div className="flex items-center gap-2">
                   {editColor && <ColorDot color={editColor} size="w-5 h-5" />}
                   <div className="relative flex-1">
-                    <select
-                      value={editColor}
-                      onChange={e => setEditColor(e.target.value)}
-                      className="w-full px-[11px] py-[9px] border border-slate-200 rounded-lg text-[13px] outline-none appearance-none pr-8 bg-white cursor-pointer text-slate-900"
-                    >
+                    <select value={editColor} onChange={e => setEditColor(e.target.value)}
+                      className="w-full px-[11px] py-[9px] border border-slate-200 rounded-lg text-[13px] outline-none appearance-none pr-8 bg-white cursor-pointer text-slate-900">
                       <option value="">— No Color —</option>
-                      {COLOR_OPTIONS.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
+                      {COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[11px]">▾</div>
                   </div>
                 </div>
               </div>
-
-              
-
               <div>
                 <label className={labelCls}>Price (₱)</label>
-                <input type="number" step="0.01" name="price" value={editForm.price}
-                  onChange={handleEditChange} required className={inputCls} min="0" />
+                <input type="number" step="0.01" name="price" value={editForm.price} onChange={handleEditChange} required className={inputCls} min="0" />
               </div>
               <div>
                 <label className={labelCls}>Acquired Price (₱)</label>
-                <input type="number" step="0.01" name="acquired_price" value={editForm.acquired_price}
-                  onChange={handleEditChange} className={inputCls} min="0" />
+                <input type="number" step="0.01" name="acquired_price" value={editForm.acquired_price} onChange={handleEditChange} className={inputCls} min="0" />
               </div>
               <div>
                 <label className={labelCls}>Unit</label>
-                <input name="unit" placeholder="e.g. btl, gal, pcs"
-                  value={editForm.unit} onChange={handleEditChange} className={inputCls} />
+                <input name="unit" placeholder="e.g. btl, gal, pcs" value={editForm.unit} onChange={handleEditChange} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Size</label>
-                <input name="size" placeholder="e.g. 500ml, 1L"
-                  value={editForm.size} onChange={handleEditChange} className={inputCls} />
+                <input name="size" placeholder="e.g. 500ml, 1L" value={editForm.size} onChange={handleEditChange} className={inputCls} />
               </div>
             </div>
-
             <div className="mb-4">
               <label className={labelCls}>Description</label>
-              <textarea name="description" value={editForm.description}
-                onChange={handleEditChange} className={`${inputCls} h-20 resize-y`} />
+              <textarea name="description" value={editForm.description} onChange={handleEditChange} className={`${inputCls} h-20 resize-y`} />
             </div>
-
             <SaleToggle checked={editForm.isSale} onChange={handleEditChange} name="isSale" />
-
-            <StatusToggle
-            value={editForm.status}
-            onChange={(val) => setEditForm(prev => ({ ...prev, status: val }))}
-          />
+            <StatusToggle value={editForm.status} onChange={(val) => setEditForm(prev => ({ ...prev, status: val }))} />
             <div className="flex gap-2.5">
               <button type="button" onClick={() => setShowEditModal(false)}
                 className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-gray-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors">
@@ -1568,8 +1550,7 @@ const getStatusClass = (status) => ({
             <div className="flex items-center justify-center mx-auto mb-4 text-2xl bg-red-100 rounded-full w-14 h-14">🗑️</div>
             <h3 className="m-0 mb-2 text-[17px] font-bold text-slate-900">Delete Product?</h3>
             <p className="m-0 mb-6 text-[13px] text-slate-500 leading-relaxed">
-              Are you sure you want to delete <strong>{activeProduct.product_name ?? activeProduct.name}</strong>?
-              <br />This action cannot be undone.
+              Are you sure you want to delete <strong>{activeProduct.product_name ?? activeProduct.name}</strong>?<br />This action cannot be undone.
             </p>
             <div className="flex gap-2.5">
               <button onClick={() => setShowDeleteModal(false)}
@@ -1577,8 +1558,7 @@ const getStatusClass = (status) => ({
                 Cancel
               </button>
               <button onClick={handleDelete} disabled={deleting}
-                className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-bold cursor-pointer transition-colors
-                  ${deleting ? "bg-red-300 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"}`}>
+                className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-bold cursor-pointer transition-colors ${deleting ? "bg-red-300 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"}`}>
                 {deleting ? "Deleting…" : "Yes, Delete"}
               </button>
             </div>
@@ -1599,7 +1579,11 @@ const getStatusClass = (status) => ({
             <h1 className="text-[22px] font-bold text-gray-900 m-0">List of Products</h1>
           </div>
           <div className="flex gap-2.5">
-            <button className="flex items-center gap-1.5 px-[18px] py-[9px] border border-gray-300 rounded-lg bg-white text-gray-700 text-[13px] font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+            {/* ── UPDATED Export button — now opens modal ── */}
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-1.5 px-[18px] py-[9px] border border-gray-300 rounded-lg bg-white text-gray-700 text-[13px] font-medium cursor-pointer hover:bg-gray-50 transition-colors"
+            >
               ↑ Export
             </button>
             <button onClick={() => setShowImportModal(true)}
@@ -1615,42 +1599,29 @@ const getStatusClass = (status) => ({
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-3">
-        {[
-          { label: "Total Products", value: productStats.total,    bg: "bg-blue-50",    accent: "text-blue-600",    border: "border-blue-100",    icon: "📦", iconBg: "bg-blue-100" },
-          { label: "In Stock",       value: productStats.inStock,  bg: "bg-emerald-50", accent: "text-emerald-600", border: "border-emerald-100", icon: "✅", iconBg: "bg-emerald-100" },
-          { label: "Pre-Order",      value: productStats.preOrder, bg: "bg-amber-50",   accent: "text-amber-600",   border: "border-amber-100",   icon: "🕒", iconBg: "bg-amber-100" },
-        ].map(stat => (
-          <div
-            key={stat.label}
-            className={`bg-white rounded-2xl px-6 py-5 flex items-center justify-between shadow-sm border ${stat.border} hover:shadow-md transition-shadow`}
-          >
-            <div>
-              <div className={`text-4xl font-extrabold ${stat.accent} leading-none mb-1`}>
-                {stat.value}
+          {[
+            { label: "Total Products", value: productStats.total,    bg: "bg-blue-50",    accent: "text-blue-600",    border: "border-blue-100",    icon: "📦", iconBg: "bg-blue-100" },
+            { label: "In Stock",       value: productStats.inStock,  bg: "bg-emerald-50", accent: "text-emerald-600", border: "border-emerald-100", icon: "✅", iconBg: "bg-emerald-100" },
+            { label: "Pre-Order",      value: productStats.preOrder, bg: "bg-amber-50",   accent: "text-amber-600",   border: "border-amber-100",   icon: "🕒", iconBg: "bg-amber-100" },
+          ].map(stat => (
+            <div key={stat.label} className={`bg-white rounded-2xl px-6 py-5 flex items-center justify-between shadow-sm border ${stat.border} hover:shadow-md transition-shadow`}>
+              <div>
+                <div className={`text-4xl font-extrabold ${stat.accent} leading-none mb-1`}>{stat.value}</div>
+                <div className="text-[13px] font-medium text-gray-500 mt-1">{stat.label}</div>
               </div>
-              <div className="text-[13px] font-medium text-gray-500 mt-1">{stat.label}</div>
+              <div className={`w-14 h-14 rounded-2xl ${stat.iconBg} flex items-center justify-center text-2xl flex-shrink-0`}>{stat.icon}</div>
             </div>
-            <div className={`w-14 h-14 rounded-2xl ${stat.iconBg} flex items-center justify-center text-2xl flex-shrink-0`}>
-              {stat.icon}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
         {/* Table card */}
         <div className="overflow-hidden bg-white shadow-sm rounded-2xl">
-
           {/* Filters */}
           <div className="px-[18px] py-3.5 border-b border-gray-100 flex gap-2 items-center w-full flex-nowrap">
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-[7px] bg-gray-50 flex-1 min-w-0">
               <span className="text-gray-400">🔍</span>
-              <input
-                type="text"
-                placeholder="Search for Product"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full text-xs text-gray-700 bg-transparent border-none outline-none"
-              />
+              <input type="text" placeholder="Search for Product" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                className="w-full text-xs text-gray-700 bg-transparent border-none outline-none" />
             </div>
             <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
               className="border border-gray-200 rounded-lg px-3.5 py-2 bg-gray-50 text-sm text-gray-700 cursor-pointer outline-none shrink-0">
@@ -1674,25 +1645,19 @@ const getStatusClass = (status) => ({
           <div className="overflow-x-auto">
             {productsLoading ? (
               <div className="py-16 text-sm text-center text-slate-400">
-                <div className="mb-3 text-4xl">⟳</div>
-                Loading products…
+                <div className="mb-3 text-4xl">⟳</div>Loading products…
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="py-16 text-sm text-center text-slate-400">
-                <div className="mb-3 text-4xl">📦</div>
-                No products found
+                <div className="mb-3 text-4xl">📦</div>No products found
               </div>
             ) : (
               <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="w-10 p-3 pl-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedProducts.length === products.length && products.length > 0}
-                        onChange={toggleSelectAll}
-                        className="cursor-pointer w-[15px] h-[15px]"
-                      />
+                      <input type="checkbox" checked={selectedProducts.length === products.length && products.length > 0}
+                        onChange={toggleSelectAll} className="cursor-pointer w-[15px] h-[15px]" />
                     </th>
                     {["Product", "Category", "Color", "Size", "Unit", "Status"].map(h => (
                       <th key={h} className="p-3 font-semibold text-left text-gray-700 whitespace-nowrap">{h}</th>
@@ -1710,32 +1675,22 @@ const getStatusClass = (status) => ({
                     const color    = product.color ?? "";
                     const size     = product.size ?? "—";
                     const unit     = product.unit ?? "—";
-                    const stock    = getStock(product);
                     const price    = parseFloat(product.price ?? 0);
-                    const status = getStatus(product.status);
-                    const thumb    = product.images?.[0]?.image_path
-                      ? `${BASE}/storage/${product.images[0].image_path}`
-                      : null;
+                    const status   = getStatus(product.status);
+                    const thumb    = product.images?.[0]?.image_path ? `${BASE}/storage/${product.images[0].image_path}` : null;
                     const isSelected = selectedProducts.includes(product.product_id);
 
                     return (
-                      <tr
-                        key={product.product_id ?? index}
-                        className={`border-b border-gray-100 transition-colors hover:bg-blue-50/40
-                          ${isSelected ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
-                      >
+                      <tr key={product.product_id ?? index}
+                        className={`border-b border-gray-100 transition-colors hover:bg-blue-50/40 ${isSelected ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
                         <td className="p-3 pl-4">
-                          <input type="checkbox" checked={isSelected}
-                            onChange={() => toggleSelect(product.product_id)}
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(product.product_id)}
                             className="cursor-pointer w-[15px] h-[15px]" />
                         </td>
-
                         <td className="p-3">
                           <div className="flex items-center gap-2.5">
                             <div className="w-[38px] h-[38px] rounded-lg bg-gray-100 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden border border-gray-200">
-                              {thumb
-                                ? <img src={thumb} alt={name} className="object-cover w-full h-full" />
-                                : "📄"}
+                              {thumb ? <img src={thumb} alt={name} className="object-cover w-full h-full" /> : "📄"}
                             </div>
                             <div>
                               <div className="font-semibold text-gray-900 whitespace-nowrap">{name}</div>
@@ -1745,9 +1700,7 @@ const getStatusClass = (status) => ({
                             </div>
                           </div>
                         </td>
-
                         <td className="p-3 text-gray-500">{category}</td>
-
                         <td className="p-3">
                           {color ? (
                             <div className="flex items-center gap-1.5">
@@ -1758,19 +1711,14 @@ const getStatusClass = (status) => ({
                             <span className="text-slate-300 text-[12px]">—</span>
                           )}
                         </td>
-
                         <td className="p-3 text-gray-500">{size}</td>
                         <td className="p-3 text-gray-500">{unit}</td>
-
                         <td className="p-3">
                           <span className={`${getStatusClass(status)} px-2.5 py-1 rounded-full text-[11px] font-semibold inline-block whitespace-nowrap`}>
                             {status}
                           </span>
                         </td>
-
-                        
                         <td className="p-3 font-medium text-right text-gray-700">₱{price.toFixed(2)}</td>
-
                         <td className="p-3">
                           <div className="flex items-center justify-center gap-1.5">
                             <button onClick={() => openView(product)}
@@ -1808,8 +1756,7 @@ const getStatusClass = (status) => ({
                 </button>
                 {pageNumbers.map(p => (
                   <button key={p} onClick={() => setCurrentPage(p)}
-                    className={`w-7 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors
-                      ${p === currentPage ? "border-none bg-blue-600 text-white" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}>
+                    className={`w-7 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors ${p === currentPage ? "border-none bg-blue-600 text-white" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}>
                     {p}
                   </button>
                 ))}
