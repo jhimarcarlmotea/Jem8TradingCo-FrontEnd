@@ -222,19 +222,19 @@ export default function AdminOrders() {
       const rawDeliveries = res.data.deliveries ?? [];
       console.log(res)
       const missingUserIds = [
-        ...new Set(
-          rawDeliveries
-            .filter((d) => !d.checkout?.user && d.checkout?.user_id)
-            .map((d) => d.checkout.user_id)
-        ),
-      ];
+      ...new Set(
+        rawDeliveries
+          .filter((d) => !d.checkout?.account && !d.checkout?.user && d.checkout?.user_id)
+          .map((d) => d.checkout.user_id)
+      ),
+    ];
 
       const userMap = {};
       await Promise.all(
         missingUserIds.map(async (id) => {
           try {
             const userRes = await api.get(`/showUser/${id}`);
-            userMap[id] = userRes.data.data.user ?? userRes.data.data;
+            userMap[id] = userRes.data.data.account ?? userRes.data.data.user ?? userRes.data.data;
           } catch {
             userMap[id] = null;
           }
@@ -288,7 +288,7 @@ export default function AdminOrders() {
 
   const filtered = useMemo(() => {
     const searched = deliveries.filter((d) => {
-      const user = d.checkout?.user;
+      const user = d.checkout?.account ?? d.checkout?.user;
       const name = `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.toLowerCase();
       const checkoutId = String(d.checkout?.checkout_id ?? d.checkout_id ?? "").toLowerCase();
       const productName = (d.checkout?.cart?.product?.product_name ?? "").toLowerCase();

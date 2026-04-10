@@ -375,13 +375,16 @@ export default function AdminDashboard() {
 
  
 
-  const marketingData = Object.entries(traffic.revenue_by_address ?? {}).slice(0,5).map(([addr, v], i) => ({
-    city: addr,
-    pct: Number(v),
-    color: CHART_COLORS[i % CHART_COLORS.length],
-  }));
-  const marketingTotal = marketingData.reduce((s, d) => s + d.pct, 0) || 1;
-  const marketingWithPct = marketingData.map(d => ({ ...d, pct: parseFloat(((d.pct / marketingTotal) * 100).toFixed(1)) }));
+  const marketingData = Object.entries(traffic.revenue_by_address ?? {}).slice(0, 5).map(([city, v], i) => ({
+  city:  city,
+  pct:   Number(v),
+  color: CHART_COLORS[i % CHART_COLORS.length],
+}));
+const marketingTotal   = marketingData.reduce((s, d) => s + d.pct, 0) || 1;
+const marketingWithPct = marketingData.map(d => ({
+  ...d,
+  pct: parseFloat(((d.pct / marketingTotal) * 100).toFixed(1)),
+}));
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#F0F7F2", fontFamily: "'DM Sans', 'Nunito', system-ui, sans-serif" }}>

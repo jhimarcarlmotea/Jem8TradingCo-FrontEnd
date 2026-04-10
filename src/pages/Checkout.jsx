@@ -186,44 +186,37 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
 const handlePlaceOrder = async () => {
     setPlacing(true);
     setPlaceError(null);
+
     let resolvedAddress;
     if (addrMode === "saved" && selectedAddr) {
       resolvedAddress = {
-        address:  selectedAddr.street      || "",
+        street:   selectedAddr.street      || "",
         barangay: selectedAddr.barangay    || "",
         city:     selectedAddr.city        || "",
         province: selectedAddr.province    || "",
         zip:      selectedAddr.postal_code || "",
+        country:  selectedAddr.country     || "Philippines",
       };
     } else {
-      resolvedAddress = { ...delivery };
-      if (savedAddresses.length === 0) {
-        try {
-          const { addAddress } = await import("../api/address");
-          const newAddr = await addAddress({
-            type: "personal", street: delivery.address, barangay: delivery.barangay,
-            city: delivery.city, province: delivery.province,
-            postal_code: delivery.zip, country: "Philippines", status: "active",
-          });
-          if (newAddr?.data) setSavedAddresses([newAddr.data?.data ?? newAddr.data]);
-        } catch {}
-      }
+      resolvedAddress = {
+        street:   delivery.address  || "",
+        barangay: delivery.barangay || "",
+        city:     delivery.city     || "",
+        province: delivery.province || "",
+        zip:      delivery.zip      || "",
+        country:  "Philippines",
+      };
     }
-
-    const billingAddress = [
-      resolvedAddress.address, resolvedAddress.barangay,
-      resolvedAddress.city, resolvedAddress.province, resolvedAddress.zip,
-    ].filter(Boolean).join(", ");
 
     const paymentDetails = {
       ...payFields,
-      first_name: user?.first_name || "", last_name: user?.last_name || "",
-      email: user?.email || "", phone: user?.phone_number || "",
-      billing_address: billingAddress,
+      first_name: user?.first_name || "",
+      last_name:  user?.last_name  || "",
+      email:      user?.email      || "",
+      phone:      user?.phone_number || "",
     };
 
-    
-   const cartIds = selectedItems.flatMap((i) => i.allIds ?? [i.id]).filter(Boolean);
+    const cartIds = selectedItems.flatMap((i) => i.allIds ?? [i.id]).filter(Boolean);
 
     if (cartIds.length === 0) {
       setPlaceError("No valid cart items found. Please go back to your cart.");
@@ -232,15 +225,13 @@ const handlePlaceOrder = async () => {
     }
 
     const payload = {
-      cart_ids: cartIds,          
-      payment_method:       payMethod,
-      payment_details:      paymentDetails,
-      shipping_fee:         shippingFee,
-      special_instructions: specialNote || null,
+      cart_ids:              cartIds,
+      payment_method:        payMethod,
+      payment_details:       paymentDetails,
+      delivery_address:      resolvedAddress,   // ← new, separate from payment_details
+      shipping_fee:          shippingFee,
+      special_instructions:  specialNote || null,
     };
-
-    console.log("Checkout payload:", payload);
-    console.log("Cart IDs:", cartIds);
 
     try {
       const res = await axios.post(`${BASE}/checkout`, payload, { withCredentials: true });
