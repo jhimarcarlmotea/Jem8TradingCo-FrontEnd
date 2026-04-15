@@ -478,8 +478,14 @@ export default function AdminOrders() {
                             {user ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() : "—"}
                           </td>
                           <td className="px-3.5 py-3.5 text-gray-500 leading-relaxed">
-                            <div>{user?.email ?? "—"}</div>
-                            <div>{user?.phone_number ?? ""}</div>
+                              <div>{user?.email ?? "—"}</div>
+                              <div>{user?.phone_number ?? ""}</div>
+                              {user?.company_name && (
+                                  <div className="text-[11px] text-blue-600 font-medium">🏢 {user.company_name}</div>
+                              )}
+                              {user?.tin_number && (
+                                  <div className="text-[11px] text-gray-400">TIN: {user.tin_number}</div>
+                              )}
                           </td>
                           <td className="px-3.5 py-3.5 text-gray-700 whitespace-nowrap capitalize">
                             {checkout?.payment_method ?? "—"}

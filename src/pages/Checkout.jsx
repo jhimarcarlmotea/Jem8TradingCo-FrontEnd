@@ -339,6 +339,12 @@ const handlePlaceOrder = async () => {
                     </div>
                     <div className="text-xs text-[#666]">{user?.email || "—"}</div>
                     {user?.phone_number && <div className="text-xs text-[#666]">{user.phone_number}</div>}
+                    {user?.company_name && (
+                      <div className="text-xs text-[#4d7b65] font-medium mt-0.5">🏢 {user.company_name}</div>
+                    )}
+                    {user?.tin_number && (
+                      <div className="text-xs text-[#666] mt-0.5">TIN: {user.tin_number}</div>
+                    )}
                   </div>
                   <Link to="/Profilepersonal" className="text-xs text-[#4d7b65] font-medium no-underline px-2.5 py-1.5 rounded-lg border-[1.5px] border-[#c0ddd0] bg-white hover:bg-[#e8f5ef] transition-colors whitespace-nowrap">
                     ✏️ Edit
@@ -578,6 +584,12 @@ const handlePlaceOrder = async () => {
                   <div className="px-4 py-4 text-sm leading-relaxed text-slate-600">
                     <strong>{user?.first_name} {user?.last_name}</strong><br />
                     {user?.phone_number && <>{user.phone_number} · </>}{user?.email}<br />
+                    {user?.company_name && (
+                      <div className="text-[13px] text-[#4d7b65] font-medium mt-0.5">🏢 {user.company_name}</div>
+                    )}
+                    {user?.tin_number && (
+                      <div className="text-[13px] text-[#666] mt-0.5">TIN: {user.tin_number}</div>
+                    )}
                     {addrMode === "saved" && selectedAddr ? (
                       <>{selectedAddr.street}{selectedAddr.barangay ? `, ${selectedAddr.barangay}` : ""}, {selectedAddr.city}, {selectedAddr.province} {selectedAddr.postal_code}</>
                     ) : (

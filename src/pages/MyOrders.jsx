@@ -84,15 +84,17 @@ function normaliseOrder(o, account) {
     total:          Number(checkout?.paid_amount ?? 0),
     specialNote:    checkout?.special_instructions ?? delivery?.notes ?? "",
     delivery: {
-      firstName: account?.first_name   ?? "",
-      lastName:  account?.last_name    ?? "",
-      phone:     account?.phone_number ?? "",
-      email:     account?.email        ?? "",
-      address:   addr?.street   ?? "",
-      barangay:  addr?.barangay ?? "",
-      city:      addr?.city     ?? "",
-      province:  addr?.province ?? "",
-      zip:       addr?.zip      ?? "",
+      firstName:   account?.first_name   ?? "",
+      lastName:    account?.last_name    ?? "",
+      phone:       account?.phone_number ?? "",
+      email:       account?.email        ?? "",
+      companyName: account?.company_name ?? "",
+      tinNumber:   account?.tin_number   ?? "",
+      address:     addr?.street   ?? "",
+      barangay:    addr?.barangay ?? "",
+      city:        addr?.city     ?? "",
+      province:    addr?.province ?? "",
+      zip:         addr?.zip      ?? "",
     },
     items,
   };
@@ -467,6 +469,12 @@ export default function MyOrders() {
                           <div className="font-semibold">{selectedOrder.delivery.firstName} {selectedOrder.delivery.lastName}</div>
                           <div className="text-xs text-slate-500">{selectedOrder.delivery.phone}</div>
                           <div className="text-xs text-slate-500">{selectedOrder.delivery.email}</div>
+                          {selectedOrder.delivery.companyName && (
+                            <div className="text-xs text-[#4d7b65] font-medium">🏢 {selectedOrder.delivery.companyName}</div>
+                          )}
+                          {selectedOrder.delivery.tinNumber && (
+                            <div className="text-xs text-slate-500">TIN: {selectedOrder.delivery.tinNumber}</div>
+                          )}
                           {(selectedOrder.delivery.address || selectedOrder.delivery.city) && (
                             <div className="text-xs text-slate-500 pt-1">
                               {selectedOrder.delivery.address}
