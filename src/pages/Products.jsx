@@ -7,49 +7,41 @@ import axios from "axios";
 // ── CATEGORY THEME MAP ──────────────────────────────────────────────────────
 const CATEGORY_THEMES = {
   all: {
-    logo: null,
     bg: "linear-gradient(135deg, #edf4f0 0%, #fff 55%, #f9fdf9 100%)",
     accent: "#4d7b65",
     label: "All Products",
   },
   office: {
-    logo: new URL("../assets/logo-office.png", import.meta.url).href,
     bg: "linear-gradient(135deg, #fdf0f0 0%, #fff 55%, #fff5f5 100%)",
     accent: "#e03131",
     label: "Office Supplies",
   },
   pantry: {
-    logo: new URL("../assets/logo-pantry.png", import.meta.url).href,
     bg: "linear-gradient(135deg, #fff7ed 0%, #fff 55%, #fffbf5 100%)",
     accent: "#ea6c00",
     label: "Pantry Supplies",
   },
   janitor: {
-    logo: new URL("../assets/logo-janitorial.png", import.meta.url).href,
     bg: "linear-gradient(135deg, #edfaf0 0%, #fff 55%, #f4fdf6 100%)",
     accent: "#2e8b57",
     label: "Janitorial Supplies",
   },
   personal: {
-    logo: new URL("../assets/logo-personal.png", import.meta.url).href,
     bg: "linear-gradient(135deg, #e6fafa 0%, #fff 55%, #f0fafa 100%)",
     accent: "#0d9488",
     label: "Personal/Home Care",
   },
   wellness: {
-    logo: new URL("../assets/logo-wellness.png", import.meta.url).href,
     bg: "linear-gradient(135deg, #e6fafa 0%, #fff 55%, #f0fafa 100%)",
     accent: "#0d9488",
     label: "Wellness Supplies",
   },
-  giveaway: { 
-    logo: new URL("../assets/logo-giveaway.png", import.meta.url).href,
+  giveaway: {
     bg: "linear-gradient(135deg, #f8f0ff 0%, #fff 55%, #faf5ff 100%)",
     accent: "#7c3aed",
     label: "Promotional Items",
   },
   promo: {
-    logo: new URL("../assets/logo-giveaway.png", import.meta.url).href,
     bg: "linear-gradient(135deg, #f8f0ff 0%, #fff 55%, #faf5ff 100%)",
     accent: "#7c3aed",
     label: "Promotional Items",
@@ -58,10 +50,10 @@ const CATEGORY_THEMES = {
 
 function resolveThemeKey(label = "") {
   const l = label.toLowerCase();
-  if (l.includes("office"))                          return "office";
-  if (l.includes("pantry") || l.includes("food"))   return "pantry";
-  if (l.includes("janitor") || l.includes("clean")) return "janitor";
-  if (l.includes("personal") || l.includes("home")) return "personal";
+  if (l.includes("office"))                            return "office";
+  if (l.includes("pantry") || l.includes("food"))     return "pantry";
+  if (l.includes("janitor") || l.includes("clean"))   return "janitor";
+  if (l.includes("personal") || l.includes("home"))   return "personal";
   if (l.includes("wellness") || l.includes("health")) return "wellness";
   if (l.includes("giveaway") || l.includes("promo") || l.includes("custom")) return "giveaway";
   return "all";
@@ -206,22 +198,21 @@ function ProductCard({ product, onToast }) {
             onError={() => setImgError(true)}
           />
           <div className="absolute top-[10px] left-[10px] flex flex-col gap-[5px]">
-        {isOnSale && (
-          <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#ffe2e2] text-[#9f0712] border border-[#ffc9c9]">
-            Sale
-          </span>
-        )}
-        {product.status === "pre_order" ? (
-          <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-            Pre-Order
-          </span>
-        ) : (
-          <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#D1FAE5] text-[#065F46] border border-[#6EE7B7]">
-            In Stock
-          </span>
-        )}
-      </div>
-          
+            {isOnSale && (
+              <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#ffe2e2] text-[#9f0712] border border-[#ffc9c9]">
+                Sale
+              </span>
+            )}
+            {product.status === "pre_order" ? (
+              <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                Pre-Order
+              </span>
+            ) : (
+              <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#D1FAE5] text-[#065F46] border border-[#6EE7B7]">
+                In Stock
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="px-[16px] pt-[14px] pb-[16px] flex-1 flex flex-col">
@@ -257,6 +248,26 @@ function ProductCard({ product, onToast }) {
   );
 }
 
+/* ── Hero Category Badge — same pill style for ALL categories ── */
+function HeroCategoryBadge({ accent, label, visible }) {
+  return (
+    <div
+      className={`mb-[20px] category-badge ${visible ? "visible" : "hidden"}`}
+    >
+      <div
+        className="inline-flex items-center gap-[9px] bg-white border rounded-full px-[18px] py-[7px] text-[13px] font-medium"
+        style={{ borderColor: `${accent}55`, color: accent, transition: "border-color 0.4s, color 0.4s" }}
+      >
+        <span
+          className="w-[6px] h-[6px] rounded-full flex-shrink-0"
+          style={{ background: accent, animation: "ph-pulse 2s infinite" }}
+        />
+        {label}
+      </div>
+    </div>
+  );
+}
+
 /* ── Page ── */
 export default function Products() {
   const [products, setProducts]             = useState([]);
@@ -268,19 +279,34 @@ export default function Products() {
   const [searchQuery, setSearchQuery]       = useState("");
   const [sortBy, setSortBy]                 = useState("default");
   const [toasts, setToasts]                 = useState([]);
-  const [logoVisible, setLogoVisible]       = useState(true);
+  const [badgeVisible, setBadgeVisible]     = useState(true);
   const [heroStats, setHeroStats]           = useState({
     productCount:  0,
     categoryCount: 0,
     happyClients:  0,
   });
 
-  // ── NEW: read ?category= param from URL ──
   const [searchParams] = useSearchParams();
 
-  const themeKey    = resolveThemeKey(activeCatName);
-  const theme       = CATEGORY_THEMES[themeKey] ?? CATEGORY_THEMES.all;
-  const isAllActive = activeCatName === "all";
+  const themeKey = resolveThemeKey(activeCatName);
+  const theme    = CATEGORY_THEMES[themeKey] ?? CATEGORY_THEMES.all;
+
+  // Resolve badge label: "All Products" for all, or the active category label
+  const categoryTabs = useMemo(() => {
+    const all = { id: "all", label: "All Products", icon: "🛒", count: products.length };
+    const tabs = categories.map(cat => {
+      const catId   = String(cat.id ?? cat.category_id);
+      const label   = cat.name ?? cat.category_name ?? cat.title ?? "Other";
+      const count   = products.filter(p => {
+        const pCatId = String(p.category_id ?? p.category?.id ?? "");
+        return pCatId === catId;
+      }).length;
+      return { id: catId, label, icon: resolveCatIcon(label), count };
+    });
+    return [all, ...tabs];
+  }, [categories, products]);
+
+  const activeCatLabel = categoryTabs.find(c => c.id === activeCategory)?.label ?? "All Products";
 
   const showToast = (name) => {
     const id = Date.now();
@@ -289,16 +315,15 @@ export default function Products() {
   };
 
   const switchCategory = (catId, catName) => {
-    setLogoVisible(false);
+    setBadgeVisible(false);
     setTimeout(() => {
       setActiveCategory(catId);
       setActiveCatName(catName);
       setSearchQuery("");
-      setLogoVisible(true);
+      setBadgeVisible(true);
     }, 220);
   };
 
-  // ── Fetch products, categories, and reviews ──
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
@@ -314,11 +339,10 @@ export default function Products() {
         const catData    = catRes.data?.categories ?? catRes.data?.data ?? catRes.data;
         const reviewData = reviewRes.data?.data ?? reviewRes.data?.reviews ?? reviewRes.data;
 
-        const prodArray   = Array.isArray(prodData)  ? prodData  : [];
-        const catArray    = Array.isArray(catData)   ? catData   : [];
+        const prodArray   = Array.isArray(prodData)   ? prodData   : [];
+        const catArray    = Array.isArray(catData)    ? catData    : [];
         const reviewArray = Array.isArray(reviewData) ? reviewData : [];
 
-        // Happy clients = reviews with rating >= 3
         const happyClients = reviewArray.filter(
           r => parseFloat(r.rating ?? r.stars ?? 0) >= 3
         ).length;
@@ -340,9 +364,8 @@ export default function Products() {
     fetchAll();
   }, []);
 
-  // ── NEW: auto-select category from URL param once categories are loaded ──
   useEffect(() => {
-    const param = searchParams.get("category"); // e.g. "office", "pantry"
+    const param = searchParams.get("category");
     if (!param || categories.length === 0) return;
 
     const match = categories.find(cat => {
@@ -356,20 +379,6 @@ export default function Products() {
       switchCategory(id, label);
     }
   }, [searchParams, categories]);
-
-  const categoryTabs = useMemo(() => {
-    const all = { id: "all", label: "All Products", icon: "🛒", count: products.length };
-    const tabs = categories.map(cat => {
-      const catId   = String(cat.id ?? cat.category_id);
-      const label   = cat.name ?? cat.category_name ?? cat.title ?? "Other";
-      const count   = products.filter(p => {
-        const pCatId = String(p.category_id ?? p.category?.id ?? "");
-        return pCatId === catId;
-      }).length;
-      return { id: catId, label, icon: resolveCatIcon(label), count };
-    });
-    return [all, ...tabs];
-  }, [categories, products]);
 
   const filtered = useMemo(() => {
     let list = products.filter(p => {
@@ -389,9 +398,6 @@ export default function Products() {
     return list;
   }, [products, activeCategory, searchQuery, sortBy]);
 
-  const activeCatLabel = categoryTabs.find(c => c.id === activeCategory)?.label ?? "All Products";
-
-  // ── Dynamic hero stats array ──
   const HERO_STATS = [
     { icon: "📦", num: heroStats.productCount,  label: "Products Listed" },
     { icon: "🏷️", num: heroStats.categoryCount, label: "Categories"      },
@@ -416,14 +422,14 @@ export default function Products() {
           0%   { opacity: 0; transform: translateX(60px) scale(0.92); }
           100% { opacity: 1; transform: translateX(0)    scale(1);    }
         }
-        @keyframes logo-spin-in {
-          0%   { opacity: 0; transform: scale(0.7) rotate(-8deg); }
-          100% { opacity: 1; transform: scale(1)   rotate(0deg);  }
+        @keyframes badge-pop {
+          0%   { opacity: 0; transform: scale(0.85) translateY(4px); }
+          100% { opacity: 1; transform: scale(1)    translateY(0);   }
         }
         .hero-bg-layer { transition: background 0.5s ease; }
-        .category-logo { transition: opacity 0.22s ease, transform 0.22s ease; }
-        .category-logo.hidden  { opacity: 0; transform: scale(0.8) rotate(-6deg); }
-        .category-logo.visible { opacity: 1; transform: scale(1) rotate(0deg); animation: logo-spin-in 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+        .category-badge { transition: opacity 0.22s ease, transform 0.22s ease; }
+        .category-badge.hidden  { opacity: 0; transform: scale(0.88) translateY(4px); }
+        .category-badge.visible { opacity: 1; transform: scale(1) translateY(0); animation: badge-pop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
       `}</style>
 
       <ToastContainer toasts={toasts} />
@@ -459,42 +465,14 @@ export default function Products() {
           className="relative z-[1] max-w-[1200px] mx-auto px-[24px] grid items-center gap-[56px]"
           style={{ gridTemplateColumns: "1fr 1fr" }}
         >
-          {/* Left: text + logo swap */}
+          {/* Left: text + unified pill badge for ALL categories */}
           <div>
-            {isAllActive ? (
-              <div
-                className={`inline-flex items-center gap-[9px] bg-white border rounded-full px-[18px] py-[7px] text-[13px] font-medium mb-[20px] category-logo ${logoVisible ? "visible" : "hidden"}`}
-                style={{ borderColor: `${theme.accent}55`, color: theme.accent, transition: "border-color 0.4s, color 0.4s" }}
-              >
-                <span
-                  className="w-[6px] h-[6px] rounded-full"
-                  style={{ background: theme.accent, animation: "ph-pulse 2s infinite" }}
-                />
-                JEM 8 Product Catalog
-              </div>
-            ) : (
-              <div className={`mb-[20px] category-logo ${logoVisible ? "visible" : "hidden"}`}>
-                <img
-                  src={theme.logo}
-                  alt={theme.label}
-                  className="w-[160px] h-[160px] object-contain drop-shadow-lg"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.nextSibling.style.display = "inline-flex";
-                  }}
-                />
-                <div
-                  className="items-center gap-[9px] bg-white border rounded-full px-[18px] py-[7px] text-[13px] font-medium"
-                  style={{ display: "none", borderColor: `${theme.accent}55`, color: theme.accent }}
-                >
-                  <span
-                    className="w-[6px] h-[6px] rounded-full inline-block mr-1"
-                    style={{ background: theme.accent }}
-                  />
-                  {theme.label}
-                </div>
-              </div>
-            )}
+            {/* Single pill badge — same style for "all" and every category */}
+            <HeroCategoryBadge
+              accent={theme.accent}
+              label={activeCategory === "all" ? "JEM 8 Product Catalog" : activeCatLabel}
+              visible={badgeVisible}
+            />
 
             <h1
               className="font-bold text-[#1e293b] leading-[1.15] mb-[18px]"
@@ -502,7 +480,7 @@ export default function Products() {
             >
               Quality Supplies for<br />
               <span style={{ color: theme.accent, fontStyle: "italic", transition: "color 0.4s ease" }}>
-                {isAllActive ? "Every Business Need" : activeCatLabel}
+                {activeCategory === "all" ? "Every Business Need" : activeCatLabel}
               </span>
             </h1>
 
@@ -540,7 +518,7 @@ export default function Products() {
             </div>
           </div>
 
-          {/* Right: stats grid — now dynamic */}
+          {/* Right: stats grid — dynamic */}
           <div className="grid grid-cols-2 gap-[16px]">
             {HERO_STATS.map((s) => (
               <div
@@ -848,14 +826,14 @@ export default function Products() {
             >
               Shop Wellness →
             </button>
-<a
-  href="https://www.iamworldwideonlinestore.com/pages/about-us"
-  target="_blank"
-  rel="noreferrer"
-  className="inline-flex items-center gap-[8px] px-[28px] py-[13px] bg-transparent border-2 border-white/30 text-white rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:border-white/60 hover:-translate-y-[2px] no-underline"
->
-  Learn More
-</a>
+            <a
+              href="https://www.iamworldwideonlinestore.com/pages/about-us"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-[8px] px-[28px] py-[13px] bg-transparent border-2 border-white/30 text-white rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:border-white/60 hover:-translate-y-[2px] no-underline"
+            >
+              Learn More
+            </a>
           </div>
         </div>
       </section>
