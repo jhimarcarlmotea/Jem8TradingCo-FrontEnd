@@ -651,8 +651,14 @@ const stockStatus = isPreOrder
             <div className="mt-3">
               <StartChatWithAdmin
                 initialMessage={`Hello admin, I'm interested in ${name} (ID ${productId})`}
+                productId={productId}
+                productName={name}
                 onStarted={({ chatroomId }) => {
-                  navigate(`/messages?chatroom_id=${chatroomId}`);
+                  const qp = new URLSearchParams();
+                  qp.set('chatroom_id', chatroomId);
+                  qp.set('product_id', productId);
+                  qp.set('product_name', name);
+                  navigate(`/messages?${qp.toString()}`);
                 }}
               />
             </div>

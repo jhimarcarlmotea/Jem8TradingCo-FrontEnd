@@ -11,6 +11,8 @@ const svgFallback = (letter = 'A', bg = '#4d7b65') => {
 export default function StartChatWithAdmin({
   initialMessage = 'Hello admin',
   onStarted,
+  productId = null,
+  productName = null,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -122,43 +124,67 @@ export default function StartChatWithAdmin({
   };
 
   return (
-    <div>
-      <button onClick={startChat} disabled={loading}>
-        {loading ? 'Starting chat…' : 'Contact Admin / Start Chat'}
-      </button>
+    <div className="w-full">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={startChat}
+          disabled={loading}
+          className="inline-flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-[#2f855a] to-[#1e40af] hover:from-[#2b7a50] hover:to-[#1b3aa0] transition-colors shadow-sm"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>{loading ? 'Starting chat…' : 'Contact Admin / Start Chat'}</span>
+        </button>
+
+        <div className="text-xs text-gray-500">Available Mon–Fri, 9am–5pm</div>
+      </div>
+
       {error && (
-        <div style={{ color: 'red', marginTop: 8 }}>
-          {error} <button onClick={startChat}>Retry</button>
+        <div className="mt-3 text-sm text-red-600">
+          {error} <button onClick={startChat} className="ml-2 underline">Retry</button>
         </div>
       )}
 
       {chatroomId && (
-        <div style={{ marginTop: 12 }}>
-          <div><strong>Chatroom:</strong> Admin (ID: 1)</div>
-          <div style={{ maxHeight: 240, overflow: 'auto', border: '1px solid #eee', padding: 8, marginTop: 8 }}>
-            {messages.length === 0 && <div>No messages</div>}
+        <div className="mt-4 bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-[#f0faf5] flex items-center justify-center text-lg">💬</div>
+              <div>
+                <div className="text-sm font-semibold">Live chat started</div>
+                <div className="text-xs text-gray-400">Chat ID: {chatroomId}</div>
+              </div>
+            </div>
+            {productName && (
+              <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-md">Product: {productName}</div>
+            )}
+          </div>
+
+          <div className="mt-3 max-h-48 overflow-auto space-y-2">
+            {messages.length === 0 && <div className="text-xs text-gray-400">No messages yet</div>}
             {messages.map((m, i) => {
               const senderIsAdmin = !!(m.is_admin || m.sender === 'admin' || m.from === 'admin');
               const avatarCandidate = senderIsAdmin ? CompanyLogo : (m.avatarUrl || m.avatar || m.user?.profile_picture || m.user?.avatar || null);
               const letter = (m.sender_name || m.user?.name || 'A')[0] || 'A';
               const avatarSrc = avatarCandidate;
               return (
-                <div key={i} style={{ padding: 6, borderBottom: '1px solid #f4f4f4', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden', flexShrink: 0 }}>
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                     {avatarSrc ? (
                       <img
                         src={avatarSrc}
                         alt={m.sender_name || m.sender || m.user?.name || ''}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        className="w-full h-full object-cover block"
                         onError={(e) => { try { e.target.onerror = null; e.target.src = svgFallback(letter, '#4d7b65'); } catch (err) { e.target.style.display = 'none'; } }}
                       />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#4d7b65', color: '#fff', fontWeight: 700 }}>{letter.toUpperCase()}</div>
+                      <div className="w-full h-full flex items-center justify-center bg-[#4d7b65] text-white font-bold">{letter.toUpperCase()}</div>
                     )}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: '#555' }}>{m.sender_name || m.sender || m.user?.name || ''}</div>
-                    <div>{m.messages || m.message || m.text || JSON.stringify(m)}</div>
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500">{m.sender_name || m.sender || m.user?.name || ''}</div>
+                    <div className="text-sm text-gray-700">{m.messages || m.message || m.text || JSON.stringify(m)}</div>
                   </div>
                 </div>
               );

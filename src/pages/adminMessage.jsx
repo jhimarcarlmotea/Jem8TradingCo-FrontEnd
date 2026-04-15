@@ -179,8 +179,35 @@ export default function AdminMessages() {
         try {
           mapped.forEach((m) => console.debug('adminMessage: avatar resolved', m.id, m.avatarUrl, m.avatar));
         } catch (e) { /* ignore */ }
+
+        // If URL contains chatroom/product query params (e.g. from ProductView), apply them
+        try {
+          const params = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search) : null;
+          const qId = params ? params.get('chatroom_id') : null;
+          const qProdId = params ? params.get('product_id') : null;
+          const qProdName = params ? params.get('product_name') : null;
+          if (qId) {
+            mapped = mapped.map((m) => {
+              if (String(m.id) === String(qId)) {
+                return {
+                  ...m,
+                  productName: m.productName || qProdName || m.productName,
+                  orderRef: m.orderRef || (qProdId ? { orderId: qProdId, label: qProdName || "" } : m.orderRef),
+                };
+              }
+              return m;
+            });
+          }
+        } catch (e) { /* ignore URL parsing errors */ }
+
         setContacts(mapped);
-        if (mapped.length > 0) setSelectedId((id) => id ?? mapped[0].id);
+        if (mapped.length > 0) setSelectedId((id) => {
+          try {
+            const params = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search) : null;
+            const qId = params ? params.get('chatroom_id') : null;
+            return qId ? qId : (id ?? mapped[0].id);
+          } catch (e) { return id ?? mapped[0].id; }
+        });
       } catch (err) {
         console.warn("Failed to load admin chat rooms:", err);
       }
@@ -422,21 +449,25 @@ export default function AdminMessages() {
                     const currentUserId = getUserId(currentUser);
                     const currentIsAdmin = isAdminUser(currentUser);
 
+                    // determine message ownership robustly across different API shapes
+                    const msgUserId = getUserId(msg.user || msg.sender || msg);
+                    const msgSenderId = msg.sender_id || msg.user_id || msg.from_user || msg.userId || null;
+                    const msgIsAdmin = !!(
+                      msg.is_admin || msg.isAdmin || msg.sender_role === "admin" || msg.role === "admin" || msg.sender === "admin" || msg.from === "admin"
+                    );
+
                     let fromMe = false;
                     if (currentUserId) {
                       if (currentIsAdmin) {
-                        fromMe = !!(msg.is_admin || msg.sender === "admin" || msg.from === "admin" || msg.from === "me");
+                        // admin view: message is from me when the message was sent by an admin
+                        // or when any sender id matches the current admin id
+                        fromMe = msgIsAdmin || String(msgUserId) === String(currentUserId) || String(msgSenderId) === String(currentUserId) || String(msg.admin_id) === String(currentUserId);
                       } else {
-                        fromMe = !!(
-                          msg?.from === "me" ||
-                          msg.user_id === currentUserId ||
-                          msg.account_id === currentUserId ||
-                          msg.sender_id === currentUserId ||
-                          (msg.account && msg.account.id === currentUserId)
-                        );
+                        // regular user: message is from me when sender matches current user id
+                        fromMe = String(msgUserId) === String(currentUserId) || String(msgSenderId) === String(currentUserId) || msg.from === "me";
                       }
                     } else {
-                      fromMe = msg?.from === "me" || msg.sender === "admin" || msg.is_admin;
+                      fromMe = msg?.from === "me" || msgIsAdmin;
                     }
 
                     // displayFromMe: true = align to right (messages from current user)
