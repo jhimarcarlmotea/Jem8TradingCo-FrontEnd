@@ -426,7 +426,7 @@ function CompleteProfileModal({ onGo }) {
           </div>
           <h2 className="text-xl font-bold text-slate-900 mb-1.5">Complete your profile</h2>
           <p className="text-[13px] text-slate-500 leading-relaxed">
-            You signed in with Google. Please complete your profile details to continue using your account.
+            Please complete your profile details to continue using your account.
           </p>
         </div>
         <div className="py-5 px-7">
@@ -448,29 +448,45 @@ export default function Jem8HomePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkProfile = async () => {
-      try {
-        const res = await me();
-        if (res.status === 200 && res.data.status === "success") {
-          const user = res.data.data;
-          if (!user.first_name || !user.phone_number) {
-            setShowModal(true);
-          }
+  const checkProfile = async () => {
+    if (sessionStorage.getItem("profileModalDismissed")) return;
+
+    try {
+      const res = await me();
+      if (res.status === 200 && res.data.status === "success") {
+        const user = res.data.data;
+
+        const isIncomplete =
+          !user.first_name ||
+          !user.last_name ||
+          !user.phone_number ||
+          !user.company_name ||
+          !user.position ||
+          !user.business_type ||
+          !user.tin_number;
+
+        if (isIncomplete) {
+          setShowModal(true);
         }
-      } catch (err) {
-        // not logged in or network error — do nothing
       }
-    };
-    checkProfile();
-  }, []);
+    } catch (err) {
+      // not logged in — do nothing
+    }
+  };
+  checkProfile();
+}, []);
 
   return (
     <>
       {showModal && (
-        <CompleteProfileModal
-          onGo={() => { setShowModal(false); navigate("/Profilepersonal"); }}
-        />
-      )}
+  <CompleteProfileModal
+    onGo={() => {
+      sessionStorage.setItem("profileModalDismissed", "true");
+      setShowModal(false);
+      navigate("/Profilepersonal", { state: { autoEdit: true } });
+    }}
+  />
+)}
       <Header />
       <main>
         <Hero />

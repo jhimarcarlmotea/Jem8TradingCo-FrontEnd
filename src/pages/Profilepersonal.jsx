@@ -1,7 +1,7 @@
 // ─── ProfilePersonal.jsx (Full Tailwind — no CSS imports) ────────────────────
 import { useEffect, useState, useRef } from "react";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+
 import { logout, me, updateProfile } from "../api/auth";
 import OrdersOverview from './OrdersOverview';
 import PasswordSecurity from './PasswordSecurity';
@@ -9,6 +9,7 @@ import Notification from './Notification';
 import { toast } from "react-toastify";
 import { getUserAddresses, addAddress as apiAddAddress, updateAddress as apiUpdateAddress, deleteAddress as apiDeleteAddress } from "../api/address";
 import axios from "axios";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
@@ -219,7 +220,46 @@ function CompleteProfileModal({ form, onChange, onSubmit, completing }) {
     </div>
   );
 }
-
+    // ─── Block Navigation Modal ───────────────────────────────────────────────────
+function BlockNavModal({ onStay, onLeave }) {
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
+    >
+      <div
+        className="complete-modal-in bg-white rounded-[20px] w-full max-w-[420px] overflow-hidden"
+        style={{ boxShadow: "0 40px 100px rgba(0,0,0,0.25)" }}
+      >
+        <div className="px-7 pt-7 pb-5 border-b border-gray-100">
+          <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-500 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3 tracking-wide">
+            ⚠ Incomplete Profile
+          </div>
+          <div className="text-xl font-bold text-gray-900 mb-1.5">
+            Please complete your profile first
+          </div>
+          <div className="text-[13px] text-gray-400 leading-relaxed">
+            You need to fill in all required fields before navigating away. Your profile is incomplete.
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-7 py-5">
+          <button
+            onClick={onLeave}
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-white text-gray-500 border border-gray-200 rounded-lg text-[13px] font-semibold cursor-pointer hover:border-gray-400 transition-all duration-150"
+          >
+            Leave Anyway
+          </button>
+          <button
+            onClick={onStay}
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-gray-900 text-white border-none rounded-lg text-[13px] font-semibold cursor-pointer hover:bg-gray-700 transition-all duration-150"
+          >
+            <CheckIcon /> Complete Profile
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── Address Modal ────────────────────────────────────────────────────────────
 function AddressModal({ onClose, onSave, editingAddress }) {
   const [form, setForm] = useState(editingAddress || {
@@ -519,8 +559,10 @@ function Breadcrumb({ label }) {
 }
 
 // ─── Personal Information Tab ─────────────────────────────────────────────────
-function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, setAddresses }) {
-  const [isEditing, setIsEditing] = useState(false);
+
+function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, setAddresses, autoEdit = false, onFormChange }) {
+
+  const [isEditing, setIsEditing] = useState(autoEdit);
   const [form, setForm] = useState({
     first_name: user?.first_name || "", last_name: user?.last_name || "",
     email: user?.email || "", phone_number: user?.phone_number || "",
@@ -530,14 +572,50 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
   const [showModal, setShowModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
+ 
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isProfileIncomplete = (f) =>
+    !f.first_name || !f.last_name || !f.phone_number ||
+    !f.company_name || !f.position || !f.business_type || !f.tin_number;
+
+  const handleChange = (e) => {
+    const updated = { ...form, [e.target.name]: e.target.value };
+    setForm(updated);
+    if (onFormChange) onFormChange(updated);
+  };
+
+  useEffect(() => {
+    if (onFormChange) onFormChange(form);
+  }, []);
+
+  // Block browser back/forward/close when autoEdit and profile incomplete
+  useEffect(() => {
+    if (!autoEdit) return;
+
+    const handleBeforeUnload = (e) => {
+      if (isProfileIncomplete(form)) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [form, autoEdit]);
+
+  
+
   const handleSave = () => { if (onUserUpdate) onUserUpdate(form); setIsEditing(false); };
+
   const handleCancel = () => {
-    setForm({ first_name: user?.first_name||"", last_name: user?.last_name||"", email: user?.email||"",
-      phone_number: user?.phone_number||"", company_name: user?.company_name||"",
-      position: user?.position||"", business_type: user?.business_type||"",
-      tin_number: user?.tin_number||"" });
+    setForm({
+      first_name: user?.first_name || "", last_name: user?.last_name || "",
+      email: user?.email || "", phone_number: user?.phone_number || "",
+      company_name: user?.company_name || "", position: user?.position || "",
+      business_type: user?.business_type || "", tin_number: user?.tin_number || "",
+    });
     setIsEditing(false);
   };
 
@@ -584,6 +662,8 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
           onSave={handleSaveAddress} editingAddress={editingAddress}
         />
       )}
+
+      
 
       <Breadcrumb label="Personal Information · Manage your profile and contact details" />
 
@@ -667,7 +747,33 @@ export default function ProfilePersonal() {
   const [completeForm, setCompleteForm]               = useState({ first_name: "", last_name: "", phone_number: "" });
   const [completing, setCompleting]                   = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const autoEdit = location.state?.autoEdit ?? false;
 
+  // ─── Nav Guard State ───────────────────────────────────────────────────────
+  const [pendingNav, setPendingNav]         = useState(null);
+  const [showNavBlock, setShowNavBlock]     = useState(false);
+  const [profileForm, setProfileForm]       = useState(null);
+  const [profileComplete, setProfileComplete] = useState(false);
+
+  const isIncomplete = (f) =>
+    f && (!f.first_name || !f.last_name || !f.phone_number ||
+    !f.company_name || !f.position || !f.business_type || !f.tin_number);
+
+  const onFormChange = (f) => {
+    setProfileForm(f);
+    setProfileComplete(!isIncomplete(f));
+  };
+
+  const guardedNavigate = (destination) => {
+    if (autoEdit && isIncomplete(profileForm)) {
+      setPendingNav(destination);
+      setShowNavBlock(true);
+    } else {
+      if (typeof destination === "string") navigate(destination);
+      else destination();
+    }
+  };
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -706,7 +812,20 @@ export default function ProfilePersonal() {
     };
     if (user) fetchOrdersCount();
   }, [user]);
+    useEffect(() => {
+  if (!autoEdit) return;
 
+  const handlePopState = () => {
+    if (isIncomplete(profileForm)) {
+      setShowNavBlock(true);
+      setPendingNav(() => () => navigate(-1));
+      window.history.pushState(null, "", location.pathname);
+    }
+  };
+  window.history.pushState(null, "", location.pathname);
+  window.addEventListener("popstate", handlePopState);
+  return () => window.removeEventListener("popstate", handlePopState);
+}, [profileForm, autoEdit, location.pathname]);
   const handleCompleteProfile = async () => {
     if (!completeForm.first_name.trim() || !completeForm.last_name.trim() || !completeForm.phone_number.trim()) {
       toast.error("Please fill in all required fields."); return;
@@ -747,9 +866,16 @@ export default function ProfilePersonal() {
       case "orders":   return <OrdersOverview userId={user?.id} />;
       case "password": return <PasswordSecurity />;
       case "notif":    return <Notification />;
-      default: return (
-        <PersonalInformation user={user} onUserUpdate={handleUserUpdate} onPhotoUpdate={handlePhotoUpdate}
-          addresses={addresses} setAddresses={setAddresses} />
+     default: return (
+        <PersonalInformation
+          user={user}
+          onUserUpdate={handleUserUpdate}
+          onPhotoUpdate={handlePhotoUpdate}
+          addresses={addresses}
+          setAddresses={setAddresses}
+          autoEdit={autoEdit}
+          onFormChange={onFormChange}   
+        />
       );
     }
   };
@@ -758,11 +884,28 @@ export default function ProfilePersonal() {
     <>
       <style>{KEYFRAMES}</style>
 
-      {/* Complete Profile Modal — blocks until filled */}
-      {showCompleteProfile && (
-        <CompleteProfileModal form={completeForm} onChange={setCompleteForm}
-          onSubmit={handleCompleteProfile} completing={completing} />
-      )}
+      
+    {showCompleteProfile && (
+    <CompleteProfileModal form={completeForm} onChange={setCompleteForm}
+      onSubmit={handleCompleteProfile} completing={completing} />
+  )}
+
+  {showNavBlock && (
+    <BlockNavModal
+      onStay={() => { setShowNavBlock(false); setPendingNav(null); }}
+      onLeave={() => {
+        setShowNavBlock(false);
+        sessionStorage.setItem("profileModalDismissed", "true");
+        if (pendingNav) {
+          if (typeof pendingNav === "string") navigate(pendingNav);
+          else pendingNav();
+        }
+        setPendingNav(null);
+      }}
+    />
+  )}
+
+    
 
       {/* Page — pt-[108px] = 68px header + 40px breathing room */}
       <div className="relative min-h-screen pt-[108px] pb-20 overflow-hidden"
@@ -796,7 +939,8 @@ export default function ProfilePersonal() {
     const badgeValue = key === "orders" ? ordersCount : 0;
     const isActive = activeMenu === key;
     return (
-      <button key={key} onClick={() => setActiveMenu(key)}
+      <button key={key}
+  onClick={() => guardedNavigate(() => setActiveMenu(key))}
         className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] cursor-pointer text-[13px] text-left transition-all duration-150
           ${isActive
             ? "bg-emerald-50 border-l-emerald-500 text-emerald-700 font-semibold [&_svg]:stroke-emerald-500"
@@ -811,10 +955,10 @@ export default function ProfilePersonal() {
             <hr className="mx-5 my-2 border-gray-100" />
 
             <div className="px-3 pb-4">
-              <button onClick={Logout}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] border-l-transparent cursor-pointer text-[13px] text-left text-red-500 font-normal hover:bg-red-50 hover:translate-x-0.5 transition-all duration-150 [&_svg]:stroke-red-500">
-                <LogoutIcon /> Logout
-              </button>
+              <button onClick={() => guardedNavigate(() => Logout())}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] border-l-transparent cursor-pointer text-[13px] text-left text-red-500 font-normal hover:bg-red-50 hover:translate-x-0.5 transition-all duration-150 [&_svg]:stroke-red-500">
+            <LogoutIcon /> Logout
+          </button>
             </div>
           </aside>
 
