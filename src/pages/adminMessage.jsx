@@ -179,8 +179,35 @@ export default function AdminMessages() {
         try {
           mapped.forEach((m) => console.debug('adminMessage: avatar resolved', m.id, m.avatarUrl, m.avatar));
         } catch (e) { /* ignore */ }
+
+        // If URL contains chatroom/product query params (e.g. from ProductView), apply them
+        try {
+          const params = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search) : null;
+          const qId = params ? params.get('chatroom_id') : null;
+          const qProdId = params ? params.get('product_id') : null;
+          const qProdName = params ? params.get('product_name') : null;
+          if (qId) {
+            mapped = mapped.map((m) => {
+              if (String(m.id) === String(qId)) {
+                return {
+                  ...m,
+                  productName: m.productName || qProdName || m.productName,
+                  orderRef: m.orderRef || (qProdId ? { orderId: qProdId, label: qProdName || "" } : m.orderRef),
+                };
+              }
+              return m;
+            });
+          }
+        } catch (e) { /* ignore URL parsing errors */ }
+
         setContacts(mapped);
-        if (mapped.length > 0) setSelectedId((id) => id ?? mapped[0].id);
+        if (mapped.length > 0) setSelectedId((id) => {
+          try {
+            const params = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search) : null;
+            const qId = params ? params.get('chatroom_id') : null;
+            return qId ? qId : (id ?? mapped[0].id);
+          } catch (e) { return id ?? mapped[0].id; }
+        });
       } catch (err) {
         console.warn("Failed to load admin chat rooms:", err);
       }
