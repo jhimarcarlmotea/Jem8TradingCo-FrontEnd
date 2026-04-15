@@ -191,9 +191,10 @@ export function Header() {
 
   const checkLogin = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) { setIsLog(false); setLoading(false); return; }
+      // const token = localStorage.getItem("token");
+      // if (!token) { setIsLog(false); setLoading(false); return; }
       const res      = await api.get("/me");
+      console.log(res)
       const userData = res.data?.data ?? res.data;
       setIsLog(true);
       setProfileImage(userData?.profile_image ?? null);

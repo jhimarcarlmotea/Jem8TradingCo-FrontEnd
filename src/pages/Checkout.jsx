@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { Header, Footer } from "../components/Layout";
@@ -24,6 +24,7 @@ const PAYMENT_METHODS = [
       { name: "account_name", label: "GCash Account Name",   placeholder: "Full Name on GCash" },
     ],
     note: "You will receive a GCash payment request after placing your order. Please complete payment within 1 hour.",
+    requiresReceipt: true,
   },
   {
     id: "maya",
@@ -37,6 +38,7 @@ const PAYMENT_METHODS = [
       { name: "account_name", label: "Maya Account Name",   placeholder: "Full Name on Maya" },
     ],
     note: "A Maya payment link will be sent to your mobile number. Complete payment within 1 hour.",
+    requiresReceipt: true,
   },
   {
     id: "bank_transfer",
@@ -52,6 +54,7 @@ const PAYMENT_METHODS = [
       { name: "reference_number", label: "Reference Number", placeholder: "Transaction reference (after transfer)" },
     ],
     note: "Transfer to: BPI Savings — JEM 8 Circle Trading Co. — Account No. 1234-5678-90. Send proof of payment to our email.",
+    requiresReceipt: true,
   },
   {
     id: "cod",
@@ -62,6 +65,7 @@ const PAYMENT_METHODS = [
     desc: "Pay cash when your order arrives",
     fields: [],
     note: "Prepare the exact amount upon delivery. Our courier will contact you before arriving. COD available within Metro Manila and Laguna only.",
+    requiresReceipt: false,
   },
   {
     id: "check",
@@ -77,6 +81,7 @@ const PAYMENT_METHODS = [
       { name: "check_amount", label: "Check Amount (₱)", placeholder: "Amount in pesos", type: "number" },
     ],
     note: "Make check payable to: JEM 8 Circle Trading Co. Deliver check to our Makati office or hand to our sales representative.",
+    requiresReceipt: false,
   },
 ];
 
@@ -120,7 +125,6 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
           status:   c.product?.status ?? "in_stock",
         }));
 
-        // ── Only keep items the user selected in Cart ──────────────────────
         const finalItems = selectedItemIds.size > 0
           ? formatted.filter((i) => selectedItemIds.has(i.id))
           : formatted;
@@ -153,6 +157,11 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
   const [selectedAddrId, setSelectedAddrId] = useState(null);
   const [addrMode, setAddrMode]             = useState("detect");
 
+  // ── Receipt image state ───────────────────────────────────────────────────
+  const [receiptFile, setReceiptFile]       = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(null);
+  const receiptInputRef                     = useRef(null);
+
   useEffect(() => {
     getUserAddresses()
       .then((res) => {
@@ -173,7 +182,6 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
     ? contactValid && !!selectedAddrId
     : contactValid && delivery.address && delivery.city && delivery.province;
 
-  // ── Derived totals (same logic as Cart) ──────────────────────────────────
   const subtotal    = items.reduce((sum, i) => sum + i.rawPrice * i.qty, 0);
   const shippingFee = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
   const total       = subtotal + shippingFee;
@@ -183,9 +191,44 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
   const handlePayFieldChange = (e) => setPayFields((f) => ({ ...f, [e.target.name]: e.target.value }));
   const activePayment = PAYMENT_METHODS.find((m) => m.id === payMethod);
 
-const handlePlaceOrder = async () => {
+  // ── Receipt image handlers ────────────────────────────────────────────────
+  const handleReceiptChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type and size (max 2MB)
+    const allowed = ["image/jpg", "image/jpeg", "image/png"];
+    if (!allowed.includes(file.type)) {
+      setPlaceError("Receipt must be a JPG or PNG image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setPlaceError("Receipt image must be under 2MB.");
+      return;
+    }
+
+    setReceiptFile(file);
+    setReceiptPreview(URL.createObjectURL(file));
+    setPlaceError(null);
+  };
+
+  const handleRemoveReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    if (receiptInputRef.current) receiptInputRef.current.value = "";
+  };
+
+  // ── Clear receipt when switching payment methods ──────────────────────────
+  const handlePayMethodChange = (id) => {
+    setPayMethod(id);
+    setPayFields({});
+    handleRemoveReceipt();
+  };
+
+  const handlePlaceOrder = async () => {
     setPlacing(true);
     setPlaceError(null);
+
 
     let resolvedAddress;
     if (addrMode === "saved" && selectedAddr) {
@@ -210,13 +253,12 @@ const handlePlaceOrder = async () => {
 
     const paymentDetails = {
       ...payFields,
-      first_name: user?.first_name || "",
-      last_name:  user?.last_name  || "",
-      email:      user?.email      || "",
-      phone:      user?.phone_number || "",
+      first_name: user?.first_name || "", last_name: user?.last_name || "",
+      email: user?.email || "", phone: user?.phone_number || "",
+      billing_address: resolvedAddress,
     };
 
-    const cartIds = selectedItems.flatMap((i) => i.allIds ?? [i.id]).filter(Boolean);
+    const cartIds = items.map((i) => i.id).filter(Boolean);
 
     if (cartIds.length === 0) {
       setPlaceError("No valid cart items found. Please go back to your cart.");
@@ -224,17 +266,35 @@ const handlePlaceOrder = async () => {
       return;
     }
 
-    const payload = {
-      cart_ids:              cartIds,
-      payment_method:        payMethod,
-      payment_details:       paymentDetails,
-      delivery_address:      resolvedAddress,   // ← new, separate from payment_details
-      shipping_fee:          shippingFee,
-      special_instructions:  specialNote || null,
-    };
+    // ── Build FormData to support file upload ─────────────────────────────
+    const formData = new FormData();
+
+    // Append cart_ids as array
+    cartIds.forEach((id) => formData.append("cart_ids[]", id));
+
+    formData.append("payment_method",  payMethod);
+    formData.append("shipping_fee",    shippingFee);
+    if (specialNote) formData.append("special_instructions", specialNote);
+
+    // Append payment_details fields individually
+    Object.entries(paymentDetails).forEach(([key, val]) => {
+      if (val !== null && val !== undefined && val !== "") {
+        formData.append(`payment_details[${key}]`, val);
+      }
+    });
+
+    // Append receipt image if provided
+    if (receiptFile) {
+      formData.append("receipt_image", receiptFile);
+    }
+
+    console.log("Checkout cart IDs:", cartIds);
 
     try {
-      const res = await axios.post(`${BASE}/checkout`, payload, { withCredentials: true });
+      const res = await axios.post(`${BASE}/checkout`, formData, {
+        withCredentials: true,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       navigate(`/orders?new=${res.data.checkout_id}`);
     } catch (err) {
       setPlaceError(err.response?.data?.message || "Failed to place order. Please try again.");
@@ -485,7 +545,7 @@ const handlePlaceOrder = async () => {
                     return (
                       <div
                         key={m.id}
-                        onClick={() => { setPayMethod(m.id); setPayFields({}); }}
+                        onClick={() => handlePayMethodChange(m.id)}
                         className={`flex items-center gap-3.5 px-4 py-4 border-[1.5px] rounded-2xl cursor-pointer transition-all
                           ${isActive
                             ? "border-[#4d7b65] bg-[#f0f7f3] shadow-[0_0_0_3px_rgba(77,123,101,0.08)]"
@@ -531,6 +591,74 @@ const handlePlaceOrder = async () => {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* ── Receipt Image Upload ── */}
+                {activePayment.requiresReceipt && (
+                  <div className="bg-[#f8faf9] border-[1.5px] border-[#e8f0eb] rounded-xl p-5 mb-4">
+                    <h3 className="text-sm font-bold text-[#1a2e22] mb-1">
+                      🧾 Upload Payment Receipt
+                      <span className="ml-1.5 text-[11px] font-normal text-slate-400">(optional)</span>
+                    </h3>
+                    <p className="text-[12px] text-[#6b7c70] mb-4">
+                      Attach a screenshot or photo of your payment confirmation to speed up verification.
+                    </p>
+
+                    {/* Preview */}
+                    {receiptPreview ? (
+                      <div className="flex flex-col gap-3">
+                        <div className="relative w-full max-w-xs rounded-xl overflow-hidden border-[1.5px] border-[#d1e8da] bg-[#f0f7f3]">
+                          <img
+                            src={receiptPreview}
+                            alt="Receipt preview"
+                            className="w-full max-h-52 object-contain block"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveReceipt}
+                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white border-none text-sm font-bold cursor-pointer flex items-center justify-center leading-none shadow-md hover:bg-red-600 transition-colors"
+                            title="Remove receipt"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2 text-[12px] text-[#4d7b65] font-semibold">
+                          <span>✓</span>
+                          <span>{receiptFile?.name}</span>
+                          <span className="text-slate-400 font-normal">
+                            ({(receiptFile?.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => receiptInputRef.current?.click()}
+                          className="w-fit text-[12px] text-[#4d7b65] font-semibold bg-transparent border-none cursor-pointer p-0 hover:underline"
+                        >
+                          Replace image
+                        </button>
+                      </div>
+                    ) : (
+                      /* Drop zone */
+                      <button
+                        type="button"
+                        onClick={() => receiptInputRef.current?.click()}
+                        className="w-full border-[2px] border-dashed border-[#c0ddd0] rounded-xl py-7 px-4 flex flex-col items-center gap-2 bg-transparent cursor-pointer transition-all hover:border-[#4d7b65] hover:bg-[#f0f7f3] font-[inherit]"
+                      >
+                        <span className="text-3xl">📎</span>
+                        <span className="text-sm font-semibold text-[#4d7b65]">Click to upload receipt</span>
+                        <span className="text-[11px] text-slate-400">JPG, JPEG, or PNG · Max 2MB</span>
+                      </button>
+                    )}
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={receiptInputRef}
+                      type="file"
+                      accept="image/jpg,image/jpeg,image/png"
+                      onChange={handleReceiptChange}
+                      className="hidden"
+                    />
                   </div>
                 )}
 
@@ -609,6 +737,20 @@ const handlePlaceOrder = async () => {
                     {Object.entries(payFields).map(([k, v]) =>
                       v ? <div key={k} className="text-[13px] text-[#6b7c70] mt-1">{k.replace(/_/g, " ")}: {v}</div> : null
                     )}
+                    {/* ── Receipt preview in Review step ── */}
+                    {receiptPreview && (
+                      <div className="mt-3 flex items-center gap-3">
+                        <img
+                          src={receiptPreview}
+                          alt="Receipt"
+                          className="w-16 h-16 object-cover rounded-lg border border-[#d1e8da]"
+                        />
+                        <div>
+                          <div className="text-[12px] font-semibold text-[#4d7b65]">🧾 Receipt attached</div>
+                          <div className="text-[11px] text-slate-400">{receiptFile?.name}</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -686,12 +828,11 @@ const handlePlaceOrder = async () => {
             )}
           </div>
 
-          {/* ── RIGHT — ORDER SUMMARY (mirrors Cart) ── */}
+          {/* ── RIGHT — ORDER SUMMARY ── */}
           <div className="lg:sticky lg:top-24">
             <div className="bg-white border-[1.5px] border-[#e8f0eb] rounded-2xl p-6">
               <h2 className="text-lg font-bold text-[#1a2e22] mb-4">Order Summary</h2>
 
-              {/* Free shipping progress bar */}
               {subtotal > 0 && subtotal < FREE_SHIPPING_MIN ? (
                 <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-4 py-3 mb-4 text-sm text-[#166534] flex flex-col gap-2">
                   <span>
@@ -746,7 +887,6 @@ const handlePlaceOrder = async () => {
                 </div>
               </div>
 
-              {/* Totals */}
               <div className="flex flex-col gap-2.5 mb-4">
                 <div className="flex justify-between text-sm text-slate-600">
                   <span>Subtotal ({items.reduce((s, i) => s + i.qty, 0)} items)</span>
@@ -765,7 +905,6 @@ const handlePlaceOrder = async () => {
                 </div>
               </div>
 
-              {/* Payment badges */}
               <div className="flex flex-wrap gap-1.5 justify-center mb-3">
                 {["GCash", "Maya", "BPI", "COD", "Check"].map((p) => (
                   <span
