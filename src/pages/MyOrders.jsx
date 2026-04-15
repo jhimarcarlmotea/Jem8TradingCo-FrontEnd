@@ -14,15 +14,12 @@ const api = axios.create({
 const ph = (w, h, label = "") =>
   `https://placehold.co/${w}x${h}/edf4f0/4d7b65?text=${encodeURIComponent(label)}`;
 
-// ── Aligned exactly to AdminOrders STATUS_MAP keys ──────────
 const STATUS_COLORS = {
   processing: { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa" },
   ready:      { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
   on_the_way: { bg: "#fff7ed", color: "#d97706", border: "#fde68a" },
   delivered:  { bg: "#f0fdf4", color: "#166534", border: "#86efac" },
 };
-
-
 
 const TRACKER_LABELS = ["Ordered", "Processing", "Ready", "On The Way", "Delivered"];
 
@@ -35,13 +32,11 @@ const STATUS_TO_TRACKER_INDEX = {
 
 function getTrackerIndex(status) {
   const s = (status ?? "").toLowerCase();
- 
   return STATUS_TO_TRACKER_INDEX[s] ?? 0;
 }
 
 function formatStatusText(status) {
   if (!status) return "";
-
   return status
     .toString()
     .replace(/_/g, " ")
@@ -54,7 +49,6 @@ function normaliseOrder(o, account) {
   const { checkout, delivery } = o;
   const status = (delivery?.status ?? "processing").toLowerCase();
 
-  // ── Build items array from checkout.cart.product ──────────────
   const cartItem = checkout?.cart ?? null;
   const product  = cartItem?.product ?? null;
 
@@ -72,6 +66,16 @@ function normaliseOrder(o, account) {
     rawPrice: Number(product.price ?? 0),
   }] : [];
 
+  // ── Extract receipt — use receipt_image_url directly from backend ──
+  const rawReceipt = checkout?.receipt ?? null;
+  const receipt = rawReceipt
+    ? {
+        id:     rawReceipt.receipt_id     ?? null,
+        number: rawReceipt.receipt_number ?? null,
+        image:  rawReceipt.receipt_image_url ?? null,  // exact key from your API
+      }
+    : null;
+
   return {
     id:             delivery?.delivery_id ?? checkout?.checkout_id,
     date:           checkout?.created_at
@@ -82,6 +86,7 @@ function normaliseOrder(o, account) {
     status,
     paymentMethod:  checkout?.payment_method ?? "—",
     paymentDetails: checkout?.payment_details ?? null,
+    receipt,
     subtotal:       Number(checkout?.paid_amount ?? 0) - Number(checkout?.shipping_fee ?? 0),
     shippingFee:    Number(checkout?.shipping_fee ?? 0),
     total:          Number(checkout?.paid_amount ?? 0),
@@ -101,6 +106,61 @@ function normaliseOrder(o, account) {
   };
 }
 
+/* ─── Receipt Image Modal ─────────────────────────────────── */
+function ReceiptModal({ imageUrl, receiptNumber, onClose }) {
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8f0eb]">
+          <div>
+            <div className="text-sm font-bold text-[#1a2e22]">Payment Receipt</div>
+            {receiptNumber && (
+              <div className="text-xs text-slate-400 mt-0.5 font-mono">{receiptNumber}</div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-[#f3f8f5] flex items-center justify-center text-slate-500 hover:bg-[#e8f0eb] transition-colors cursor-pointer border-none text-lg font-bold"
+          >
+            ×
+          </button>
+        </div>
+        <div className="p-4 bg-[#f8faf9]">
+          <img
+            src={imageUrl}
+            alt="Payment receipt"
+            className="w-full rounded-xl object-contain max-h-[70vh]"
+            onError={(e) => { e.target.src = ph(400, 300, "Receipt Not Found"); }}
+          />
+        </div>
+        <div className="px-5 py-3 text-center">
+          <a
+            href={imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[#4d7b65] font-semibold no-underline hover:underline"
+          >
+            Open full image ↗
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Empty / loading shell ───────────────────────────────── */
 function Shell({ children }) {
   return (
@@ -113,7 +173,6 @@ function Shell({ children }) {
   );
 }
 
-/* ─── Tab definitions — exactly matching AdminOrders statuses ─ */
 const TABS = [
   { key: "all",        label: "All" },
   { key: "processing", label: "Processing" },
@@ -127,11 +186,12 @@ export default function MyOrders() {
   const [searchParams] = useSearchParams();
   const newOrderId = searchParams.get("new");
 
-  const [orders,    setOrders]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState(null);
-  const [selected,  setSelected]  = useState(newOrderId || null);
-  const [activeTab, setActiveTab] = useState("all");
+  const [orders,       setOrders]       = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+  const [selected,     setSelected]     = useState(newOrderId || null);
+  const [activeTab,    setActiveTab]    = useState("all");
+  const [receiptModal, setReceiptModal] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,7 +200,6 @@ export default function MyOrders() {
 
     api.get("/my-deliveries")
       .then(({ data }) => {
-        console.log(data)
         if (cancelled) return;
         const account    = data.account ?? {};
         const rawOrders  = Array.isArray(data.orders) ? data.orders : (data.data ?? []);
@@ -219,7 +278,15 @@ export default function MyOrders() {
     <div className="min-h-screen bg-[#f8faf9]">
       <Header />
 
-      {/* ── Breadcrumb ── */}
+      {receiptModal && (
+        <ReceiptModal
+          imageUrl={receiptModal.image}
+          receiptNumber={receiptModal.number}
+          onClose={() => setReceiptModal(null)}
+        />
+      )}
+
+      {/* Breadcrumb */}
       <div className="bg-[#f8faf9] border-b border-[#e8f0eb] mt-[75px]">
         <div className="container mx-auto px-4 flex items-center gap-2 py-3 text-xs text-[#6b7c70] flex-wrap">
           <Link to="/" className="text-[#4d7b65] no-underline hover:underline">Home</Link>
@@ -228,7 +295,6 @@ export default function MyOrders() {
         </div>
       </div>
 
-      {/* ── Success banner ── */}
       {newOrderId && (
         <div className="bg-[#f0fdf4] border-b border-[#bbf7d0] py-3.5">
           <div className="container mx-auto px-4 flex items-center gap-4 text-sm text-[#166534] flex-wrap">
@@ -240,13 +306,11 @@ export default function MyOrders() {
         </div>
       )}
 
-      {/* ── Main layout ── */}
       <section className="py-10 pb-20">
         <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-8 items-start">
 
-          {/* ── ORDER LIST COL ── */}
+          {/* ORDER LIST */}
           <div>
-            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-[#1a2e22] m-0">My Orders</h1>
               <span className="text-xs text-slate-400 bg-[#f3f8f5] px-2.5 py-1 rounded-full">
@@ -254,7 +318,6 @@ export default function MyOrders() {
               </span>
             </div>
 
-            {/* ── Tabs — aligned to real backend statuses ── */}
             <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
               {TABS.map((tab) => (
                 <button
@@ -271,7 +334,6 @@ export default function MyOrders() {
               ))}
             </div>
 
-            {/* Empty tab */}
             {filtered.length === 0 ? (
               <div className="py-10 text-center text-sm text-slate-400 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]">
                 No orders in this category.
@@ -291,7 +353,6 @@ export default function MyOrders() {
                           : "border-[#e8f0eb] hover:border-[#4d7b65] hover:shadow-[0_4px_14px_rgba(77,123,101,0.10)]"
                         }`}
                     >
-                      {/* Top row */}
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <div className="text-sm font-bold text-[#1a2e22]">#{order.id}</div>
@@ -305,7 +366,6 @@ export default function MyOrders() {
                         </span>
                       </div>
 
-                      {/* Item thumbnails */}
                       <div className="flex items-center gap-1.5 flex-wrap mb-3">
                         {order.items.slice(0, 3).map((item) => (
                           <img
@@ -323,7 +383,6 @@ export default function MyOrders() {
                         )}
                       </div>
 
-                      {/* Footer */}
                       <div className="flex justify-between items-center pt-2.5 border-t border-[#f3f8f5]">
                         <span className="text-xs text-[#6b7c70] bg-[#f3f8f5] px-2.5 py-1 rounded-full capitalize">
                           {order.paymentMethod}
@@ -339,7 +398,7 @@ export default function MyOrders() {
             )}
           </div>
 
-          {/* ── ORDER DETAIL COL ── */}
+          {/* ORDER DETAIL */}
           <div>
             {!selectedOrder ? (
               <div className="h-[300px] flex flex-col items-center justify-center gap-3 bg-[#f8faf9] rounded-2xl border-[1.5px] border-dashed border-[#e8f0eb]">
@@ -347,13 +406,17 @@ export default function MyOrders() {
                 <p className="text-sm text-slate-400 m-0">Select an order to view details</p>
               </div>
             ) : (() => {
-              const colors = STATUS_COLORS[selectedOrder.status] ?? STATUS_COLORS.processing;
+              const colors     = STATUS_COLORS[selectedOrder.status] ?? STATUS_COLORS.processing;
               const trackerIdx = getTrackerIndex(selectedOrder.status);
+
+              // Pull these out explicitly so the condition is dead-simple
+              const receiptImage  = selectedOrder.receipt?.image  ?? null;
+              const receiptNumber = selectedOrder.receipt?.number ?? null;
 
               return (
                 <div className="bg-white border-[1.5px] border-[#e8f0eb] rounded-2xl p-7">
 
-                  {/* Detail header */}
+                  {/* Header */}
                   <div className="flex justify-between items-start mb-6 flex-wrap gap-3">
                     <div>
                       <h2 className="text-[22px] font-bold text-[#1a2e22] m-0">#{selectedOrder.id}</h2>
@@ -367,7 +430,7 @@ export default function MyOrders() {
                     </span>
                   </div>
 
-                  {/* ── Tracker ── aligned to: processing → ready → on_the_way → delivered */}
+                  {/* Tracker */}
                   <div className="flex items-center mb-7 p-5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] overflow-x-auto">
                     {TRACKER_LABELS.map((label, i) => {
                       const isDone    = i < trackerIdx;
@@ -428,6 +491,33 @@ export default function MyOrders() {
                       )}
                     </div>
                   </div>
+
+                  {/* Receipt — only shown when receiptImage is a real string */}
+                  {receiptImage && (
+                    <div className="mb-5">
+                      <div className="text-[13px] font-bold text-[#6b7c70] uppercase tracking-wide mb-2.5">🧾 Payment Receipt</div>
+                      <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]">
+                        {receiptNumber && (
+                          <div className="text-xs text-slate-400 mb-3 font-mono">{receiptNumber}</div>
+                        )}
+                        <button
+                          onClick={() => setReceiptModal({ image: receiptImage, number: receiptNumber })}
+                          className="block w-full cursor-pointer border-none p-0 bg-transparent"
+                          title="Click to enlarge"
+                        >
+                          <img
+                            src={receiptImage}
+                            alt="Payment receipt"
+                            className="w-full max-h-48 object-cover rounded-xl border border-[#e8f0eb] hover:opacity-90 transition-opacity"
+                            onError={(e) => { e.target.src = ph(400, 192, "Receipt"); }}
+                          />
+                          <div className="mt-2 text-xs text-[#4d7b65] font-semibold text-center">
+                            🔍 Click to view full receipt
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Items */}
                   <div className="mb-5">

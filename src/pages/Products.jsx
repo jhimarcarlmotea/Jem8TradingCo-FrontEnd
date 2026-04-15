@@ -312,6 +312,8 @@ export default function Products() {
           axios.get(`${BASE}/api/reviews`,         { withCredentials: true }),
         ]);
 
+        console.log(prodRes);
+
         const prodData   = prodRes.data?.data ?? prodRes.data?.products ?? prodRes.data;
         const catData    = catRes.data?.categories ?? catRes.data?.data ?? catRes.data;
         const reviewData = reviewRes.data?.data ?? reviewRes.data?.reviews ?? reviewRes.data;
