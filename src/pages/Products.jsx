@@ -161,7 +161,7 @@ function ProductCard({ product, onToast }) {
     ? (catRaw.name ?? catRaw.category_name ?? "")
     : (catRaw ?? product.category_name ?? "");
   const rating    = parseFloat(product.rating ?? 4.5);
-  const stock     = Number(product.product_stocks ?? product.stock ?? 0);
+const stock = product.status === "out_of_stock" ? 0 : 1;
 
   const rawImg = product.images?.[0]?.image_path;
   const imgSrc = imgError || !rawImg
@@ -211,7 +211,11 @@ function ProductCard({ product, onToast }) {
             Sale
           </span>
         )}
-        {product.status === "pre_order" ? (
+  {product.status === "out_of_stock" ? (
+          <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#F1F5F9] text-[#64748B] border border-[#CBD5E1]">
+            Out of Stock
+          </span>
+        ) : product.status === "pre_order" ? (
           <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
             Pre-Order
           </span>
@@ -241,18 +245,23 @@ function ProductCard({ product, onToast }) {
         </div>
       </Link>
 
-      <button
-        className={`absolute bottom-[16px] right-[16px] w-[32px] h-[32px] rounded-[8px] flex items-center justify-center text-[18px] leading-[1] flex-shrink-0 transition-all duration-200 shadow-[0_2px_8px_rgba(77,123,101,0.35)] z-10 ${
-          added   ? "bg-[#4d7b65] text-white scale-[1.08]" :
-          adding  ? "bg-[#7aaa93] text-white cursor-wait"  :
-                    "bg-[#4d7b65] text-white hover:bg-[#3a5e4e] hover:scale-[1.08]"
-        }`}
-        aria-label="Add to cart"
-        onClick={handleAdd}
-        disabled={adding}
-      >
-        {added ? "✓" : adding ? "…" : "+"}
-      </button>
+ <button
+  className={`absolute bottom-[16px] right-[16px] w-[32px] h-[32px] rounded-[8px] flex items-center justify-center text-[18px] leading-[1] flex-shrink-0 transition-all duration-200 z-10 ${
+    stock === 0
+      ? "bg-[#e2e8f0] text-[#94a3b8] cursor-not-allowed"
+      : added
+      ? "bg-[#4d7b65] text-white scale-[1.08] shadow-[0_2px_8px_rgba(77,123,101,0.35)]"
+      : adding
+      ? "bg-[#7aaa93] text-white cursor-wait shadow-[0_2px_8px_rgba(77,123,101,0.35)]"
+      : "bg-[#4d7b65] text-white hover:bg-[#3a5e4e] hover:scale-[1.08] shadow-[0_2px_8px_rgba(77,123,101,0.35)]"
+  }`}
+  aria-label={stock === 0 ? "Out of stock" : "Add to cart"}
+  onClick={handleAdd}
+  disabled={adding || stock === 0}
+  title={stock === 0 ? "Out of stock" : "Add to cart"}
+>
+  {stock === 0 ? "✕" : added ? "✓" : adding ? "…" : "+"}
+</button>
     </div>
   );
 }

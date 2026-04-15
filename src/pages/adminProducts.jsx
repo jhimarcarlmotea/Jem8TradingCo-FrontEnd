@@ -305,8 +305,8 @@ const ExportModal = ({ onClose, products, categories }) => {
       "Unit":         p.unit || "—",
       "Status":       getStatus(p.status),
       "On Sale":      p.isSale == 1 ? "Yes" : "No",
-      "Price (₱)":   parseFloat(p.price ?? 0).toFixed(2),
-      "Acq. Price (₱)": parseFloat(p.acquired_price ?? 0).toFixed(2),
+"Price (PHP)":   parseFloat(p.price ?? 0).toFixed(2),
+"Acq. Price (PHP)": parseFloat(p.acquired_price ?? 0).toFixed(2),
     }));
 
   const exportExcel = () => {
@@ -317,7 +317,7 @@ const ExportModal = ({ onClose, products, categories }) => {
 
       // Column widths
       ws["!cols"] = [
-        { wch: 4 }, { wch: 36 }, { wch: 20 }, { wch: 12 },
+        { wch: 6 }, { wch: 36 }, { wch: 20 }, { wch: 12 },
         { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 },
         { wch: 14 }, { wch: 16 },
       ];
@@ -394,18 +394,19 @@ const ExportModal = ({ onClose, products, categories }) => {
         alternateRowStyles: {
           fillColor: [248, 250, 252],
         },
-        columnStyles: {
-          0: { cellWidth: 8,  halign: "center" },  // #
-          1: { cellWidth: 55 },                      // Product Name
-          2: { cellWidth: 32 },                      // Category
-          3: { cellWidth: 18 },                      // Color
-          4: { cellWidth: 18 },                      // Size
-          5: { cellWidth: 14 },                      // Unit
-          6: { cellWidth: 20 },                      // Status
-          7: { cellWidth: 14, halign: "center" },   // On Sale
-          8: { cellWidth: 22, halign: "right" },    // Price
-          9: { cellWidth: 22, halign: "right" },    // Acq. Price
-        },
+columnStyles: {
+  0: { cellWidth: 14,  halign: "center" },  // #        →  8
+  1: { cellWidth: 70 },                     // Name     → 70
+  2: { cellWidth: 38 },                     // Category → 38
+  3: { cellWidth: 20 },                     // Color    → 20
+  4: { cellWidth: 20 },                     // Size     → 20
+  5: { cellWidth: 15 },                     // Unit     → 15
+  6: { cellWidth: 22 },                     // Status   → 22
+  7: { cellWidth: 16, halign: "center" },  // On Sale  → 16
+  8: { cellWidth: 30, halign: "right" },   // Price    → 30
+  9: { cellWidth: 30, halign: "right" },   // Acq.     → 30
+  // total: 8+70+38+20+20+15+22+16+30+30 = 269 ✓
+},
         didParseCell: (data) => {
           // Color-code Status column
           if (data.section === "body" && data.column.index === 6) {
@@ -532,7 +533,7 @@ const ExportModal = ({ onClose, products, categories }) => {
               Columns included in export:
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {["#", "Product Name", "Category", "Color", "Size", "Unit", "Status", "On Sale", "Price (₱)", "Acq. Price (₱)"].map(col => (
+{["#", "Product Name", "Category", "Color", "Size", "Unit", "Status", "On Sale", "Price (PHP)", "Acq. Price (PHP)"].map(col => (
                 <span key={col} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] text-slate-600 font-medium">
                   {col}
                 </span>
