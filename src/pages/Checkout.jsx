@@ -95,9 +95,8 @@ export default function Checkout() {
   const location = useLocation();
 
   // ── Selected item IDs passed from Cart ───────────────────────────────────
-  const selectedItemIds = new Set(
-    (location.state?.selectedItems ?? []).map((i) => i.id)
-  );
+ const selectedItems   = location.state?.selectedItems ?? [];
+const selectedItemIds = new Set(selectedItems.map((i) => i.id));
 
   const [items, setItems]             = useState([]);
   const [loadingCart, setLoadingCart] = useState(true);
@@ -123,6 +122,7 @@ export default function Checkout() {
           price:    `₱${Number(c.product?.price || 0).toLocaleString()}`,
           qty:      c.quantity,
           cat:      c.product?.category_id || "Product",
+          status:   c.product?.status ?? "in_stock",
         }));
 
         const finalItems = selectedItemIds.size > 0
@@ -229,34 +229,27 @@ export default function Checkout() {
     setPlacing(true);
     setPlaceError(null);
 
+
     let resolvedAddress;
     if (addrMode === "saved" && selectedAddr) {
       resolvedAddress = {
-        address:  selectedAddr.street      || "",
+        street:   selectedAddr.street      || "",
         barangay: selectedAddr.barangay    || "",
         city:     selectedAddr.city        || "",
         province: selectedAddr.province    || "",
         zip:      selectedAddr.postal_code || "",
+        country:  selectedAddr.country     || "Philippines",
       };
     } else {
-      resolvedAddress = { ...delivery };
-      if (savedAddresses.length === 0) {
-        try {
-          const { addAddress } = await import("../api/address");
-          const newAddr = await addAddress({
-            type: "personal", street: delivery.address, barangay: delivery.barangay,
-            city: delivery.city, province: delivery.province,
-            postal_code: delivery.zip, country: "Philippines", status: "active",
-          });
-          if (newAddr?.data) setSavedAddresses([newAddr.data?.data ?? newAddr.data]);
-        } catch {}
-      }
+      resolvedAddress = {
+        street:   delivery.address  || "",
+        barangay: delivery.barangay || "",
+        city:     delivery.city     || "",
+        province: delivery.province || "",
+        zip:      delivery.zip      || "",
+        country:  "Philippines",
+      };
     }
-
-    const billingAddress = [
-      resolvedAddress.address, resolvedAddress.barangay,
-      resolvedAddress.city, resolvedAddress.province, resolvedAddress.zip,
-    ].filter(Boolean).join(", ");
 
     const paymentDetails = {
       ...payFields,
@@ -406,6 +399,12 @@ export default function Checkout() {
                     </div>
                     <div className="text-xs text-[#666]">{user?.email || "—"}</div>
                     {user?.phone_number && <div className="text-xs text-[#666]">{user.phone_number}</div>}
+                    {user?.company_name && (
+                      <div className="text-xs text-[#4d7b65] font-medium mt-0.5">🏢 {user.company_name}</div>
+                    )}
+                    {user?.tin_number && (
+                      <div className="text-xs text-[#666] mt-0.5">TIN: {user.tin_number}</div>
+                    )}
                   </div>
                   <Link to="/Profilepersonal" className="text-xs text-[#4d7b65] font-medium no-underline px-2.5 py-1.5 rounded-lg border-[1.5px] border-[#c0ddd0] bg-white hover:bg-[#e8f5ef] transition-colors whitespace-nowrap">
                     ✏️ Edit
@@ -713,6 +712,12 @@ export default function Checkout() {
                   <div className="px-4 py-4 text-sm leading-relaxed text-slate-600">
                     <strong>{user?.first_name} {user?.last_name}</strong><br />
                     {user?.phone_number && <>{user.phone_number} · </>}{user?.email}<br />
+                    {user?.company_name && (
+                      <div className="text-[13px] text-[#4d7b65] font-medium mt-0.5">🏢 {user.company_name}</div>
+                    )}
+                    {user?.tin_number && (
+                      <div className="text-[13px] text-[#666] mt-0.5">TIN: {user.tin_number}</div>
+                    )}
                     {addrMode === "saved" && selectedAddr ? (
                       <>{selectedAddr.street}{selectedAddr.barangay ? `, ${selectedAddr.barangay}` : ""}, {selectedAddr.city}, {selectedAddr.province} {selectedAddr.postal_code}</>
                     ) : (
@@ -749,7 +754,6 @@ export default function Checkout() {
                   </div>
                 </div>
 
-                {/* Items block */}
                 <div className="border-[1.5px] border-[#e8f0eb] rounded-xl overflow-hidden mb-4">
                   <div className="px-4 py-3 bg-[#f8faf9] border-b border-[#e8f0eb] text-[13px] font-bold text-slate-700">
                     🛒 Items ({items.length})
@@ -766,6 +770,16 @@ export default function Checkout() {
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-semibold text-[#1a2e22] truncate">{item.name}</div>
                           <div className="text-xs text-slate-400 mt-0.5">Qty: {item.qty}</div>
+                         
+                          {item.status === "pre_order" ? (
+                            <div className="mt-1 inline-block text-[11px] font-semibold text-[#92400e] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-1 rounded-full">
+                              ⏳ Pre-Order — delivery may take longer
+                            </div>
+                          ) : (
+                            <div className="mt-1 inline-block text-[11px] font-semibold text-[#059669] bg-[#D1FAE5] border border-[#6EE7B7] px-2 py-1 rounded-full">
+                              ✅ In Stock
+                            </div>
+                          )}
                         </div>
                         <div className="text-[15px] font-bold text-[#4d7b65] flex-shrink-0">
                           ₱{(item.rawPrice * item.qty).toLocaleString()}
@@ -858,6 +872,12 @@ export default function Checkout() {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-[#1a2e22] m-0 truncate">{item.name}</p>
                         <p className="text-[11px] text-gray-400 m-0">x{item.qty} · {item.price} each</p>
+                      
+                        {item.status === "pre_order" ? (
+                          <p className="text-[10px] text-[#92400e] m-0 mt-0.5">⏳ Pre-order</p>
+                        ) : (
+                          <p className="text-[10px] text-[#059669] m-0 mt-0.5">✅ In stock</p>
+                        )}
                       </div>
                       <span className="text-xs font-bold text-[#4d7b65] flex-shrink-0">
                         ₱{(item.rawPrice * item.qty).toLocaleString()}

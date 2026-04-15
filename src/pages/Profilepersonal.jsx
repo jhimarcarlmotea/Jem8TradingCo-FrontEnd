@@ -156,22 +156,49 @@ function CompleteProfileModal({ form, onChange, onSubmit, completing }) {
         {/* Body */}
         <div className="flex flex-col gap-4 py-5 px-7">
           {[
-            { label: "First Name",    key: "first_name",    placeholder: "Juan" },
-            { label: "Last Name",     key: "last_name",     placeholder: "Dela Cruz" },
-            { label: "Phone Number",  key: "phone_number",  placeholder: "+63 912 345 6789" },
-          ].map(({ label, key, placeholder }) => (
-            <div key={key} className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.06em]">
-                {label} <span className="text-red-500">*</span>
-              </label>
-              <input
-                className={fieldCls(!form[key] && completing)}
-                value={form[key]}
-                onChange={(e) => onChange({ ...form, [key]: e.target.value })}
-                placeholder={placeholder}
-              />
-            </div>
-          ))}
+            { label: "First Name",   key: "first_name",   placeholder: "Juan" },
+            { label: "Last Name",    key: "last_name",     placeholder: "Dela Cruz" },
+            { label: "Phone Number", key: "phone_number",  placeholder: "+63 912 345 6789" },
+          ].map(({ label, key, placeholder }) => {
+            const extraProps = {};
+            if (key === "first_name" || key === "last_name") {
+              extraProps.maxLength = 50;
+              extraProps.onKeyDown = (e) => {
+                if (/\d/.test(e.key) && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key))
+                  e.preventDefault();
+              };
+              extraProps.onChange = (e) => {
+                const val = e.target.value.replace(/\d/g, "");
+                onChange({ ...form, [key]: val });
+              };
+            } else if (key === "phone_number") {
+              extraProps.maxLength = 11;
+              extraProps.onKeyDown = (e) => {
+                if (!/[\d]/.test(e.key) && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key))
+                  e.preventDefault();
+              };
+              extraProps.onChange = (e) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 11);
+                onChange({ ...form, [key]: val });
+              };
+            } else {
+              extraProps.onChange = (e) => onChange({ ...form, [key]: e.target.value });
+            }
+
+            return (
+              <div key={key} className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.06em]">
+                  {label} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className={fieldCls(!form[key] && completing)}
+                  value={form[key]}
+                  placeholder={placeholder}
+                  {...extraProps}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {/* Footer */}
@@ -361,12 +388,71 @@ function ProfilePhoto({ user, onUploadSuccess }) {
 
 // ─── Editable Field ───────────────────────────────────────────────────────────
 function EditableField({ label, value, name, isEditing, onChange }) {
+  const getInputProps = () => {
+    if (name === "first_name" || name === "last_name") {
+      return {
+        maxLength: 50,
+        onKeyDown: (e) => {
+          if (
+            /\d/.test(e.key) &&
+            !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)
+          ) e.preventDefault();
+        },
+        onChange: (e) => {
+          const val = e.target.value.replace(/\d/g, "");
+          onChange({ target: { name, value: val } });
+        },
+      };
+    }
+    if (name === "phone_number") {
+      return {
+        maxLength: 11,
+        onKeyDown: (e) => {
+          if (
+            !/[\d]/.test(e.key) &&
+            !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)
+          ) e.preventDefault();
+        },
+        onChange: (e) => {
+          const val = e.target.value.replace(/\D/g, "").slice(0, 11);
+          onChange({ target: { name, value: val } });
+        },
+      };
+    }
+    if (["company_name", "position", "business_type"].includes(name)) {
+      return {
+        maxLength: 500,
+        onChange,
+      };
+    }
+    if (name === "tin_number") {
+      return {
+        maxLength: 12,
+        onKeyDown: (e) => {
+          if (
+            !/[\d]/.test(e.key) &&
+            !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)
+          ) e.preventDefault();
+        },
+        onChange,
+      };
+    }
+    return { onChange };
+  };
+
+  const inputProps = getInputProps();
+
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">{label}</span>
       {isEditing ? (
-        <input name={name} value={value || ""} onChange={onChange} placeholder={label}
-          className="border border-gray-900 rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none bg-gray-50 w-full box-border" />
+        <input
+          name={name}
+          value={value || ""}
+          placeholder={label}
+          {...inputProps}
+          className="border border-gray-900 rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none bg-gray-50 w-full box-border"
+        />
       ) : (
         <div className="text-sm text-gray-900 py-2.5 border-b border-gray-100 min-h-[36px]">
           {value || <span className="text-gray-300">—</span>}
@@ -439,7 +525,7 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
     first_name: user?.first_name || "", last_name: user?.last_name || "",
     email: user?.email || "", phone_number: user?.phone_number || "",
     company_name: user?.company_name || "", position: user?.position || "",
-    business_type: user?.business_type || "",
+    business_type: user?.business_type || "", tin_number: user?.tin_number || "",
   });
   const [showModal, setShowModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
@@ -450,7 +536,8 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
   const handleCancel = () => {
     setForm({ first_name: user?.first_name||"", last_name: user?.last_name||"", email: user?.email||"",
       phone_number: user?.phone_number||"", company_name: user?.company_name||"",
-      position: user?.position||"", business_type: user?.business_type||"" });
+      position: user?.position||"", business_type: user?.business_type||"",
+      tin_number: user?.tin_number||"" });
     setIsEditing(false);
   };
 
@@ -532,6 +619,9 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
           <EditableField label="Position / Title (Optional)" name="position"      value={form.position}      isEditing={isEditing} onChange={handleChange} />
           <div className="col-span-1">
             <EditableField label="Business Type (Optional)"  name="business_type" value={form.business_type} isEditing={isEditing} onChange={handleChange} />
+          </div>
+          <div className="col-span-1">
+            <EditableField label="Company TIN Number (Optional)" name="tin_number" value={form.tin_number} isEditing={isEditing} onChange={handleChange} />
           </div>
         </div>
       </div>
@@ -700,25 +790,24 @@ export default function ProfilePersonal() {
               <span className="text-xs text-gray-400">{user.phone_number || "—"}</span>
             </div>
 
-            <nav className="px-3 pt-4 pb-2">
-              <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-[0.08em] px-2 pb-2.5">Overview</span>
-              {MENU_ITEMS.map(({ key, label, Icon }) => {
-                const badgeValue = key === "orders" ? ordersCount : 0;
-                const isActive = activeMenu === key;
-                return (
-                  <button key={key} onClick={() => setActiveMenu(key)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] cursor-pointer text-[13px] text-left transition-all duration-150
-                      ${isActive
-                        ? "bg-emerald-50 border-l-emerald-500 text-emerald-700 font-semibold [&_svg]:stroke-emerald-500"
-                        : "bg-transparent border-l-transparent text-gray-500 font-normal hover:bg-gray-50 hover:text-gray-800 hover:translate-x-0.5"
-                      }`}>
-                    <Icon />{label}
-                    {badgeValue > 0 && <span className="ml-auto bg-gray-900 text-white rounded-full text-[10px] font-bold px-2 py-px">{badgeValue}</span>}
-                  </button>
-                );
-              })}
-            </nav>
-
+<nav className="px-3 pt-4 pb-2">
+  <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-[0.08em] px-2 pb-2.5">Overview</span>
+  {MENU_ITEMS.filter(({ key }) => !(key === "password" && user?.google_id)).map(({ key, label, Icon }) => {
+    const badgeValue = key === "orders" ? ordersCount : 0;
+    const isActive = activeMenu === key;
+    return (
+      <button key={key} onClick={() => setActiveMenu(key)}
+        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] cursor-pointer text-[13px] text-left transition-all duration-150
+          ${isActive
+            ? "bg-emerald-50 border-l-emerald-500 text-emerald-700 font-semibold [&_svg]:stroke-emerald-500"
+            : "bg-transparent border-l-transparent text-gray-500 font-normal hover:bg-gray-50 hover:text-gray-800 hover:translate-x-0.5"
+          }`}>
+        <Icon />{label}
+        {badgeValue > 0 && <span className="ml-auto bg-gray-900 text-white rounded-full text-[10px] font-bold px-2 py-px">{badgeValue}</span>}
+      </button>
+    );
+  })}
+</nav>
             <hr className="mx-5 my-2 border-gray-100" />
 
             <div className="px-3 pb-4">

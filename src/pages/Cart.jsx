@@ -42,7 +42,8 @@ export default function Cart() {
           price:     `₱${Number(c.product?.price || 0).toLocaleString()}`,
           qty:       c.quantity,
           cat:       c.product?.category_id || "Product",
-        }));
+          status:    c.product?.status ?? "in_stock",
+          }));
 
         const merged = Object.values(
           formatted.reduce((acc, item) => {
@@ -306,11 +307,15 @@ export default function Cart() {
                       {item.name}
                     </Link>
                     <div className="text-xs text-gray-400">{item.price} each</div>
-                    {item.backorder && (
-                      <div className="mt-1 inline-block text-[11px] font-semibold text-[#92400e] bg-[#fff4e6] border border-[#fde3b9] px-2 py-1 rounded-full">
-                        ⏳ Backorder — may take longer
-                      </div>
-                    )}
+                    {item.status === "pre_order" ? (
+                        <div className="mt-1 inline-block text-[11px] font-semibold text-[#92400e] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-1 rounded-full">
+                          ⏳ Pre-Order — delivery may take longer
+                        </div>
+                      ) : (
+                        <div className="mt-1 inline-block text-[11px] font-semibold text-[#059669] bg-[#D1FAE5] border border-[#6EE7B7] px-2 py-1 rounded-full">
+                          ✅ In Stock
+                        </div>
+                      )}
                   </div>
 
                   {/* Qty control */}

@@ -83,6 +83,51 @@ const COOKIE_SECTIONS = [
   },
 ];
 
+const EMAIL_SECTIONS = [
+  {
+    id: "e1",
+    title: "Purpose of Email Communications",
+    content:
+      "Jem 8 Circle Trading Co. sends emails solely for legitimate business purposes, including order confirmations, delivery updates, product announcements, promotional offers, and company news relevant to our clients, suppliers, and partners in the office, pantry, janitorial, and wellness supply industry.",
+  },
+  {
+    id: "e2",
+    title: "Consent and Subscription",
+    content:
+      "We only send marketing or promotional emails to individuals who have voluntarily subscribed through our website or provided their email address in the course of a business transaction. By subscribing, you consent to receive communications from us. You may withdraw your consent at any time.",
+  },
+  {
+    id: "e3",
+    title: "No Spam Policy",
+    content:
+      "Jem 8 Circle Trading Co. strictly prohibits sending unsolicited bulk emails (spam). All marketing communications are sent only to opted-in recipients. We comply with the CAN-SPAM Act principles and applicable Philippine laws on electronic communications.",
+  },
+
+  {
+    id: "e4",
+    title: "Acceptable Use",
+    content: "Employees are expected to use company email primarily for business-related communication, including:",
+    bullets: [
+      "Communicating with clients, suppliers, and partners",
+      "Sending quotations, invoices, and purchase orders",
+      "Coordinating internal operations and logistics",
+    ],
+  },
+  {
+    id: "e5",
+    title: "Email Data Protection",
+    content:
+      "Your email address is collected and stored securely in compliance with the Data Privacy Act of 2012 (RA 10173). We do not sell, rent, or share your email address with third parties for their own marketing purposes.",
+  },
+  
+  {
+    id: "e6",
+    title: "Contact & Complaints",
+    content:
+      "If you believe you have received an email from us in error, or wish to report misuse of our email communications, please contact us immediately. We take all complaints seriously and will investigate promptly.",
+  },
+];
+
 export default function Privacypolicy() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("privacy");
@@ -97,6 +142,8 @@ export default function Privacypolicy() {
       setActiveTab("terms");
     } else if (params.get("tab") === "cookies") {
       setActiveTab("cookies");
+    } else if (params.get("tab") === "email") {
+      setActiveTab("email");
     }
   }, [location.search]);
 
@@ -115,7 +162,9 @@ export default function Privacypolicy() {
               ? "Privacy Policy"
               : activeTab === "terms"
               ? "Terms & Conditions"
-              : "Cookie Policy"}
+              : activeTab === "cookies"
+              ? "Cookie Policy"
+              : "Email Policy"}
           </span>
         </div>
 
@@ -157,6 +206,16 @@ export default function Privacypolicy() {
                   }`}
                 >
                   Cookie Policy
+                </button>
+                <button
+                  onClick={() => setActiveTab("email")}
+                  className={`text-left w-full px-4 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-150 border-none cursor-pointer ${
+                    activeTab === "email"
+                      ? "bg-[#edf4f0] text-[#2e6b45] font-semibold"
+                      : "bg-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                  }`}
+                >
+                  Email Policy
                 </button>
               </nav>
             </div>
@@ -336,6 +395,57 @@ export default function Privacypolicy() {
 
                 <p className="text-[13px] text-slate-400 leading-relaxed">
                   For questions about our cookie usage, contact us at{" "}
+                  <a href="mailto:jem8circletrading@gmail.com" className="text-[#2e6b45] no-underline hover:underline">
+                    jem8circletrading@gmail.com
+                  </a>{" "}
+                  or call (02) 8805-1432.
+                </p>
+              </div>
+            )}
+
+            {/* EMAIL POLICY */}
+            {activeTab === "email" && (
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800 mb-2">Email Policy</h1>
+                <p className="text-sm text-slate-400 mb-1">Effective Date: April 6, 2026</p>
+                <p className="text-sm text-slate-400 mb-8">
+                  How Jem 8 Circle Trading Co. handles email communications
+                </p>
+
+                <div className="border-t border-slate-100 mb-8" />
+
+                <p className="text-[15px] text-slate-600 leading-relaxed mb-10">
+                  Jem 8 Circle Trading Co. is committed to responsible and transparent email
+                  communication. This policy explains what types of emails we send, how we
+                  protect your email address, and how you can manage your preferences.
+                </p>
+
+                <div className="flex flex-col gap-8">
+                  {EMAIL_SECTIONS.map((section) => (
+                    <div key={section.id}>
+                      <h2 className="text-[15px] font-semibold text-slate-800 mb-2">
+                        {section.title}
+                      </h2>
+                      <p className="text-[14px] text-slate-500 leading-relaxed">
+                        {section.content}
+                      </p>
+                      {section.bullets && (
+                        <ul className="mt-2 flex flex-col gap-1.5 pl-4">
+                          {section.bullets.map((item, i) => (
+                            <li key={i} className="text-[14px] text-slate-500 leading-relaxed list-disc">
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-slate-100 mt-12 mb-8" />
+
+                <p className="text-[13px] text-slate-400 leading-relaxed">
+                  For questions about our email practices, contact us at{" "}
                   <a href="mailto:jem8circletrading@gmail.com" className="text-[#2e6b45] no-underline hover:underline">
                     jem8circletrading@gmail.com
                   </a>{" "}

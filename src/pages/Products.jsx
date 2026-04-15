@@ -206,22 +206,21 @@ function ProductCard({ product, onToast }) {
             onError={() => setImgError(true)}
           />
           <div className="absolute top-[10px] left-[10px] flex flex-col gap-[5px]">
-            {isOnSale && (
-              <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#ffe2e2] text-[#9f0712] border border-[#ffc9c9]">
-                Sale
-              </span>
-            )}
-            {stock === 0 && (
-              <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#DC2626] text-white">
-                Out of Stock
-              </span>
-            )}
-            {stock > 0 && stock <= 10 && (
-              <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#D97706] text-white">
-                Low Stock
-              </span>
-            )}
-          </div>
+        {isOnSale && (
+          <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#ffe2e2] text-[#9f0712] border border-[#ffc9c9]">
+            Sale
+          </span>
+        )}
+        {product.status === "pre_order" ? (
+          <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+            Pre-Order
+          </span>
+        ) : (
+          <span className="inline-flex items-center justify-center px-[9px] py-[3px] rounded-[6px] text-[10px] font-semibold leading-[1.4] whitespace-nowrap bg-[#D1FAE5] text-[#065F46] border border-[#6EE7B7]">
+            In Stock
+          </span>
+        )}
+      </div>
           
         </div>
 
@@ -250,8 +249,7 @@ function ProductCard({ product, onToast }) {
         }`}
         aria-label="Add to cart"
         onClick={handleAdd}
-        disabled={stock === 0 || adding}
-        style={stock === 0 ? { opacity: 0.4, cursor: "not-allowed" } : {}}
+        disabled={adding}
       >
         {added ? "✓" : adding ? "…" : "+"}
       </button>
@@ -852,12 +850,14 @@ export default function Products() {
             >
               Shop Wellness →
             </button>
-            <Link
-              to="/contact"
-              className="inline-flex items-center gap-[8px] px-[28px] py-[13px] bg-transparent border-2 border-white/30 text-white rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:border-white/60 hover:-translate-y-[2px] no-underline"
-            >
-              Learn More
-            </Link>
+<a
+  href="https://www.iamworldwideonlinestore.com/pages/about-us"
+  target="_blank"
+  rel="noreferrer"
+  className="inline-flex items-center gap-[8px] px-[28px] py-[13px] bg-transparent border-2 border-white/30 text-white rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:border-white/60 hover:-translate-y-[2px] no-underline"
+>
+  Learn More
+</a>
           </div>
         </div>
       </section>

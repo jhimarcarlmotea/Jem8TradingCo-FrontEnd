@@ -373,19 +373,18 @@ export default function AdminDashboard() {
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  const trafficChartData = Object.entries(traffic.users_by_address ?? {}).slice(0,6).map(([addr, v], i) => ({
-    label: addr.length > 8 ? addr.slice(0,8)+"…" : addr,
-    value: Number(v),
-    color: CHART_COLORS[i % CHART_COLORS.length],
-  }));
+ 
 
-  const marketingData = Object.entries(traffic.revenue_by_address ?? {}).slice(0,5).map(([addr, v], i) => ({
-    city: addr,
-    pct: Number(v),
-    color: CHART_COLORS[i % CHART_COLORS.length],
-  }));
-  const marketingTotal = marketingData.reduce((s, d) => s + d.pct, 0) || 1;
-  const marketingWithPct = marketingData.map(d => ({ ...d, pct: parseFloat(((d.pct / marketingTotal) * 100).toFixed(1)) }));
+  const marketingData = Object.entries(traffic.revenue_by_address ?? {}).slice(0, 5).map(([city, v], i) => ({
+  city:  city,
+  pct:   Number(v),
+  color: CHART_COLORS[i % CHART_COLORS.length],
+}));
+const marketingTotal   = marketingData.reduce((s, d) => s + d.pct, 0) || 1;
+const marketingWithPct = marketingData.map(d => ({
+  ...d,
+  pct: parseFloat(((d.pct / marketingTotal) * 100).toFixed(1)),
+}));
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#F0F7F2", fontFamily: "'DM Sans', 'Nunito', system-ui, sans-serif" }}>
@@ -531,10 +530,10 @@ export default function AdminDashboard() {
                   ? <Skeleton style={{ height: 56, width: "100%" }} />
                   : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px" }}>
                     {[
-                      { l: "Total",     v: products.total,     color: "#0F172A"   },
-                      { l: "On Sale",   v: products.on_sale,   color: "#059669"   },
-                      { l: "Low Stock", v: products.low_stock, color: "#D97706"   },
-                      { l: "Out Stock", v: products.out_stock, color: "#DC2626"   },
+                      { l: "Total",     v: products.total,     color: "#0F172A" },
+                      { l: "On Sale",   v: products.on_sale,   color: "#059669" },
+                      { l: "In Stock",  v: products.in_stock,  color: "#16a34a" },
+                      { l: "Pre-Order", v: products.pre_order, color: "#7C3AED" },
                     ].map(p => (
                       <div key={p.l}>
                         <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>{p.l}</div>
@@ -606,59 +605,51 @@ export default function AdminDashboard() {
                 }
               </Card>
 
-              {/* Sales bar chart */}
-              <Card>
-                <CardTitle>📊 Sales This Year</CardTitle>
-                {loading
-                  ? <Skeleton style={{ height: 110, width: "100%" }} />
-                  : salesChartData.length > 0
-                    ? <div style={{ height: 110, overflow: "hidden" }}><BarChart data={salesChartData} /></div>
-                    : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No sales data yet.</p>
-                }
-              </Card>
+              {/* Sales + Revenue — full width side by side */}
+        <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1.6fr", gap: 12 }}>
 
-              {/* Traffic bar chart */}
-              <Card>
-                <CardTitle>📍 Traffic by Address</CardTitle>
-                {loading
-                  ? <Skeleton style={{ height: 110, width: "100%" }} />
-                  : trafficChartData.length > 0
-                    ? <div style={{ height: 110, overflow: "hidden" }}><BarChart data={trafficChartData} /></div>
-                    : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No traffic data yet.</p>
-                }
-              </Card>
+          <Card style={{ margin: 0 }}>
+            <CardTitle>📊 Sales This Year</CardTitle>
+            {loading
+              ? <Skeleton style={{ height: 180, width: "100%" }} />
+              : salesChartData.length > 0
+                ? <div style={{ height: 180, overflow: "hidden", paddingTop: 40 }}><BarChart data={salesChartData} /></div>
+                : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No sales data yet.</p>
+            }
+          </Card>
 
-              {/* Marketing donut — full width */}
-              <Card style={{ gridColumn: "1 / -1" }}>
-                <CardTitle>🗺 Revenue by Location</CardTitle>
-                {loading
-                  ? <div style={{ display: "flex", gap: 24 }}>
-                      <Skeleton style={{ width: 112, height: 112, borderRadius: "50%" }} />
-                      <Skeleton style={{ flex: 1, height: 80 }} />
-                    </div>
-                  : marketingWithPct.length > 0
-                    ? <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-                        <DonutChart data={marketingWithPct} />
-                        <div style={{ flex: 1 }}>
-                          {marketingWithPct.map((m, i) => (
-                            <div key={m.city} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: i < marketingWithPct.length - 1 ? 9 : 0 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, display: "inline-block", flexShrink: 0 }} />
-                                <span style={{ fontSize: 11, color: "#374151", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.city}</span>
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <div style={{ width: 72, height: 4, borderRadius: 4, background: "#F1F5F9", overflow: "hidden" }}>
-                                  <div style={{ width: `${m.pct}%`, height: "100%", background: m.color, borderRadius: 4 }} />
-                                </div>
-                                <span style={{ fontSize: 11, fontWeight: 600, color: "#0F172A", minWidth: 34, textAlign: "right" }}>{m.pct}%</span>
-                              </div>
+          <Card style={{ margin: 0 }}>
+            <CardTitle>🗺 Revenue by Location</CardTitle>
+            {loading
+              ? <div style={{ display: "flex", gap: 24 }}>
+                  <Skeleton style={{ width: 112, height: 112, borderRadius: "50%" }} />
+                  <Skeleton style={{ flex: 1, height: 80 }} />
+                </div>
+              : marketingWithPct.length > 0
+                ? <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+                    <DonutChart data={marketingWithPct} />
+                    <div style={{ flex: 1 }}>
+                      {marketingWithPct.map((m, i) => (
+                        <div key={m.city} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: i < marketingWithPct.length - 1 ? 12 : 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 9, height: 9, borderRadius: "50%", background: m.color, display: "inline-block", flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.city}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 120, height: 5, borderRadius: 4, background: "#F1F5F9", overflow: "hidden" }}>
+                              <div style={{ width: `${m.pct}%`, height: "100%", background: m.color, borderRadius: 4 }} />
                             </div>
-                          ))}
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", minWidth: 38, textAlign: "right" }}>{m.pct}%</span>
+                          </div>
                         </div>
-                      </div>
-                    : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No location data yet.</p>
-                }
-              </Card>
+                      ))}
+                    </div>
+                  </div>
+                : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No location data yet.</p>
+            }
+          </Card>
+
+        </div>
 
             </div>
           </div>
@@ -794,7 +785,7 @@ export default function AdminDashboard() {
                     }}>📦</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.product_name}</div>
-                      <div style={{ fontSize: 10, color: "#94A3B8" }}>{peso(p.price)} · Stock: {p.product_stocks}</div>
+                      <div style={{ fontSize: 10, color: "#94A3B8" }}>{peso(p.price)}</div>
                     </div>
                     {p.isSale && (
                       <span style={{ fontSize: 9, background: "#FEE2E2", color: "#DC2626", fontWeight: 700, padding: "2px 5px", borderRadius: 20, flexShrink: 0 }}>SALE</span>

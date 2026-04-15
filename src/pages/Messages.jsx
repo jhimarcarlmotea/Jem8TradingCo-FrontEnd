@@ -2,6 +2,33 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { postChatMessage, getChatRooms, getChatMessages } from "../api/chat";
 import api from "../api/axios";
+import CompanyLogo from "../assets/Logo — Jem 8 Circle Trading Co (1).png";
+
+// Normalize avatar URLs and provide SVG fallback
+const normalizeAvatar = (url) => {
+  if (!url) return null;
+  if (/^data:|^https?:\/\//i.test(url)) return url;
+  const orig = String(url);
+  if (orig.startsWith('/')) return orig;
+  let base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || process.env.REACT_APP_API_URL || '';
+  try {
+    if (!base && api && api.defaults && api.defaults.baseURL) {
+      base = String(api.defaults.baseURL).replace(/\/api\/?$/, '');
+    }
+  } catch (e) { }
+  const path = String(url).replace(/^\/+/, '');
+  // Treat frontend public images (images/* or img/*) as root-relative so default avatars remain
+  if (path.toLowerCase().startsWith('images/') || path.toLowerCase().startsWith('img/')) return '/' + path;
+  if (path.toLowerCase().startsWith('storage/')) return base ? base.replace(/\/+$/, '') + '/' + path : '/' + path;
+  if (/\/storage\//i.test(path)) return base ? base.replace(/\/+$/, '') + '/' + path.replace(/^\/+/, '') : (path.startsWith('/') ? path : '/' + path);
+  return base ? base.replace(/\/+$/, '') + '/storage/' + path : '/storage/' + path;
+};
+
+const svgFallback = (letter = 'A', bg = '#4d7b65') => {
+  const txt = String(letter).charAt(0).toUpperCase() || 'A';
+  const svg = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><rect width='100%' height='100%' fill='${bg}' rx='12' ry='12'/><text x='50%' y='50%' dy='.35em' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='34' fill='#fff'>${txt}</text></svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+};
 
 /* ── Seed conversations ── */
 // Start with no mock threads — require successful `/me` auth to load conversations
@@ -103,7 +130,7 @@ export default function Messages() {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    try { bottomRef.current?.scrollIntoView({ behavior: "smooth", block: 'end' }); } catch (e) {}
   }, [activeThread, thread?.messages?.length]);
 
   // If unauthenticated, hide messages and prompt to login
@@ -142,7 +169,12 @@ export default function Messages() {
     setInput("");
 
     try {
-      await postChatMessage({ chatroom_id: activeThread, text });
+      const currentIsAdmin = isAdminUser(currentUser);
+      const payload = { chatroom_id: activeThread, text };
+      if (currentIsAdmin && thread && (thread.userId || thread.user_id)) {
+        payload.target_user_id = thread.userId || thread.user_id;
+      }
+      await postChatMessage(payload);
       try {
         const msgsResp = await getChatMessages(activeThread);
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
@@ -157,7 +189,12 @@ export default function Messages() {
       if (msg === "Unauthenticated.") {
         setUnauthenticated(true);
         try {
-          await api.post("/chat/messages/token", { chatroom_id: activeThread, text });
+          const currentIsAdmin = isAdminUser(currentUser);
+          const payload = { chatroom_id: activeThread, text };
+          if (currentIsAdmin && thread && (thread.userId || thread.user_id)) {
+            payload.target_user_id = thread.userId || thread.user_id;
+          }
+          await api.post("/chat/messages/token", payload);
           try {
             const msgsResp2 = await getChatMessages(activeThread);
             const serverMessages2 = Array.isArray(msgsResp2) ? msgsResp2 : msgsResp2.messages || [];
@@ -209,20 +246,38 @@ export default function Messages() {
         // try to open it even if getChatRooms didn't return it.
         let requestedId = null;
         try { requestedId = new URLSearchParams(window.location.search || "").get('chatroom_id'); } catch (e) { requestedId = null; }
-        if (requestedId) {
+          if (requestedId) {
           const found = safeRooms.find(r => String(r.id) === String(requestedId) || String(r.chatroom_id) === String(requestedId) || String(r.room_id) === String(requestedId));
           if (found) {
             // map and open as usual
-            const mapped = safeRooms.map((r) => ({
-              id: r.id || r.chatroom_id || r.room_id,
-              name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
-              avatar: (r.name || "").charAt(0).toUpperCase() || "J",
-              avatarBg: r.avatarBg || "#4d7b65",
-              isAdmin: !!r.is_admin,
-              unread: r.unread || 0,
-              lastTime: r.last_time || "",
-              messages: Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid) : [],
-            }));
+                const currentIsAdmin = isAdminUser(meResp?.data || currentUser);
+                const mapped = safeRooms.map((r) => {
+                  const inferredAvatar = r.user?.profile_picture || r.profile_picture || r.avatar_url || r.avatarUrl || r.picture || r.photo || (r.participants && r.participants[0] && (r.participants[0].profile_picture || r.participants[0].avatar_url || r.participants[0].picture)) || null;
+                  const inferredName = r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat");
+                  const isRoomAdmin = !!(r.is_admin || r.isAdmin || r.admin);
+                  const displayName = (!currentIsAdmin && isRoomAdmin) ? "Jem 8 Trading Co." : inferredName;
+                  const displayAvatarUrl = isRoomAdmin ? CompanyLogo : normalizeAvatar(inferredAvatar);
+                  const rawMsgs = Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid2) : [];
+                  return {
+                    id: r.id || r.chatroom_id || r.room_id,
+                    userId: r.user_id || r.userId || r.owner_id || (Array.isArray(r.participant_ids) ? r.participant_ids[0] : null) || (Array.isArray(r.participants) ? (r.participants[0]?.id || r.participants[0]) : null),
+                    name: displayName,
+                    avatar: (displayName || "").charAt(0).toUpperCase() || "J",
+                    avatarBg: r.avatarBg || "#4d7b65",
+                    avatarUrl: displayAvatarUrl,
+                    isAdmin: isRoomAdmin,
+                    unread: r.unread || 0,
+                    lastTime: r.last_time || "",
+                    messages: sortMessagesAsc(rawMsgs),
+                  };
+                });
+            // Sort threads: unread first, then most-recent `lastTime` (descending)
+            mapped.sort((a, b) => {
+              if ((a.unread ? 1 : 0) !== (b.unread ? 1 : 0)) return (b.unread ? 1 : 0) - (a.unread ? 1 : 0);
+              const ta = Date.parse(a.lastTime || a.last_time || a.date) || 0;
+              const tb = Date.parse(b.lastTime || b.last_time || b.date) || 0;
+              return tb - ta;
+            });
             setThreads((prev) =>
               mapped.map((m) => ({
                 ...m,
@@ -242,13 +297,15 @@ export default function Messages() {
                 name: 'Admin',
                 avatar: 'A',
                 avatarBg: '#4d7b65',
+                avatarUrl: CompanyLogo,
                 isAdmin: true,
                 unread: 0,
                 lastTime: '',
-                messages: serverMessages,
+                messages: sortMessagesAsc(serverMessages),
               };
               const mapped = safeRooms.map((r) => ({
                 id: r.id || r.chatroom_id || r.room_id,
+                userId: r.user_id || r.userId || r.owner_id || (Array.isArray(r.participant_ids) ? r.participant_ids[0] : null) || (Array.isArray(r.participants) ? (r.participants[0]?.id || r.participants[0]) : null),
                 name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
                 avatar: (r.name || "").charAt(0).toUpperCase() || "J",
                 avatarBg: r.avatarBg || "#4d7b65",
@@ -268,16 +325,26 @@ export default function Messages() {
 
         console.debug('filtered rooms after applying user filter:', safeRooms);
         if (safeRooms.length > 0) {
-          const mapped = safeRooms.map((r) => ({
-            id: r.id || r.chatroom_id || r.room_id,
-            name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
-            avatar: (r.name || "").charAt(0).toUpperCase() || "J",
-            avatarBg: r.avatarBg || "#4d7b65",
-            isAdmin: !!r.is_admin,
-            unread: r.unread || 0,
-            lastTime: r.last_time || "",
-            messages: Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid) : [],
-          }));
+          const currentIsAdmin = isAdminUser(meResp?.data || currentUser);
+                const mapped = safeRooms.map((r) => {
+            const inferredAvatar = r.user?.profile_picture || r.profile_picture || r.avatar_url || r.avatarUrl || r.picture || r.photo || (r.participants && r.participants[0] && (r.participants[0].profile_picture || r.participants[0].avatar_url || r.participants[0].picture)) || null;
+            const inferredName = r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat");
+            const isRoomAdmin = !!(r.is_admin || r.isAdmin || r.admin);
+            const displayName = (!currentIsAdmin && isRoomAdmin) ? "Jem 8 Trading Co." : inferredName;
+            const rawMsgs = Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid) : [];
+            return {
+              id: r.id || r.chatroom_id || r.room_id,
+              userId: r.user_id || r.userId || r.owner_id || (Array.isArray(r.participant_ids) ? r.participant_ids[0] : null) || (Array.isArray(r.participants) ? (r.participants[0]?.id || r.participants[0]) : null),
+              name: displayName,
+              avatar: (displayName || "").charAt(0).toUpperCase() || "J",
+              avatarBg: r.avatarBg || "#4d7b65",
+              avatarUrl: isRoomAdmin ? CompanyLogo : normalizeAvatar(inferredAvatar),
+              isAdmin: isRoomAdmin,
+              unread: r.unread || 0,
+              lastTime: r.last_time || "",
+              messages: sortMessagesAsc(rawMsgs),
+            };
+          });
             setThreads((prev) =>
             mapped.map((m) => ({
               ...m,
@@ -311,16 +378,40 @@ export default function Messages() {
             // (debug logs removed)
 
             if (safeRooms2.length > 0) {
-              const mapped = safeRooms2.map((r) => ({
+              const currentIsAdmin = isAdminUser(meResp?.data || currentUser);
+              const mapped = safeRooms.map((r) => {
+              const inferredAvatar = r.user?.profile_picture || r.profile_picture || r.avatar_url || r.avatarUrl || r.picture || r.photo || (r.participants && r.participants[0] && (r.participants[0].profile_picture || r.participants[0].avatar_url || r.participants[0].picture)) || null;
+              const inferredName = r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat");
+              const isRoomAdmin = !!(r.is_admin || r.isAdmin || r.admin);
+              const displayName = (!currentIsAdmin && isRoomAdmin) ? "Jem 8 Trading Co." : inferredName;
+              const rawMsgs = Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid) : [];
+              return {
                 id: r.id || r.chatroom_id || r.room_id,
-                name: r.name || r.title || (r.participants ? r.participants.join(", ") : "Chat"),
-                avatar: (r.name || "").charAt(0).toUpperCase() || "J",
+                userId: r.user_id || r.userId || r.owner_id || (Array.isArray(r.participant_ids) ? r.participant_ids[0] : null) || (Array.isArray(r.participants) ? (r.participants[0]?.id || r.participants[0]) : null),
+                name: displayName,
+                avatar: (displayName || "").charAt(0).toUpperCase() || "J",
                 avatarBg: r.avatarBg || "#4d7b65",
-                isAdmin: !!r.is_admin,
+                avatarUrl: isRoomAdmin ? CompanyLogo : normalizeAvatar(inferredAvatar),
+                isAdmin: isRoomAdmin,
                 unread: r.unread || 0,
                 lastTime: r.last_time || "",
-                  messages: Array.isArray(r.messages) ? filterMessagesForUser(r.messages, currentUid2) : [],
-              }));
+                messages: sortMessagesAsc(rawMsgs),
+              };
+            });
+              // Sort threads: unread first, then most-recent `lastTime` (descending)
+              mapped.sort((a, b) => {
+                if ((a.unread ? 1 : 0) !== (b.unread ? 1 : 0)) return (b.unread ? 1 : 0) - (a.unread ? 1 : 0);
+                const ta = Date.parse(a.lastTime || a.last_time || a.date) || 0;
+                const tb = Date.parse(b.lastTime || b.last_time || b.date) || 0;
+                return tb - ta;
+              });
+              // Sort mapped (retry mapping) so unread then recent threads come first
+              mapped.sort((a, b) => {
+                if ((a.unread ? 1 : 0) !== (b.unread ? 1 : 0)) return (b.unread ? 1 : 0) - (a.unread ? 1 : 0);
+                const ta = Date.parse(a.lastTime || a.last_time || a.date) || 0;
+                const tb = Date.parse(b.lastTime || b.last_time || b.date) || 0;
+                return tb - ta;
+              });
               setThreads((prev) =>
                 mapped.map((m) => ({
                   ...m,
@@ -353,8 +444,9 @@ export default function Messages() {
           const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
           const currentUidForFetch = getUserId(currentUser);
           const safeMsgs = filterMessagesForUser(serverMessages, currentUidForFetch);
+          const sortedSafeMsgs = sortMessagesAsc(safeMsgs);
           if (!mounted) return;
-          setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: safeMsgs.length > 0 ? safeMsgs : t.messages } : t)));
+          setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: sortedSafeMsgs.length > 0 ? sortedSafeMsgs : t.messages } : t)));
         } catch (err) { /* keep local mock */ }
     })();
     return () => { mounted = false; };
@@ -421,8 +513,19 @@ export default function Messages() {
       // ensure we aren't double-listening
       try { window.Echo.leave('chat.' + chatroomId); } catch (e) { /* ignore */ }
       window.Echo.private('chat.' + chatroomId).listen('NewMessage', (ev) => {
-        const payload = ev?.message || ev;
-        setThreads((prev) => prev.map((t) => t.id === chatroomId ? { ...t, messages: [...(t.messages||[]), payload] } : t));
+        const raw = ev?.message || ev || {};
+        const avatarCandidate = raw.avatarUrl || raw.avatar || raw.user?.profile_picture || raw.user?.profile_image || raw.user?.avatar || raw.user?.picture || null;
+          let avatarUrl = normalizeAvatar(avatarCandidate);
+          // Force admin messages to use company logo
+          if (raw?.is_admin || raw?.sender === 'admin' || raw?.from === 'admin' || (raw.user && (raw.user.is_admin || raw.user.role === 'admin'))) {
+            avatarUrl = CompanyLogo;
+          }
+          const payload = { ...raw, avatarUrl };
+        setThreads((prev) => prev.map((t) => {
+          if (t.id !== chatroomId) return t;
+          const msgs = Array.isArray(t.messages) ? [...t.messages, payload] : [payload];
+          return { ...t, messages: sortMessagesAsc(msgs) };
+        }));
       });
     } catch (e) { console.warn('Echo subscribe failed', e); }
   }
@@ -440,15 +543,16 @@ export default function Messages() {
         if (!mounted || !res) return;
         const { chatroomId, messages } = res;
         const newThread = {
-          id: chatroomId,
-          name: 'Admin',
-          avatar: 'A',
-          avatarBg: '#4d7b65',
-          isAdmin: true,
-          unread: 0,
-          lastTime: '',
-          messages: Array.isArray(messages) ? messages : [],
-        };
+            id: chatroomId,
+            name: 'Admin',
+            avatar: 'A',
+            avatarBg: '#4d7b65',
+            avatarUrl: CompanyLogo,
+            isAdmin: true,
+            unread: 0,
+            lastTime: '',
+            messages: Array.isArray(messages) ? messages : [],
+          };
         setThreads((prev) => [newThread, ...prev]);
         setActiveThread(chatroomId);
         subscribeEcho(chatroomId);
@@ -489,7 +593,43 @@ export default function Messages() {
     }
   };
 
+  // Format a chat list date (sidebar). Shows time for today, weekday for this week,
+  // and short date with year for older entries.
+  const formatChatDate = (iso) => {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      if (isNaN(d)) return String(iso);
+      const now = new Date();
+      const diff = now - d;
+      const oneDay = 24 * 60 * 60 * 1000;
+      if (diff < oneDay) {
+        return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      }
+      if (diff < 7 * oneDay) {
+        return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      }
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+      return String(iso);
+    }
+  };
+
   const getMsgText = (msg) => msg?.text || msg?.messages || msg?.message || "";
+
+  // Ensure messages are sorted oldest -> newest so bottom is newest
+  const sortMessagesAsc = (messages) => {
+    if (!Array.isArray(messages)) return [];
+    try {
+      return [...messages].sort((a, b) => {
+        const ta = Date.parse(a.created_at || a.createdAt || a.time || a.timestamp || a.date || a.ts || 0) || 0;
+        const tb = Date.parse(b.created_at || b.createdAt || b.time || b.timestamp || b.date || b.ts || 0) || 0;
+        return ta - tb;
+      });
+    } catch (e) {
+      return messages;
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f8fafb]" style={{ paddingTop: "var(--header-h)" }}>
@@ -574,10 +714,26 @@ export default function Messages() {
                     >
                       {/* Avatar */}
                       <div
-                        className="relative w-[44px] h-[44px] rounded-full flex items-center justify-center text-white font-bold text-[16px] flex-shrink-0"
+                        className="relative w-[44px] h-[44px] rounded-full flex items-center justify-center text-white font-bold text-[16px] flex-shrink-0 overflow-hidden"
                         style={{ background: t.avatarBg }}
                       >
-                        {t.avatar}
+                        {t.isAdmin ? (
+                          <img
+                            src={CompanyLogo}
+                            alt="Jem 8 Trading Co."
+                            className="w-full h-full object-cover"
+                            onError={(e) => { try { e.target.onerror = null; e.target.src = svgFallback('J', t.avatarBg || '#4d7b65'); } catch (err) { e.target.style.display = 'none'; } }}
+                          />
+                        ) : t.avatarUrl ? (
+                          <img
+                            src={t.avatarUrl}
+                            alt={t.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { try { e.target.onerror = null; e.target.src = svgFallback(t.avatar, t.avatarBg || '#4d7b65'); } catch (err) { e.target.style.display = 'none'; } }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">{t.avatar}</div>
+                        )}
                         {t.isAdmin && (
                           <span className="absolute bottom-[1px] right-[1px] w-[10px] h-[10px] bg-[#22c55e] border-[2px] border-white rounded-full" />
                         )}
@@ -587,10 +743,10 @@ export default function Messages() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-[3px]">
                           <span className={`text-[13.5px] truncate ${t.unread > 0 ? "font-bold text-[#1e293b]" : "font-semibold text-[#1e293b]"}`}>
-                            {t.name}
+                            Jem 8 Trading Co.
                           </span>
                           <span className="text-[11px] text-[#94a3b8] flex-shrink-0 ml-[8px]">
-                            {t.lastTime}
+                            {formatChatDate(t.lastTime)}
                           </span>
                         </div>
                         <div className={`text-[12.5px] truncate ${t.unread > 0 ? "text-[#374151] font-medium" : "text-[#94a3b8]"}`}>
@@ -620,15 +776,31 @@ export default function Messages() {
                 className="relative w-[44px] h-[44px] rounded-full flex items-center justify-center text-white font-bold text-[16px] flex-shrink-0"
                 style={{ background: thread?.avatarBg || "#4d7b65" }}
               >
-                {thread?.avatar}
+                {thread?.isAdmin ? (
+                  <img
+                    src={CompanyLogo}
+                    alt="Jem 8 Trading Co."
+                    className="w-full h-full object-cover"
+                    onError={(e) => { try { e.target.onerror = null; e.target.src = svgFallback(thread?.avatar, thread?.avatarBg || '#4d7b65'); } catch (err) { e.target.style.display = 'none'; } }}
+                  />
+                ) : thread?.avatarUrl ? (
+                  <img
+                    src={thread.avatarUrl}
+                    alt={thread?.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { try { e.target.onerror = null; e.target.src = svgFallback(thread?.avatar, thread?.avatarBg || '#4d7b65'); } catch (err) { e.target.style.display = 'none'; } }}
+                  />
+                ) : (
+                  thread?.avatar
+                )}
                 {thread?.isAdmin && (
                   <span className="absolute bottom-[1px] right-[1px] w-[10px] h-[10px] bg-[#22c55e] border-[2px] border-white rounded-full" />
                 )}
               </div>
               <div className="flex flex-col">
                 <div className="text-[15px] font-bold text-[#1e293b]">
-                  {thread?.name}
-                </div>
+                    Jem 8 Trading Co.
+                  </div>
                 <div className="text-[12px] text-[#64748b]">
                   {thread?.isAdmin ? "🟢 Online · JEM 8 Support Team" : "JEM 8 Circle Trading Co."}
                 </div>
@@ -670,12 +842,26 @@ export default function Messages() {
                   >
                     {/* Sender avatar (only for received) */}
                     {!displayIsFromMe && (
-                      <div
-                        className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0 mb-[4px]"
-                        style={{ background: thread.avatarBg }}
-                      >
-                        {thread.avatar}
-                      </div>
+                      (() => {
+                        const senderIsAdmin = !!(msg.is_admin || msg.sender === "admin" || msg.from === "admin");
+                        const senderAvatarRaw = senderIsAdmin ? CompanyLogo : (msg.avatarUrl || msg.avatar_url || msg.user?.profile_picture || msg.user?.avatarUrl || thread?.avatarUrl || null);
+                        const senderAvatar = normalizeAvatar(senderAvatarRaw);
+                        if (senderAvatar) {
+                          return (
+                            <img
+                              src={senderAvatar}
+                              alt={msg.sender_name || thread?.name}
+                              className="w-[32px] h-[32px] rounded-full flex-shrink-0 mb-[4px] object-cover"
+                              onError={(e) => { try { e.target.onerror = null; const letter = (msg.sender_name || msg.user?.name || thread?.name || thread?.avatar || 'A')[0]; e.target.src = svgFallback(letter, thread?.avatarBg || '#4d7b65'); } catch (err) { e.target.style.display = 'none'; } }}
+                            />
+                          );
+                        }
+                        return (
+                          <div className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0 mb-[4px]" style={{ background: thread.avatarBg }}>
+                            {thread.avatar}
+                          </div>
+                        );
+                      })()
                     )}
 
                     {/* Bubble */}

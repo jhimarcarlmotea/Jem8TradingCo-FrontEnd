@@ -2,39 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import AdminNav from "../components/AdminNav";
 import api from "../api/axios";
 
-
-async function apiFetch(path, options = {}) {
-  const method = (options.method ?? "GET").toLowerCase();
-  const { data } = await api[method](path, options.body ? JSON.parse(options.body) : undefined);
-  return data;
-}
-
-// ── Badge styles per category ─────────────────────────────────────────────────
-const badgeMap = {
-  orders:   "bg-blue-50 text-blue-600 border-blue-200",
-  stock:    "bg-green-50 text-green-700 border-green-200",
-  blogs:    "bg-orange-50 text-orange-700 border-orange-200",
-  backups:  "bg-violet-50 text-violet-700 border-violet-200",
-  payments: "bg-emerald-50 text-emerald-600 border-emerald-200",
-  account:  "bg-rose-50 text-rose-600 border-rose-200",
-  other:    "bg-gray-50 text-gray-600 border-gray-200",
-};
-
-// ── Category → icon mapping ───────────────────────────────────────────────────
-const iconMap = {
-  orders:   "🛒",
-  stock:    "📦",
-  blogs:    "📝",
-  backups:  "💾",
-  payments: "💳",
-  account:  "👤",
-  other:    "📋",
-};
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const TABS = ["All", "Orders", "Stock", "Account", "Blogs", "Payments", "Backups"];
 
-// Map tab label → API category key
-const tabToCategory = {
+const TAB_TO_CATEGORY = {
   All:      "all",
   Orders:   "orders",
   Stock:    "stock",
@@ -44,7 +16,131 @@ const tabToCategory = {
   Backups:  "backups",
 };
 
-// ── Build a readable badge label from a log entry ────────────────────────────
+const BADGE_STYLES = {
+  orders:   "bg-blue-50 text-blue-600 border-blue-200",
+  stock:    "bg-green-50 text-green-700 border-green-200",
+  blogs:    "bg-orange-50 text-orange-700 border-orange-200",
+  backups:  "bg-violet-50 text-violet-700 border-violet-200",
+  payments: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  account:  "bg-rose-50 text-rose-600 border-rose-200",
+  other:    "bg-gray-50 text-gray-600 border-gray-200",
+};
+
+const CATEGORY_ICONS = {
+  orders:   "🛒",
+  stock:    "📦",
+  blogs:    "📝",
+  backups:  "💾",
+  payments: "💳",
+  account:  "👤",
+  other:    "📋",
+};
+
+// ── Timezone for display (Asia/Manila = UTC+8) ────────────────────────────────
+const DISPLAY_TZ = "Asia/Manila";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Convert an ISO 8601 string (with +08:00 offset supplied by the API) into a
+ * human-readable date-group label in Asia/Manila timezone.
+ *
+ * Falls back to the raw `logged_at` string (e.g. "Jul 15 at 2:30 PM") from the
+ * API if the ISO string is missing or unparseable.
+ */
+function groupLabel(log) {
+  // Prefer logged_at_iso (ISO 8601 with +08:00 offset) for reliable parsing
+  const iso = log.logged_at_iso;
+  if (iso) {
+    try {
+      return new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        weekday: "long",
+        year:    "numeric",
+        month:   "long",
+        day:     "numeric",
+      }).format(new Date(iso));
+    } catch {
+      // fall through
+    }
+  }
+
+  // Fallback: derive from logged_at_date (YYYY-MM-DD) if available
+  if (log.logged_at_date) {
+    try {
+      // Append T00:00:00+08:00 so the parser treats it as Manila midnight
+      const d = new Date(`${log.logged_at_date}T00:00:00+08:00`);
+      return new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        weekday: "long",
+        year:    "numeric",
+        month:   "long",
+        day:     "numeric",
+      }).format(d);
+    } catch {
+      return log.logged_at_date;
+    }
+  }
+
+  // Last resort: server-formatted string (e.g. "Jul 15 at 2:30 PM")
+  return log.logged_at ?? "Unknown date";
+}
+
+/**
+ * Format a time string for the right-side column.
+ * Uses logged_at_time from the API (already Manila-formatted, e.g. "2:30 PM").
+ * If that's absent, derives from the ISO string.
+ */
+function displayTime(log) {
+  if (log.logged_at_time) return log.logged_at_time;
+
+  if (log.logged_at_iso) {
+    try {
+      return new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        hour:     "numeric",
+        minute:   "2-digit",
+        hour12:   true,
+      }).format(new Date(log.logged_at_iso));
+    } catch {
+      // fall through
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Format the inline timestamp ("Jul 15 at 2:30 PM") for the log item body.
+ */
+function displayInline(log) {
+  // API already returns this formatted: "Jul 15 at 2:30 PM"
+  if (log.logged_at) return log.logged_at;
+
+  if (log.logged_at_iso) {
+    try {
+      const date = new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        month:    "short",
+        day:      "numeric",
+      }).format(new Date(log.logged_at_iso));
+
+      const time = new Intl.DateTimeFormat("en-PH", {
+        timeZone: DISPLAY_TZ,
+        hour:     "numeric",
+        minute:   "2-digit",
+        hour12:   true,
+      }).format(new Date(log.logged_at_iso));
+
+      return `${date} at ${time}`;
+    } catch {
+      // fall through
+    }
+  }
+
+  return "—";
+}
+
 function buildBadge(log) {
   if (log.product_unique_code) return log.product_unique_code.toUpperCase();
   if (log.reference_table && log.reference_id)
@@ -52,22 +148,212 @@ function buildBadge(log) {
   return log.category?.toUpperCase() ?? "LOG";
 }
 
-export default function AdminActivityLog() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab,   setActiveTab]   = useState("All");
-  const [search,      setSearch]      = useState("");
-  const [grouped,     setGrouped]     = useState({});
-  const [pagination,  setPagination]  = useState(null);
-  const [page,        setPage]        = useState(1);
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState(null);
+/**
+ * Group a flat array of log items by their Manila-localised date label.
+ * We do the grouping on the frontend using logged_at_iso so we're not dependent
+ * on the server-side grouping (which can lag if the server clock is misconfigured).
+ */
+function groupLogsByDate(logs) {
+  const map = {};
+  for (const log of logs) {
+    const label = groupLabel(log);
+    if (!map[label]) map[label] = [];
+    map[label].push(log);
+  }
+  return map;
+}
 
-  // Delete states
-  const [deleteId,      setDeleteId]      = useState(null);   // single log id
-  const [deletingAll,   setDeletingAll]   = useState(false);  // confirm clear-all modal
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function TabBar({ activeTab, onSelect }) {
+  return (
+    <div className="flex gap-2 flex-wrap mb-7">
+      {TABS.map((tab) => (
+        <button
+          key={tab}
+          onClick={() => onSelect(tab)}
+          className={`px-5 py-2 rounded-lg border text-sm font-[inherit] cursor-pointer shadow-sm transition-all
+            ${activeTab === tab
+              ? "bg-slate-900 text-white border-slate-900 font-semibold"
+              : "bg-white text-slate-500 border-gray-200 font-medium hover:bg-gray-50 hover:text-slate-900 hover:border-slate-300"
+            }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LogItem({ log, onDelete }) {
+  const cat        = log.category ?? "other";
+  const badgeStyle = BADGE_STYLES[cat] ?? BADGE_STYLES.other;
+  const icon       = CATEGORY_ICONS[cat] ?? "📋";
+  const badge      = buildBadge(log);
+  const amountStr  = log.amount ? ` · ₱${Number(log.amount).toFixed(2)}` : "";
+
+  return (
+    <div className="flex items-start justify-between px-5 py-4 border-b border-slate-50 last:border-b-0 hover:bg-[#F8FBFF] transition-colors gap-4 max-md:flex-col max-md:gap-3">
+      {/* Left */}
+      <div className="flex items-start gap-3.5 flex-1 min-w-0">
+        {/* Category icon */}
+        <div className="w-[38px] h-[38px] rounded-lg bg-gray-50 border border-slate-100 flex items-center justify-center text-lg shrink-0">
+          {icon}
+        </div>
+
+        {/* Details */}
+        <div className="flex flex-col gap-1 min-w-0">
+          {/* Actor + action badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-bold text-slate-900">{log.user_name}</span>
+            <span className="text-xs text-slate-400 font-medium capitalize">({log.role ?? "user"})</span>
+            <span className="text-sm text-slate-500">{log.action}</span>
+
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono border ${badgeStyle}`}>
+              {badge}{amountStr}
+            </span>
+
+            {log.mode_of_payment && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border bg-slate-50 text-slate-500 border-slate-200">
+                via {log.mode_of_payment}
+              </span>
+            )}
+          </div>
+
+          {/* Auto-generated description */}
+          {log.description && (
+            <p className="text-xs text-slate-500 m-0">{log.description}</p>
+          )}
+
+          {/* Timestamp + category pill */}
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[11px] text-slate-400 font-mono">{displayInline(log)}</span>
+            <span className="inline-flex items-center px-2 py-px rounded bg-gray-50 border border-gray-200 text-[10px] font-bold text-slate-400 tracking-wide uppercase">
+              {cat}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right */}
+      <div className="flex flex-col items-end gap-2.5 shrink-0 max-md:flex-row max-md:items-center max-md:w-full max-md:justify-between">
+        <span className="text-xs font-medium text-slate-400 font-mono whitespace-nowrap">
+          {displayTime(log)}
+        </span>
+        <button
+          onClick={() => onDelete(log.id)}
+          className="px-3.5 py-1 rounded-md border border-red-200 bg-red-50 text-xs font-semibold text-red-500 cursor-pointer whitespace-nowrap hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LogGroup({ date, items, onDelete }) {
+  return (
+    <div>
+      {/* Date divider */}
+      <div className="flex items-center gap-3.5 mb-3.5">
+        <span className="text-sm font-semibold text-slate-500 whitespace-nowrap tracking-tight">{date}</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      {/* Log card */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        {items.map((log) => (
+          <LogItem key={log.id} log={log} onDelete={onDelete} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Pagination({ pagination, page, onPrev, onNext }) {
+  if (!pagination || pagination.last_page <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 pt-2">
+      <button
+        disabled={page <= 1}
+        onClick={onPrev}
+        className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+      >
+        ← Prev
+      </button>
+      <span className="text-sm text-slate-400 font-mono">
+        {pagination.current_page} / {pagination.last_page}
+      </span>
+      <button
+        disabled={page >= pagination.last_page}
+        onClick={onNext}
+        className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+      >
+        Next →
+      </button>
+    </div>
+  );
+}
+
+function ConfirmModal({ onClose, onConfirm, loading, icon, title, body, confirmLabel }) {
+  return (
+    <div
+      onClick={() => !loading && onClose()}
+      className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-5"
+      style={{ animation: "overlayIn 0.2s ease" }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-[18px] p-8 w-full max-w-[380px] text-center shadow-[0_16px_48px_rgba(15,23,42,0.14),0_4px_16px_rgba(15,23,42,0.06)] border border-slate-100"
+        style={{ animation: "modalIn 0.2s ease" }}
+      >
+        <span className="text-[40px] block mb-3.5">{icon}</span>
+        <h3 className="text-base font-bold text-slate-900 m-0 mb-2 tracking-tight">{title}</h3>
+        <p className="text-sm text-slate-400 m-0 mb-6 leading-relaxed">{body}</p>
+        <div className="flex gap-2.5 justify-center">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-5 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer hover:bg-gray-50 hover:text-slate-900 transition-colors font-[inherit] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-5 py-2 rounded-lg border-none bg-red-500 text-sm font-semibold text-white cursor-pointer shadow-[0_2px_8px_rgba(239,68,68,0.3)] hover:bg-red-600 hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(239,68,68,0.4)] transition-all font-[inherit] disabled:opacity-50"
+          >
+            {loading ? "Please wait…" : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function AdminActivityLog() {
+  const [sidebarOpen,   setSidebarOpen]   = useState(false);
+  const [activeTab,     setActiveTab]     = useState("All");
+  const [search,        setSearch]        = useState("");
+
+  // Raw flat list from API — we do client-side grouping for reliable TZ display
+  const [logs,          setLogs]          = useState([]);
+  // Grouped map derived from logs
+  const [grouped,       setGrouped]       = useState({});
+
+  const [pagination,    setPagination]    = useState(null);
+  const [page,          setPage]          = useState(1);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState(null);
+  const [deleteId,      setDeleteId]      = useState(null);
+  const [deletingAll,   setDeletingAll]   = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // ── Fetch logs ──────────────────────────────────────────────────────────────
+  // ── Fetch ───────────────────────────────────────────────────────────────────
+
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -75,15 +361,21 @@ export default function AdminActivityLog() {
       const res = await api.get("/admin/activity-logs", {
         params: {
           page,
-          category: tabToCategory[activeTab] ?? "all",
+          category: TAB_TO_CATEGORY[activeTab] ?? "all",
           ...(search.trim() ? { search: search.trim() } : {}),
         },
       });
 
-      const resData = res.data;
-      if (resData.status === "success") {
-        setGrouped(resData.data.grouped ?? {});
-        setPagination(resData.data.pagination ?? null);
+      if (res.data.status === "success") {
+        // The server returns grouped logs — flatten them so we can re-group
+        // on the frontend using the ISO timestamp for correct TZ handling.
+        const serverGrouped = res.data.data.grouped ?? {};
+        const flat = Object.values(serverGrouped).flat();
+
+        // Re-group using client-side Manila TZ conversion
+        setLogs(flat);
+        setGrouped(groupLogsByDate(flat));
+        setPagination(res.data.data.pagination ?? null);
       }
     } catch (err) {
       setError(err.response?.data?.message ?? err.message);
@@ -92,17 +384,13 @@ export default function AdminActivityLog() {
     }
   }, [activeTab, search, page]);
 
-  // Re-fetch on filter / tab / page change
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
-  // Reset to page 1 when tab or search changes
-  useEffect(() => {
-    setPage(1);
-  }, [activeTab, search]);
+  // Reset page when filter changes
+  useEffect(() => { setPage(1); }, [activeTab, search]);
 
-  // ── Delete single log ───────────────────────────────────────────────────────
+  // ── Actions ─────────────────────────────────────────────────────────────────
+
   const handleDelete = async () => {
     if (!deleteId) return;
     setActionLoading(true);
@@ -117,12 +405,12 @@ export default function AdminActivityLog() {
     }
   };
 
-  // ── Delete all (filtered by category) ──────────────────────────────────────
   const handleDeleteAll = async () => {
     setActionLoading(true);
     try {
-      const category = tabToCategory[activeTab] ?? "all";
-      await api.delete(`/admin/activity-logs`, { params: { category } });
+      await api.delete(`/admin/activity-logs`, {
+        params: { category: TAB_TO_CATEGORY[activeTab] ?? "all" },
+      });
       setDeletingAll(false);
       fetchLogs();
     } catch (err) {
@@ -132,7 +420,9 @@ export default function AdminActivityLog() {
     }
   };
 
-  const totalLogs = Object.values(grouped).reduce((a, arr) => a + arr.length, 0);
+  const totalLogs = logs.length;
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -146,7 +436,7 @@ export default function AdminActivityLog() {
 
         <main className="flex-1 min-w-0 px-7 py-7 pb-12 overflow-x-hidden max-md:px-4 max-md:py-5">
 
-          {/* ── Top Bar ─────────────────────────────────────────────────────── */}
+          {/* Top bar */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3.5">
             <div className="flex items-center gap-3.5">
               <button
@@ -170,7 +460,7 @@ export default function AdminActivityLog() {
                 />
               </div>
 
-              {/* Clear All button */}
+              {/* Clear */}
               <button
                 onClick={() => setDeletingAll(true)}
                 className="px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-sm font-semibold text-red-500 cursor-pointer whitespace-nowrap hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
@@ -180,24 +470,10 @@ export default function AdminActivityLog() {
             </div>
           </div>
 
-          {/* ── Tabs ────────────────────────────────────────────────────────── */}
-          <div className="flex gap-2 flex-wrap mb-7">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-lg border text-sm font-[inherit] cursor-pointer shadow-sm transition-all
-                  ${activeTab === tab
-                    ? "bg-slate-900 text-white border-slate-900 font-semibold"
-                    : "bg-white text-slate-500 border-gray-200 font-medium hover:bg-gray-50 hover:text-slate-900 hover:border-slate-300"
-                  }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {/* Tabs */}
+          <TabBar activeTab={activeTab} onSelect={setActiveTab} />
 
-          {/* ── States: loading / error / empty ─────────────────────────────── */}
+          {/* States */}
           {loading && (
             <div className="text-center text-slate-400 text-sm py-16 animate-pulse">
               Loading activity logs…
@@ -207,215 +483,66 @@ export default function AdminActivityLog() {
           {!loading && error && (
             <div className="text-center text-red-400 text-sm py-16">
               ⚠️ {error}
-              <button
-                onClick={fetchLogs}
-                className="ml-3 underline text-blue-500 hover:text-blue-700"
-              >
+              <button onClick={fetchLogs} className="ml-3 underline text-blue-500 hover:text-blue-700">
                 Retry
               </button>
             </div>
           )}
 
           {!loading && !error && totalLogs === 0 && (
-            <div className="text-center text-slate-400 text-sm py-16">
-              No activity found.
-            </div>
+            <div className="text-center text-slate-400 text-sm py-16">No activity found.</div>
           )}
 
-          {/* ── Grouped Logs ─────────────────────────────────────────────────── */}
+          {/* Log groups */}
           {!loading && !error && totalLogs > 0 && (
             <div className="flex flex-col gap-6">
-              {Object.entries(grouped).map(([group, items]) => (
-                <div key={group}>
-                  {/* Date Divider */}
-                  <div className="flex items-center gap-3.5 mb-3.5">
-                    <span className="text-sm font-semibold text-slate-500 whitespace-nowrap tracking-tight">
-                      {group}
-                    </span>
-                    <div className="flex-1 h-px bg-gray-200" />
-                  </div>
-
-                  {/* Log Items */}
-                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    {items.map((log) => {
-                      const cat       = log.category ?? "other";
-                      const badge     = buildBadge(log);
-                      const badgeStyle = badgeMap[cat] ?? badgeMap.other;
-                      const icon      = iconMap[cat]  ?? "📋";
-                      const amountStr = log.amount ? ` · $${Number(log.amount).toFixed(2)}` : "";
-
-                      return (
-                        <div
-                          key={log.id}
-                          className="flex items-start justify-between px-5 py-4 border-b border-slate-50 last:border-b-0 hover:bg-[#F8FBFF] transition-colors gap-4 max-md:flex-col max-md:gap-3"
-                        >
-                          {/* Left */}
-                          <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                            {/* Icon */}
-                            <div className="w-[38px] h-[38px] rounded-lg bg-gray-50 border border-slate-100 flex items-center justify-center text-lg shrink-0">
-                              {icon}
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex flex-col gap-1 min-w-0">
-                              {/* Top row */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-bold text-slate-900">{log.user_name}</span>
-                                <span className="text-xs text-slate-400 font-medium capitalize">
-                                  ({log.role ?? "user"})
-                                </span>
-                                <span className="text-sm text-slate-500">{log.action}</span>
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono border ${badgeStyle}`}>
-                                  {badge}{amountStr}
-                                </span>
-                                {log.mode_of_payment && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border bg-slate-50 text-slate-500 border-slate-200">
-                                    via {log.mode_of_payment}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Description */}
-                              {log.description && (
-                                <div className="text-xs text-slate-500">{log.description}</div>
-                              )}
-
-                              {/* Meta */}
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[11px] text-slate-400 font-mono">{log.logged_at}</span>
-                                <span className="inline-flex items-center px-2 py-px rounded bg-gray-50 border border-gray-200 text-[10px] font-bold text-slate-400 tracking-wide uppercase">
-                                  {cat}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right */}
-                          <div className="flex flex-col items-end gap-2.5 shrink-0 max-md:flex-row max-md:items-center max-md:w-full max-md:justify-between">
-                            <span className="text-xs font-medium text-slate-400 font-mono whitespace-nowrap">
-                              {log.logged_at_time}
-                            </span>
-                            <button
-                              onClick={() => setDeleteId(log.id)}
-                              className="px-3.5 py-1 rounded-md border border-red-200 bg-red-50 text-xs font-semibold text-red-500 cursor-pointer whitespace-nowrap hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+              {Object.entries(grouped).map(([date, items]) => (
+                <LogGroup key={date} date={date} items={items} onDelete={setDeleteId} />
               ))}
 
-              {/* ── Pagination ─────────────────────────────────────────────── */}
-              {pagination && pagination.last_page > 1 && (
-                <div className="flex items-center justify-center gap-3 pt-2">
-                  <button
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                  >
-                    ← Prev
-                  </button>
-                  <span className="text-sm text-slate-400 font-mono">
-                    {pagination.current_page} / {pagination.last_page}
-                  </span>
-                  <button
-                    disabled={page >= pagination.last_page}
-                    onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
-                    className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                  >
-                    Next →
-                  </button>
-                </div>
-              )}
+              <Pagination
+                pagination={pagination}
+                page={page}
+                onPrev={() => setPage((p) => Math.max(1, p - 1))}
+                onNext={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
+              />
             </div>
           )}
         </main>
       </div>
 
-      {/* ── Delete Single Confirm Modal ─────────────────────────────────────── */}
+      {/* Delete single modal */}
       {deleteId && (
-        <div
-          onClick={() => !actionLoading && setDeleteId(null)}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-5"
-          style={{ animation: "overlayIn 0.2s ease" }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-[18px] p-8 w-full max-w-[360px] text-center shadow-[0_16px_48px_rgba(15,23,42,0.14),0_4px_16px_rgba(15,23,42,0.06)] border border-slate-100"
-            style={{ animation: "modalIn 0.2s ease" }}
-          >
-            <span className="text-[40px] block mb-3.5">🗑️</span>
-            <h3 className="text-base font-bold text-slate-900 m-0 mb-2 tracking-tight">
-              Delete this activity?
-            </h3>
-            <p className="text-sm text-slate-400 m-0 mb-6 leading-relaxed">
-              This action is permanent and cannot be undone.
-            </p>
-            <div className="flex gap-2.5 justify-center">
-              <button
-                onClick={() => setDeleteId(null)}
-                disabled={actionLoading}
-                className="px-5 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer hover:bg-gray-50 hover:text-slate-900 transition-colors font-[inherit] disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={actionLoading}
-                className="px-5 py-2 rounded-lg border-none bg-red-500 text-sm font-semibold text-white cursor-pointer shadow-[0_2px_8px_rgba(239,68,68,0.3)] hover:bg-red-600 hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(239,68,68,0.4)] transition-all font-[inherit] disabled:opacity-50"
-              >
-                {actionLoading ? "Deleting…" : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          icon="🗑️"
+          title="Delete this activity?"
+          body="This action is permanent and cannot be undone."
+          confirmLabel="Delete"
+          loading={actionLoading}
+          onClose={() => setDeleteId(null)}
+          onConfirm={handleDelete}
+        />
       )}
 
-      {/* ── Clear All Confirm Modal ─────────────────────────────────────────── */}
+      {/* Clear all modal */}
       {deletingAll && (
-        <div
-          onClick={() => !actionLoading && setDeletingAll(false)}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-5"
-          style={{ animation: "overlayIn 0.2s ease" }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-[18px] p-8 w-full max-w-[380px] text-center shadow-[0_16px_48px_rgba(15,23,42,0.14),0_4px_16px_rgba(15,23,42,0.06)] border border-slate-100"
-            style={{ animation: "modalIn 0.2s ease" }}
-          >
-            <span className="text-[40px] block mb-3.5">⚠️</span>
-            <h3 className="text-base font-bold text-slate-900 m-0 mb-2 tracking-tight">
-              Clear {activeTab !== "All" ? activeTab : "all"} logs?
-            </h3>
-            <p className="text-sm text-slate-400 m-0 mb-6 leading-relaxed">
+        <ConfirmModal
+          icon="⚠️"
+          title={`Clear ${activeTab !== "All" ? activeTab : "all"} logs?`}
+          body={
+            <>
               This will permanently delete{" "}
               <strong className="text-slate-600">
                 {activeTab === "All" ? "every activity log" : `all ${activeTab} logs`}
               </strong>
               . This cannot be undone.
-            </p>
-            <div className="flex gap-2.5 justify-center">
-              <button
-                onClick={() => setDeletingAll(false)}
-                disabled={actionLoading}
-                className="px-5 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer hover:bg-gray-50 hover:text-slate-900 transition-colors font-[inherit] disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAll}
-                disabled={actionLoading}
-                className="px-5 py-2 rounded-lg border-none bg-red-500 text-sm font-semibold text-white cursor-pointer shadow-[0_2px_8px_rgba(239,68,68,0.3)] hover:bg-red-600 hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(239,68,68,0.4)] transition-all font-[inherit] disabled:opacity-50"
-              >
-                {actionLoading ? "Clearing…" : "Yes, Clear"}
-              </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+          confirmLabel="Yes, Clear"
+          loading={actionLoading}
+          onClose={() => setDeletingAll(false)}
+          onConfirm={handleDeleteAll}
+        />
       )}
     </>
   );

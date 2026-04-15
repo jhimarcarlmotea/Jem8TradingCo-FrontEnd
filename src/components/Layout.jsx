@@ -546,6 +546,37 @@ export function Header() {
    FOOTER
 ══════════════════════════════════ */
 export function Footer() {
+  const [email, setEmail]     = useState("");
+  const [status, setStatus]   = useState("idle"); // idle | loading | success | exists | error
+  const [message, setMessage] = useState("");
+
+  const handleSubscribe = async () => {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setStatus("error");
+      setMessage("Please enter a valid email address.");
+      return;
+    }
+
+    setStatus("loading");
+
+    try {
+      const res = await api.post("/newsletter/subscribe", { email: email.trim() });
+
+      if (res.status === 201) {
+        setStatus("success");
+        setMessage(res.data.message);
+        setEmail("");
+      } else if (res.status === 200) {
+        setStatus("exists");
+        setMessage(res.data.message);
+        setEmail("");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message ?? "Something went wrong. Please try again.";
+      setStatus("error");
+      setMessage(msg);
+    }
+  };  
   const QUICK_LINKS = [
     { to: "/",         label: "Home"     },
     { to: "/products", label: "Products" },
@@ -586,17 +617,6 @@ export function Footer() {
               📍 Unit 202P, Cityland 10 Tower 1, HV Dela Costa St., Makati City<br />
               📞 (02) 8805-1432 · (02) 8785-0587<br />
               📧 jem8circletrading@gmail.com
-            </div>
-            <div className="flex gap-2">
-              {["📘", "📸", "🎵", "💬"].map((icon, i) => (
-                <button
-                  key={i}
-                  className="w-9 h-9 rounded-lg bg-[#e8e4de] border border-[#d6d0c8] cursor-pointer text-base flex items-center justify-center hover:bg-[#2e6b45] hover:text-white transition-colors"
-                  aria-label="Social media"
-                >
-                  {icon}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -646,21 +666,49 @@ export function Footer() {
             <p className="text-[13px] text-[#6b6b6b] leading-relaxed mb-4">
               Get the latest product updates, promotions, and supply tips delivered to your inbox.
             </p>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="email"
-                className="flex-1 px-3 py-2 rounded-lg bg-white border border-[#d6d0c8] text-[13px] text-[#4a4a4a] placeholder-[#b0a99e] outline-none focus:border-[#2e6b45] transition-colors"
-                placeholder="your@email.com"
-              />
-              <button className="px-4 py-2 rounded-lg bg-[#2e6b45] text-white border-none cursor-pointer text-[13px] font-semibold whitespace-nowrap hover:bg-[#245537] transition-colors">
-                Subscribe
-              </button>
-            </div>
+
+            {/* Success / Already subscribed state */}
+            {(status === "success" || status === "exists") ? (
+              <div className="px-3 py-3 rounded-lg bg-[#e8f5ed] border border-[#b6dfc9] text-[#2e6b45] text-[13px] font-medium mb-3">
+                {message}
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (status === "error") { setStatus("idle"); setMessage(""); }
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
+                    disabled={status === "loading"}
+                    className={`flex-1 px-3 py-2 rounded-lg bg-white border text-[13px] text-[#4a4a4a] placeholder-[#b0a99e] outline-none transition-colors disabled:opacity-60
+                      ${status === "error" ? "border-red-400 focus:border-red-400" : "border-[#d6d0c8] focus:border-[#2e6b45]"}`}
+                    placeholder="your@email.com"
+                  />
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={status === "loading"}
+                    className="px-4 py-2 rounded-lg bg-[#2e6b45] text-white border-none cursor-pointer text-[13px] font-semibold whitespace-nowrap hover:bg-[#245537] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {status === "loading" ? "..." : "Subscribe"}
+                  </button>
+                </div>
+
+                {/* Error message */}
+                {status === "error" && (
+                  <p className="text-[11px] text-red-500 mb-2">{message}</p>
+                )}
+              </>
+            )}
+
             <p className="text-[11px] text-[#9e9890]">
               We won't spam. Read our{" "}
-              <Link to="/contact" className="text-[#2e6b45] no-underline hover:underline">
+              <Link to="/Privacypolicy?tab=email" className="text-[#2e6b45] no-underline hover:underline">
                 email policy
-              </Link>.
+              </Link>
             </p>
           </div>
 
@@ -680,6 +728,7 @@ export function Footer() {
             { label: "Privacy Policy",     to: "/Privacypolicy" },
             { label: "Terms & Conditions", to: "/Privacypolicy?tab=terms" },
             { label: "Cookie Policy",      to: "/Privacypolicy?tab=cookies" },
+            { label: "Email Policy", to: "/Privacypolicy?tab=email" },
           ].map(({ label, to }) => (
             <Link
               key={label}

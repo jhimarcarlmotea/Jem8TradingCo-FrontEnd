@@ -187,7 +187,7 @@ function Hero() {
           ))}
 
         
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          <div className="absolute z-20 flex gap-2 -translate-x-1/2 bottom-5 left-1/2">
             {CAROUSEL_IMAGES.map((_, i) => (
               <div
                 key={i}
@@ -199,7 +199,7 @@ function Hero() {
           </div>
 
          
-          <div className="absolute flex items-center gap-3 px-4 py-3 shadow-lg bottom-6 left-6 bg-white/95 backdrop-blur-md rounded-xl z-20">
+          <div className="absolute z-20 flex items-center gap-3 px-4 py-3 shadow-lg bottom-6 left-6 bg-white/95 backdrop-blur-md rounded-xl">
             <span className="text-2xl">🏆</span>
             <div>
               <strong className="block text-sm font-bold text-slate-800">Trusted Supplier</strong>
@@ -342,11 +342,14 @@ function Testimonials() {
                 >
                   <StarRating rating={rating} />
 
-                  {productName && (
-                    <span className="self-start inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#edf4f0] border border-[#b8d9c8] text-[#4d7b65]">
-                      📦 {productName}
-                    </span>
-                  )}
+{productName && (
+  <Link
+    to={`/products/${review.product?.id ?? review.product_id}`}
+    className="self-start inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#edf4f0] border border-[#b8d9c8] text-[#4d7b65] hover:bg-[#dcefe5] transition"
+  >
+    📦 {productName}
+  </Link>
+)}
 
                   <p className="text-[15px] text-slate-600 leading-relaxed italic flex-1">
                     "{reviewText}"

@@ -15,10 +15,10 @@ const ph = (w, h, label = "") =>
   `https://placehold.co/${w}x${h}/edf4f0/4d7b65?text=${encodeURIComponent(label)}`;
 
 const STATUS_COLORS = {
-  processing: { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa" },
-  ready:      { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
-  on_the_way: { bg: "#fff7ed", color: "#d97706", border: "#fde68a" },
-  delivered:  { bg: "#f0fdf4", color: "#166534", border: "#86efac" },
+  processing: { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa", dot: "#f97316" },
+  ready:      { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe", dot: "#3b82f6" },
+  on_the_way: { bg: "#fff7ed", color: "#d97706", border: "#fde68a", dot: "#f59e0b" },
+  delivered:  { bg: "#f0fdf4", color: "#166534", border: "#86efac", dot: "#22c55e" },
 };
 
 const TRACKER_LABELS = ["Ordered", "Processing", "Ready", "On The Way", "Delivered"];
@@ -31,8 +31,7 @@ const STATUS_TO_TRACKER_INDEX = {
 };
 
 function getTrackerIndex(status) {
-  const s = (status ?? "").toLowerCase();
-  return STATUS_TO_TRACKER_INDEX[s] ?? 0;
+  return STATUS_TO_TRACKER_INDEX[(status ?? "").toLowerCase()] ?? 0;
 }
 
 function formatStatusText(status) {
@@ -48,6 +47,7 @@ function formatStatusText(status) {
 function normaliseOrder(o, account) {
   const { checkout, delivery } = o;
   const status = (delivery?.status ?? "processing").toLowerCase();
+  const addr   = checkout?.delivery_address ?? {};
 
   const cartItem = checkout?.cart ?? null;
   const product  = cartItem?.product ?? null;
@@ -64,17 +64,15 @@ function normaliseOrder(o, account) {
     qty:      Number(cartItem?.quantity ?? 1),
     price:    `₱${Number(product.price ?? 0).toLocaleString()}`,
     rawPrice: Number(product.price ?? 0),
+    status:   product.status ?? "in_stock",
   }] : [];
 
-  // ── Extract receipt — use receipt_image_url directly from backend ──
   const rawReceipt = checkout?.receipt ?? null;
-  const receipt = rawReceipt
-    ? {
-        id:     rawReceipt.receipt_id     ?? null,
-        number: rawReceipt.receipt_number ?? null,
-        image:  rawReceipt.receipt_image_url ?? null,  // exact key from your API
-      }
-    : null;
+  const receipt = rawReceipt ? {
+    id:     rawReceipt.receipt_id     ?? null,
+    number: rawReceipt.receipt_number ?? null,
+    image:  rawReceipt.receipt_image_url ?? null,
+  } : null;
 
   return {
     id:             delivery?.delivery_id ?? checkout?.checkout_id,
@@ -92,15 +90,17 @@ function normaliseOrder(o, account) {
     total:          Number(checkout?.paid_amount ?? 0),
     specialNote:    checkout?.special_instructions ?? delivery?.notes ?? "",
     delivery: {
-      firstName: account?.first_name   ?? "",
-      lastName:  account?.last_name    ?? "",
-      phone:     account?.phone_number ?? "",
-      email:     account?.email        ?? "",
-      address:   delivery?.address     ?? "",
-      barangay:  delivery?.barangay    ?? "",
-      city:      delivery?.city        ?? "",
-      province:  delivery?.province    ?? "",
-      zip:       delivery?.zip         ?? "",
+      firstName:   account?.first_name   ?? "",
+      lastName:    account?.last_name    ?? "",
+      phone:       account?.phone_number ?? "",
+      email:       account?.email        ?? "",
+      companyName: account?.company_name ?? "",
+      tinNumber:   account?.tin_number   ?? "",
+      address:     addr?.street   ?? "",
+      barangay:    addr?.barangay ?? "",
+      city:        addr?.city     ?? "",
+      province:    addr?.province ?? "",
+      zip:         addr?.zip      ?? "",
     },
     items,
   };
@@ -164,7 +164,7 @@ function ReceiptModal({ imageUrl, receiptNumber, onClose }) {
 /* ─── Empty / loading shell ───────────────────────────────── */
 function Shell({ children }) {
   return (
-    <div className="min-h-screen bg-[#f8faf9]">
+    <div className="min-h-screen bg-[#f3f8f5]">
       <Header />
       <div className="min-h-[55vh] flex items-center justify-center px-4 mt-[75px]">
         <div className="text-center">{children}</div>
@@ -180,6 +180,223 @@ const TABS = [
   { key: "on_the_way", label: "On The Way" },
   { key: "delivered",  label: "Delivered" },
 ];
+
+/* ─── Order Detail Panel ──────────────────────────────────── */
+function OrderDetail({ order, onReceiptClick }) {
+  const colors     = STATUS_COLORS[order.status] ?? STATUS_COLORS.processing;
+  const trackerIdx = getTrackerIndex(order.status);
+  const receiptImage  = order.receipt?.image  ?? null;
+  const receiptNumber = order.receipt?.number ?? null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#e8f0eb] overflow-hidden">
+
+      {/* ── Header ── */}
+      <div className="flex justify-between items-start p-6 border-b border-[#e8f0eb] flex-wrap gap-3">
+        <div>
+          <h2 className="text-[22px] font-bold text-[#1a2e22] m-0">#{order.id}</h2>
+          <div className="text-xs text-slate-400 mt-1">Placed on {order.date}</div>
+        </div>
+        <span
+          className="text-xs font-bold px-3.5 py-1.5 rounded-full border"
+          style={{ background: colors.bg, color: colors.color, borderColor: colors.border }}
+        >
+          {formatStatusText(order.status)}
+        </span>
+      </div>
+
+      <div className="p-6 flex flex-col gap-5">
+
+        {/* ── Tracker ── */}
+        <div className="flex items-center p-4 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] overflow-x-auto gap-2">
+          {TRACKER_LABELS.map((label, i) => {
+            const isDone    = i < trackerIdx;
+            const isCurrent = i === trackerIdx;
+            return (
+              <div key={label} className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all
+                    ${isDone    ? "bg-green-600 text-white"
+                    : isCurrent ? "bg-[#4d7b65] text-white"
+                    :             "bg-[#e8f0eb] text-slate-400"}`}>
+                    {isDone ? "✓" : i + 1}
+                  </div>
+                  <span className={`text-xs font-semibold transition-colors hidden sm:block
+                    ${isDone    ? "text-green-600"
+                    : isCurrent ? "text-[#4d7b65] font-bold"
+                    :             "text-slate-400"}`}>
+                    {label}
+                  </span>
+                </div>
+                {i < TRACKER_LABELS.length - 1 && (
+                  <div className={`min-w-[24px] h-0.5 mx-1.5 flex-shrink-0 transition-colors ${isDone ? "bg-green-600" : "bg-[#e8f0eb]"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Delivery Address ── */}
+        <div>
+          <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">📦 Delivery Address</div>
+          <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
+            <strong>{order.delivery.firstName} {order.delivery.lastName}</strong><br />
+            {order.delivery.phone} · {order.delivery.email}
+            {(order.delivery.address || order.delivery.city) && (
+              <>
+                <br />
+                {[
+                  order.delivery.address,
+                  order.delivery.barangay,
+                  order.delivery.city,
+                  order.delivery.province,
+                  order.delivery.zip,
+                ].filter(Boolean).join(", ")}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Payment Method ── */}
+        <div>
+          <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">💳 Payment Method</div>
+          <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700">
+            <strong className="capitalize">{order.paymentMethod}</strong>
+            {order.paymentDetails && (
+              <div className="mt-1 text-[13px] text-slate-500 space-y-0.5">
+                {order.paymentDetails.account_name  && <div>Name: {order.paymentDetails.account_name}</div>}
+                {order.paymentDetails.mobile_number && <div>Number: {order.paymentDetails.mobile_number}</div>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Receipt ── */}
+        {receiptImage && (
+          <div>
+            <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">🧾 Payment Receipt</div>
+            <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]">
+              {receiptNumber && (
+                <div className="text-xs text-slate-400 mb-3 font-mono">{receiptNumber}</div>
+              )}
+              <button
+                onClick={() => onReceiptClick({ image: receiptImage, number: receiptNumber })}
+                className="block w-full cursor-pointer border-none p-0 bg-transparent"
+                title="Click to enlarge"
+              >
+                <img
+                  src={receiptImage}
+                  alt="Payment receipt"
+                  className="w-full max-h-48 object-cover rounded-xl border border-[#e8f0eb] hover:opacity-90 transition-opacity"
+                  onError={(e) => { e.target.src = ph(400, 192, "Receipt"); }}
+                />
+                <div className="mt-2 text-xs text-[#4d7b65] font-semibold text-center">
+                  🔍 Click to view full receipt
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Items Ordered ── */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider">🛒 Items Ordered</span>
+            <span className="ml-auto text-[11px] text-slate-400">
+              {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {order.items.length === 0 ? (
+            <div className="py-6 text-center text-sm text-slate-400 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]">
+              No item details available.
+            </div>
+          ) : (
+            <div className="bg-[#f8faf9] rounded-xl border border-[#e8f0eb] overflow-hidden divide-y divide-[#e8f0eb]">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex items-center gap-4 p-4 hover:bg-[#f0f7f3] transition-colors">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-14 h-14 rounded-xl object-cover bg-white border border-[#e8f0eb] flex-shrink-0"
+                    onError={(e) => { e.target.src = ph(56, 56, item.name); }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      to={`/products/${item.id}`}
+                      className="block text-sm font-semibold text-[#1a2e22] no-underline truncate hover:text-[#4d7b65] transition-colors"
+                    >
+                      {item.name}
+                    </Link>
+                    <div className="text-xs text-slate-400 mt-0.5">Qty: {item.qty} × {item.price}</div>
+                    <div className="mt-1.5">
+                      {item.status === "pre_order" ? (
+                        <span className="inline-block text-[10px] font-semibold text-[#92400e] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-full">
+                          ⏳ Pre-Order
+                        </span>
+                      ) : (
+                        <span className="inline-block text-[10px] font-semibold text-[#059669] bg-[#D1FAE5] border border-[#6EE7B7] px-2 py-0.5 rounded-full">
+                          ✅ In Stock
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-sm font-bold text-[#4d7b65] flex-shrink-0">
+                    ₱{(item.rawPrice * item.qty).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Totals ── */}
+        <div className="px-4 py-4 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] flex flex-col gap-2.5">
+          <div className="flex justify-between text-sm text-slate-600">
+            <span>Subtotal</span>
+            <span>₱{order.subtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-sm text-slate-600">
+            <span>Shipping</span>
+            <span className={order.shippingFee === 0 ? "text-green-600 font-bold" : ""}>
+              {order.shippingFee === 0 ? "FREE" : `₱${order.shippingFee.toLocaleString()}`}
+            </span>
+          </div>
+          <div className="flex justify-between text-[17px] font-bold text-[#1a2e22] pt-2.5 border-t border-[#e8f0eb]">
+            <span>Total Paid</span>
+            <span>₱{order.total.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* ── Special Instructions ── */}
+        {order.specialNote && (
+          <div>
+            <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">📝 Special Instructions</div>
+            <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
+              {order.specialNote}
+            </div>
+          </div>
+        )}
+
+        {/* ── Actions ── */}
+        <div className="flex gap-3 flex-wrap">
+          <Link
+            to="/products"
+            className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline hover:bg-[#3d6552] transition-colors"
+          >
+            Order Again →
+          </Link>
+          <Link
+            to="/contact"
+            className="inline-block px-6 py-2.5 bg-white text-[#4d7b65] border-[1.5px] border-[#c0ddd0] rounded-xl text-sm font-bold no-underline hover:bg-[#f0f7f3] transition-colors"
+          >
+            Need Help?
+          </Link>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
 /* ─── Main Component ──────────────────────────────────────── */
 export default function MyOrders() {
@@ -222,14 +439,14 @@ export default function MyOrders() {
 
   if (loading) return (
     <Shell>
-      <div className="text-5xl mb-4">⏳</div>
-      <h2 className="text-xl font-bold text-[#1a2e22]">Loading your orders…</h2>
+      <div className="w-12 h-12 border-4 border-[#4d7b65] border-t-transparent rounded-full animate-spin mx-auto mb-5" />
+      <h2 className="text-lg font-semibold text-[#1a2e22]">Loading your orders…</h2>
     </Shell>
   );
 
   if (error) return (
     <Shell>
-      <div className="text-5xl mb-4">⚠️</div>
+      <div className="w-16 h-16 rounded-2xl bg-[#fff7ed] flex items-center justify-center text-3xl mx-auto mb-4">⚠️</div>
       <h2 className="text-xl font-bold text-[#1a2e22] mb-2">Could not load orders</h2>
       <p className="text-sm text-slate-500 mb-5">{error}</p>
       <button
@@ -245,7 +462,7 @@ export default function MyOrders() {
     <Shell>
       {newOrderId ? (
         <>
-          <div className="text-5xl mb-4">🎉</div>
+          <div className="w-20 h-20 rounded-3xl bg-[#f0fdf4] flex items-center justify-center text-4xl mx-auto mb-5 border border-[#86efac]">🎉</div>
           <h2 className="text-xl font-bold text-[#1a2e22] mb-2">Order Placed Successfully!</h2>
           <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">
             Your order <strong>{newOrderId}</strong> has been received and is being processed.
@@ -257,7 +474,7 @@ export default function MyOrders() {
         </>
       ) : (
         <>
-          <div className="text-5xl mb-4">📦</div>
+          <div className="w-20 h-20 rounded-3xl bg-[#f3f8f5] flex items-center justify-center text-4xl mx-auto mb-5 border border-[#c0ddd0]">📦</div>
           <h2 className="text-xl font-bold text-[#1a2e22] mb-2">No orders yet</h2>
           <p className="text-sm text-slate-500 mb-5">Your order history will appear here once you place your first order.</p>
           <Link to="/products" className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline">
@@ -275,7 +492,7 @@ export default function MyOrders() {
   const selectedOrder = orders.find((o) => String(o.id) === String(selected));
 
   return (
-    <div className="min-h-screen bg-[#f8faf9]">
+    <div className="min-h-screen bg-[#f3f8f5]">
       <Header />
 
       {receiptModal && (
@@ -295,11 +512,13 @@ export default function MyOrders() {
         </div>
       </div>
 
+      {/* New order banner */}
       {newOrderId && (
-        <div className="bg-[#f0fdf4] border-b border-[#bbf7d0] py-3.5">
-          <div className="container mx-auto px-4 flex items-center gap-4 text-sm text-[#166534] flex-wrap">
-            🎉 <strong>Order {newOrderId}</strong> placed successfully! We'll contact you to confirm your payment.
-            <Link to="/products" className="ml-auto text-[#4d7b65] font-bold no-underline hover:underline">
+        <div className="bg-[#f0fdf4] border-b border-[#bbf7d0]">
+          <div className="container mx-auto px-4 py-3 flex items-center gap-3 text-sm text-[#166534] flex-wrap">
+            <span>🎉</span>
+            <span><strong>Order #{newOrderId}</strong> placed successfully! We'll contact you to confirm your payment.</span>
+            <Link to="/products" className="ml-auto text-[#4d7b65] font-bold no-underline hover:underline text-xs">
               Continue Shopping →
             </Link>
           </div>
@@ -309,7 +528,7 @@ export default function MyOrders() {
       <section className="py-10 pb-20">
         <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-8 items-start">
 
-          {/* ORDER LIST */}
+          {/* ── ORDER LIST ── */}
           <div>
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-[#1a2e22] m-0">My Orders</h1>
@@ -318,6 +537,7 @@ export default function MyOrders() {
               </span>
             </div>
 
+            {/* Tabs */}
             <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
               {TABS.map((tab) => (
                 <button
@@ -347,7 +567,7 @@ export default function MyOrders() {
                     <div
                       key={order.id}
                       onClick={() => setSelected(String(order.id))}
-                      className={`bg-white border-[1.5px] rounded-2xl px-4 py-4 cursor-pointer transition-all
+                      className={`bg-white rounded-xl border p-4 cursor-pointer transition-all
                         ${isActive
                           ? "border-[#4d7b65] bg-[#f3f8f5] shadow-[0_4px_14px_rgba(77,123,101,0.12)]"
                           : "border-[#e8f0eb] hover:border-[#4d7b65] hover:shadow-[0_4px_14px_rgba(77,123,101,0.10)]"
@@ -398,209 +618,16 @@ export default function MyOrders() {
             )}
           </div>
 
-          {/* ORDER DETAIL */}
+          {/* ── ORDER DETAIL ── */}
           <div>
             {!selectedOrder ? (
-              <div className="h-[300px] flex flex-col items-center justify-center gap-3 bg-[#f8faf9] rounded-2xl border-[1.5px] border-dashed border-[#e8f0eb]">
-                <span className="text-4xl">📋</span>
-                <p className="text-sm text-slate-400 m-0">Select an order to view details</p>
+              <div className="h-full min-h-[300px] flex flex-col items-center justify-center gap-4 bg-white rounded-2xl border-2 border-dashed border-[#e8f0eb]">
+                <div className="w-16 h-16 rounded-2xl bg-[#f3f8f5] flex items-center justify-center text-3xl">📋</div>
+                <p className="text-sm text-slate-400 font-medium">Select an order to view details</p>
               </div>
-            ) : (() => {
-              const colors     = STATUS_COLORS[selectedOrder.status] ?? STATUS_COLORS.processing;
-              const trackerIdx = getTrackerIndex(selectedOrder.status);
-
-              // Pull these out explicitly so the condition is dead-simple
-              const receiptImage  = selectedOrder.receipt?.image  ?? null;
-              const receiptNumber = selectedOrder.receipt?.number ?? null;
-
-              return (
-                <div className="bg-white border-[1.5px] border-[#e8f0eb] rounded-2xl p-7">
-
-                  {/* Header */}
-                  <div className="flex justify-between items-start mb-6 flex-wrap gap-3">
-                    <div>
-                      <h2 className="text-[22px] font-bold text-[#1a2e22] m-0">#{selectedOrder.id}</h2>
-                      <div className="text-xs text-slate-400 mt-1">Placed on {selectedOrder.date}</div>
-                    </div>
-                    <span
-                      className="text-xs font-bold px-3.5 py-1.5 rounded-full border"
-                      style={{ background: colors.bg, color: colors.color, borderColor: colors.border }}
-                    >
-                      {formatStatusText(selectedOrder.status)}
-                    </span>
-                  </div>
-
-                  {/* Tracker */}
-                  <div className="flex items-center mb-7 p-5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] overflow-x-auto">
-                    {TRACKER_LABELS.map((label, i) => {
-                      const isDone    = i < trackerIdx;
-                      const isCurrent = i === trackerIdx;
-                      return (
-                        <div key={label} className="flex items-center gap-2 flex-shrink-0">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all
-                              ${isDone    ? "bg-green-600 text-white"
-                              : isCurrent ? "bg-[#4d7b65] text-white"
-                              :             "bg-[#e8f0eb] text-slate-400"}`}>
-                              {isDone ? "✓" : i + 1}
-                            </div>
-                            <span className={`text-xs font-semibold transition-colors hidden sm:block
-                              ${isDone    ? "text-green-600"
-                              : isCurrent ? "text-[#4d7b65] font-bold"
-                              :             "text-slate-400"}`}>
-                              {label}
-                            </span>
-                          </div>
-                          {i < TRACKER_LABELS.length - 1 && (
-                            <div className={`min-w-6 h-0.5 mx-1.5 transition-colors flex-shrink-0 ${isDone ? "bg-green-600" : "bg-[#e8f0eb]"}`} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Delivery Address */}
-                  <div className="mb-5">
-                    <div className="text-[13px] font-bold text-[#6b7c70] uppercase tracking-wide mb-2.5">📦 Delivery Address</div>
-                    <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
-                      <strong>{selectedOrder.delivery.firstName} {selectedOrder.delivery.lastName}</strong><br />
-                      {selectedOrder.delivery.phone} · {selectedOrder.delivery.email}
-                      {(selectedOrder.delivery.address || selectedOrder.delivery.city) && (
-                        <>
-                          <br />
-                          {selectedOrder.delivery.address}
-                          {selectedOrder.delivery.barangay && `, ${selectedOrder.delivery.barangay}`}
-                          {selectedOrder.delivery.city     && `, ${selectedOrder.delivery.city}`}
-                          {selectedOrder.delivery.province && `, ${selectedOrder.delivery.province}`}
-                          {selectedOrder.delivery.zip      && ` ${selectedOrder.delivery.zip}`}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Payment */}
-                  <div className="mb-5">
-                    <div className="text-[13px] font-bold text-[#6b7c70] uppercase tracking-wide mb-2.5">💳 Payment Method</div>
-                    <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700">
-                      <strong className="capitalize">{selectedOrder.paymentMethod}</strong>
-                      {selectedOrder.paymentDetails && (
-                        <div className="mt-1 text-[13px] text-slate-500">
-                          {selectedOrder.paymentDetails.account_name  && <div>Name: {selectedOrder.paymentDetails.account_name}</div>}
-                          {selectedOrder.paymentDetails.mobile_number && <div>Number: {selectedOrder.paymentDetails.mobile_number}</div>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Receipt — only shown when receiptImage is a real string */}
-                  {receiptImage && (
-                    <div className="mb-5">
-                      <div className="text-[13px] font-bold text-[#6b7c70] uppercase tracking-wide mb-2.5">🧾 Payment Receipt</div>
-                      <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]">
-                        {receiptNumber && (
-                          <div className="text-xs text-slate-400 mb-3 font-mono">{receiptNumber}</div>
-                        )}
-                        <button
-                          onClick={() => setReceiptModal({ image: receiptImage, number: receiptNumber })}
-                          className="block w-full cursor-pointer border-none p-0 bg-transparent"
-                          title="Click to enlarge"
-                        >
-                          <img
-                            src={receiptImage}
-                            alt="Payment receipt"
-                            className="w-full max-h-48 object-cover rounded-xl border border-[#e8f0eb] hover:opacity-90 transition-opacity"
-                            onError={(e) => { e.target.src = ph(400, 192, "Receipt"); }}
-                          />
-                          <div className="mt-2 text-xs text-[#4d7b65] font-semibold text-center">
-                            🔍 Click to view full receipt
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Items */}
-                  <div className="mb-5">
-                    <div className="text-[13px] font-bold text-[#6b7c70] uppercase tracking-wide mb-2.5">🛒 Items Ordered</div>
-                    {selectedOrder.items.length === 0 ? (
-                      <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-500">
-                        No item details available.
-                      </div>
-                    ) : (
-                      <div>
-                        {selectedOrder.items.map((item) => (
-                          <div key={item.id} className="flex items-center gap-3.5 py-3 border-b border-[#f3f8f5] last:border-b-0">
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-14 h-14 rounded-xl object-cover bg-[#f3f8f5] border border-[#e8f0eb] flex-shrink-0"
-                              onError={(e) => { e.target.src = ph(56, 56, item.name); }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <Link
-                                to={`/products/${item.id}`}
-                                className="block text-sm font-semibold text-[#1a2e22] no-underline truncate hover:text-[#4d7b65] transition-colors"
-                              >
-                                {item.name}
-                              </Link>
-                              <div className="text-xs text-slate-400 mt-0.5">Qty: {item.qty} × {item.price}</div>
-                            </div>
-                            <div className="text-[15px] font-bold text-[#4d7b65] flex-shrink-0">
-                              ₱{(item.rawPrice * item.qty).toLocaleString()}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Totals */}
-                  <div className="px-4 py-4 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] mb-5 flex flex-col gap-2.5">
-                    <div className="flex justify-between text-sm text-slate-600">
-                      <span>Subtotal</span>
-                      <span>₱{selectedOrder.subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-slate-600">
-                      <span>Shipping</span>
-                      <span className={selectedOrder.shippingFee === 0 ? "text-green-600 font-bold" : ""}>
-                        {selectedOrder.shippingFee === 0 ? "FREE" : `₱${selectedOrder.shippingFee.toLocaleString()}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[17px] font-bold text-[#1a2e22] pt-2.5 border-t border-[#e8f0eb]">
-                      <span>Total Paid</span>
-                      <span>₱{selectedOrder.total.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  {/* Special note */}
-                  {selectedOrder.specialNote && (
-                    <div className="mb-5">
-                      <div className="text-[13px] font-bold text-[#6b7c70] uppercase tracking-wide mb-2.5">📝 Special Instructions</div>
-                      <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
-                        {selectedOrder.specialNote}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-3 flex-wrap">
-                    <Link
-                      to="/products"
-                      className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline hover:bg-[#3d6552] transition-colors"
-                    >
-                      Order Again →
-                    </Link>
-                    <Link
-                      to="/contact"
-                      className="inline-block px-6 py-2.5 bg-white text-[#4d7b65] border-[1.5px] border-[#c0ddd0] rounded-xl text-sm font-bold no-underline hover:bg-[#f0f7f3] transition-colors"
-                    >
-                      Need Help?
-                    </Link>
-                  </div>
-
-                </div>
-              );
-            })()}
+            ) : (
+              <OrderDetail order={selectedOrder} onReceiptClick={setReceiptModal} />
+            )}
           </div>
 
         </div>

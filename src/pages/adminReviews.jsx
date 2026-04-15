@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import AdminNav from "../components/AdminNav";
+import { Link } from "react-router-dom";
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
@@ -333,11 +334,14 @@ export default function AdminReviews() {
                   </div>
 
                   {/* Product tag */}
-                  {productName && (
-                    <div className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[rgba(77,123,101,0.12)] border border-[rgba(77,123,101,0.3)] text-gray-700 mb-2">
-                      📦 {productName}
-                    </div>
-                  )}
+{productName && (
+  <Link
+    to={`/products/${review.product?.id ?? review.product_id}`}
+    className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[rgba(77,123,101,0.12)] border border-[rgba(77,123,101,0.3)] text-gray-700 mb-2 hover:bg-[rgba(77,123,101,0.2)] transition"
+  >
+    📦 {productName}
+  </Link>
+)}
 
                   {/* Review text */}
                   <p className="m-0 mb-3 text-xs font-medium leading-relaxed text-gray-700">

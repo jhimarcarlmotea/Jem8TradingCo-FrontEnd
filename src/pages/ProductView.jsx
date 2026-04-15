@@ -389,12 +389,8 @@ export default function ProductView() {
 
   const handleAdd = async () => {
     if (cartLoading) return;
-    const isBackorder = stock === 0;
-    if (!isBackorder && qty > stock) {
-      setCartError(`Insufficient stock. Only ${stock} left.`);
-      setTimeout(() => setCartError(null), 4500);
-      return;
-    }
+    const isBackorder = product.status === "pre_order";
+   
     setCartLoading(true);
     setCartError(null);
     const productToAdd = isBackorder ? { ...product, backorder: true } : product;
@@ -427,12 +423,8 @@ export default function ProductView() {
 
   const handleBuyNow = async () => {
     if (cartLoading) return;
-    const isBackorder = stock === 0;
-    if (!isBackorder && qty > stock) {
-      setCartError(`Insufficient stock. Only ${stock} left.`);
-      setTimeout(() => setCartError(null), 4500);
-      return;
-    }
+    const isBackorder = product.status === "pre_order";
+   
     setCartLoading(true);
     setCartError(null);
     const productToAdd = isBackorder ? { ...product, backorder: true } : product;
@@ -460,12 +452,11 @@ export default function ProductView() {
     }
   };
 
-  const deriveStatus = () => {
-    if (stock === 0) return { label:"Out of Stock", color:"#DC2626", bg:"#FEE2E2" };
-    if (stock <= 10) return { label:"Low Stock",    color:"#D97706", bg:"#FEF3C7" };
-    return              { label:"In Stock",         color:"#059669", bg:"#D1FAE5" };
-  };
-  const stockStatus = deriveStatus();
+const isPreOrder  = product.status === "pre_order";
+const stockStatus = isPreOrder
+  ? { label: "Pre-Order", color: "#92400E", bg: "#FEF3C7" }
+  : { label: "In Stock",  color: "#059669", bg: "#D1FAE5" };
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -509,9 +500,17 @@ export default function ProductView() {
               {isOnSale && (
                 <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-full">Sale</span>
               )}
-              {stock === 0 && (
-                <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-3.5 py-1.5 rounded-full">Out of Stock</span>
-              )}
+              {product.status === "pre_order" ? (
+                  <span className="absolute top-3 right-3 text-xs font-bold px-3.5 py-1.5 rounded-full"
+                    style={{ background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A" }}>
+                    Pre-Order
+                  </span>
+                ) : (
+                  <span className="absolute top-3 right-3 text-xs font-bold px-3.5 py-1.5 rounded-full"
+                    style={{ background: "#D1FAE5", color: "#059669", border: "1px solid #6EE7B7" }}>
+                    In Stock
+                  </span>
+                )}
             </div>
 
             {images.length > 1 && (
@@ -559,9 +558,9 @@ export default function ProductView() {
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3 w-fit"
               style={{ background: stockStatus.bg, color: stockStatus.color }}
             >
-              <span>{stock > 0 ? "●" : "○"}</span>
+             <span>●</span>
               {stockStatus.label}
-              {stock > 0 && stock <= 10 && <span className="font-normal">({stock} left)</span>}
+              
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
@@ -589,8 +588,8 @@ export default function ProductView() {
                 >−</button>
                 <span className="min-w-[40px] text-center text-sm font-bold text-[#0F172A] bg-white">{qty}</span>
                 <button
-                  onClick={() => setQty(q => (stock > 0 ? Math.min(stock, q+1) : q+1))}
-                  disabled={stock > 0 ? qty >= stock : false}
+                 onClick={() => setQty(q => q + 1)}
+                  disabled={false}
                   className="w-[38px] h-[38px] border-none bg-[#f0faf5] text-[#4d7b65] text-lg font-bold cursor-pointer flex items-center justify-center"
                   title={stock > 0 ? (qty >= stock ? `Max available: ${stock}` : "Increase quantity") : "Increase quantity"}
                 >+</button>
@@ -614,11 +613,12 @@ export default function ProductView() {
                 aria-disabled={cartLoading}
                 title={stock === 0 ? "Out of stock — you can still order; delivery may take longer" : "Add to cart"}
               >
+              
                 {cartLoading
                   ? <span style={{ display:"inline-block", width:"18px", height:"18px", border:"2.5px solid rgba(255,255,255,0.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
-                  : <span className="text-lg">{added ? "✓" : (stock === 0 ? "⏳" : "🛒")}</span>
-                }
-                {stock === 0 ? "Order (may take longer)" : (cartLoading ? "Adding..." : added ? "Added to Cart!" : "Add to Cart")}
+                  : <span className="text-lg">{added ? "✓" : "🛒"}</span>
+                    }
+                  {cartLoading ? "Adding..." : added ? "Added to Cart!" : "Add to Cart"}
               </button>
 
               <button
@@ -637,7 +637,7 @@ export default function ProductView() {
                 title={stock === 0 ? "Out of stock — you can still order; delivery may take longer" : "Buy now"}
               >
                 <span className="text-lg">⚡</span>
-                {stock === 0 ? "Order (may take longer)" : "Buy Now"}
+                {product.status === "pre_order" ? "Pre-Order Now" : "Buy Now"}
               </button>
             </div>
 
