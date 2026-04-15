@@ -123,6 +123,7 @@ export default function AdminMessages() {
   };
 
   const bottomRef = useRef(null);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -244,17 +245,25 @@ export default function AdminMessages() {
   useEffect(() => {
     if (!selectedId) return;
     let mounted = true;
-    (async () => {
+
+    const poll = async () => {
       try {
         const msgsResp = await getChatMessages(selectedId);
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
         if (!mounted) return;
         setContacts((prev) => prev.map((c) => c.id === selectedId ? { ...c, messages: sortMessagesAsc(serverMessages) } : c));
-        // scroll to bottom after messages load (slight delay to allow render)
-        setTimeout(() => { try { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {} }, 60);
-      } catch (err) { /* keep existing */ }
-    })();
-    return () => { mounted = false; };
+        // scroll to bottom after messages load
+        try { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {}
+      } catch (err) {
+        console.warn('Polling admin messages failed:', err);
+      }
+    };
+
+    // initial fetch then poll every 3s
+    poll();
+    pollRef.current = setInterval(poll, 3000);
+
+    return () => { mounted = false; clearInterval(pollRef.current); pollRef.current = null; };
   }, [selectedId]);
 
   // scroll whenever the selected messages change length

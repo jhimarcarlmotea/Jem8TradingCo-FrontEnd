@@ -109,6 +109,7 @@ export default function Messages() {
   const [unauthenticated, setUnauthenticated] = useState(false);
   const [currentUser, setCurrentUser]   = useState(null);
   const bottomRef                       = useRef(null);
+  const pollRef = useRef(null);
   const navigate = useNavigate();
 
   const thread = threads.find((t) => t.id === activeThread);
@@ -436,21 +437,30 @@ export default function Messages() {
 
   // Fetch messages when active thread changes
   useEffect(() => {
-    if (!activeThread || !currentUser) return;
+    if (!activeThread || unauthenticated) return;
     let mounted = true;
-    (async () => {
-        try {
-          const msgsResp = await getChatMessages(activeThread);
-          const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
-          const currentUidForFetch = getUserId(currentUser);
-          const safeMsgs = filterMessagesForUser(serverMessages, currentUidForFetch);
-          const sortedSafeMsgs = sortMessagesAsc(safeMsgs);
-          if (!mounted) return;
-          setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: sortedSafeMsgs.length > 0 ? sortedSafeMsgs : t.messages } : t)));
-        } catch (err) { /* keep local mock */ }
-    })();
-    return () => { mounted = false; };
-  }, [activeThread]);
+
+    const poll = async () => {
+      try {
+        const msgsResp = await getChatMessages(activeThread);
+        const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
+        const currentUidForFetch = getUserId(currentUser);
+        const safeMsgs = filterMessagesForUser(serverMessages, currentUidForFetch);
+        const sortedSafeMsgs = sortMessagesAsc(safeMsgs);
+        if (!mounted) return;
+        setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: sortedSafeMsgs.length > 0 ? sortedSafeMsgs : t.messages } : t)));
+        try { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {}
+      } catch (err) {
+        console.warn('Polling messages failed:', err);
+      }
+    };
+
+    // initial fetch then poll every 3s
+    poll();
+    pollRef.current = setInterval(poll, 3000);
+
+    return () => { mounted = false; clearInterval(pollRef.current); pollRef.current = null; };
+  }, [activeThread, currentUser, unauthenticated]);
 
   // Auto-start helper: open existing room or create one once using a local lock
   const AUTO_START_KEY = "chat_auto_started_v1";
