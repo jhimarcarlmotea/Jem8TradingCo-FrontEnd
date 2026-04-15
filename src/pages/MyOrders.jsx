@@ -46,66 +46,97 @@ function formatStatusText(status) {
 
 function normaliseOrder(o, account) {
   const { checkout, delivery } = o;
+
+
   const status = (delivery?.status ?? "processing").toLowerCase();
   const addr   = checkout?.delivery_address ?? {};
 
-  const cartItem = checkout?.cart ?? null;
-  const product  = cartItem?.product ?? null;
+  /* ===============================
+     ✅ MULTIPLE ITEMS FIX
+  =============================== */
+  const items = (checkout?.items ?? []).map((item) => {
+    const product = item.product ?? {};
 
-  const imageUrl = product?.primary_image_url
-    ?? (product?.images?.find((img) => img.is_primary)?.image_path
-        ? `http://127.0.0.1:8000/storage/${product.images.find((img) => img.is_primary).image_path}`
-        : "");
+    return {
+      id: item.product_id,
 
-  const items = product ? [{
-    id:       product.product_id,
-    name:     product.product_name ?? "Item",
-    image:    imageUrl,
-    qty:      Number(cartItem?.quantity ?? 1),
-    price:    `₱${Number(product.price ?? 0).toLocaleString()}`,
-    rawPrice: Number(product.price ?? 0),
-    status:   product.status ?? "in_stock",
-  }] : [];
+      // IMPORTANT FIX
+      name: item.product_name,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.total ?? item.price * item.quantity,
 
-  const rawReceipt = checkout?.receipt ?? null;
-  const receipt = rawReceipt ? {
-    id:     rawReceipt.receipt_id     ?? null,
-    number: rawReceipt.receipt_number ?? null,
-    image:  rawReceipt.receipt_image_url ?? null,
-  } : null;
+      // optional full product (if backend adds later)
+      product,
+
+      image:
+        product?.primary_image_url ??
+        (product?.images?.find((img) => img.is_primary)
+          ? `http://127.0.0.1:8000/storage/${
+              product.images.find((img) => img.is_primary).image_path
+            }`
+          : null),
+
+      raw: item,
+    };
+  });
+
+  /* ===============================
+     ✅ RECEIPT FIX (IMPORTANT)
+  =============================== */
+  const receipt = checkout?.receipt
+    ? {
+        id: checkout.receipt.receipt_id ?? null,
+        number: checkout.receipt.receipt_number ?? null,
+        image: checkout.receipt.receipt_image_url ?? null,
+      }
+    : null;
+
 
   return {
-    id:             delivery?.delivery_id ?? checkout?.checkout_id,
-    date:           checkout?.created_at
-                      ? new Date(checkout.created_at).toLocaleDateString("en-PH", {
-                          year: "numeric", month: "long", day: "numeric",
-                        })
-                      : "—",
+    id: delivery?.delivery_id ?? checkout?.checkout_id,
+
+    date: checkout?.created_at
+      ? new Date(checkout.created_at).toLocaleDateString("en-PH", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "—",
+
     status,
-    paymentMethod:  checkout?.payment_method ?? "—",
+
+    paymentMethod: checkout?.payment_method ?? "—",
     paymentDetails: checkout?.payment_details ?? null,
+
     receipt,
-    subtotal:       Number(checkout?.paid_amount ?? 0) - Number(checkout?.shipping_fee ?? 0),
-    shippingFee:    Number(checkout?.shipping_fee ?? 0),
-    total:          Number(checkout?.paid_amount ?? 0),
-    specialNote:    checkout?.special_instructions ?? delivery?.notes ?? "",
+
+    subtotal:
+      Number(checkout?.paid_amount ?? 0) -
+      Number(checkout?.shipping_fee ?? 0),
+
+    shippingFee: Number(checkout?.shipping_fee ?? 0),
+    total: Number(checkout?.paid_amount ?? 0),
+
+    specialNote:
+      checkout?.special_instructions ?? delivery?.notes ?? "",
+
     delivery: {
-      firstName:   account?.first_name   ?? "",
-      lastName:    account?.last_name    ?? "",
-      phone:       account?.phone_number ?? "",
-      email:       account?.email        ?? "",
-      companyName: account?.company_name ?? "",
-      tinNumber:   account?.tin_number   ?? "",
-      address:     addr?.street   ?? "",
-      barangay:    addr?.barangay ?? "",
-      city:        addr?.city     ?? "",
-      province:    addr?.province ?? "",
-      zip:         addr?.zip      ?? "",
+      firstName: account?.first_name ?? "",
+      lastName: account?.last_name ?? "",
+      phone: account?.phone_number ?? "",
+      email: account?.email ?? "",
+
+      address: addr?.street ?? "",
+      barangay: addr?.barangay ?? "",
+      city: addr?.city ?? "",
+      province: addr?.province ?? "",
+      zip: addr?.zip ?? "",
     },
+
     items,
   };
 }
-
 /* ─── Receipt Image Modal ─────────────────────────────────── */
 function ReceiptModal({ imageUrl, receiptNumber, onClose }) {
   useEffect(() => {
@@ -186,6 +217,8 @@ function OrderDetail({ order, onReceiptClick }) {
   const colors     = STATUS_COLORS[order.status] ?? STATUS_COLORS.processing;
   const trackerIdx = getTrackerIndex(order.status);
   const receiptImage  = order.receipt?.image  ?? null;
+
+  console.log(receiptImage)
   const receiptNumber = order.receipt?.number ?? null;
 
   return (
@@ -418,6 +451,7 @@ export default function MyOrders() {
     api.get("/my-deliveries")
       .then(({ data }) => {
         if (cancelled) return;
+        console.log(data)
         const account    = data.account ?? {};
         const rawOrders  = Array.isArray(data.orders) ? data.orders : (data.data ?? []);
         const normalised = rawOrders.map((o) => normaliseOrder(o, account));

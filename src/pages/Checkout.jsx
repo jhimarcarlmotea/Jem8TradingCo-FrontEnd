@@ -255,7 +255,7 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
       ...payFields,
       first_name: user?.first_name || "", last_name: user?.last_name || "",
       email: user?.email || "", phone: user?.phone_number || "",
-      billing_address: billingAddress,
+      billing_address: resolvedAddress,
     };
 
     const cartIds = items.map((i) => i.id).filter(Boolean);
