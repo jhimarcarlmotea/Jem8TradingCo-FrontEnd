@@ -67,7 +67,7 @@ const AdminLeadership = () => {
     setLoading(true);
     setError(null);
     try {
-      const res  = await axios.get(`${BASE}/api/leadership`, axiosConfig);
+      const res  = await axios.get(`${BASE}/api/admin-leadership`, axiosConfig);
       const data = res.data?.data ?? res.data;
       setMembers(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -127,7 +127,7 @@ const AdminLeadership = () => {
       fd.append('status',         form.status ? 1 : 0);  // boolean → 0/1 for Laravel
       fd.append('leadership_img', imgFile);
 
-      const res = await axios.post(`${BASE}/api/leadership`, fd, {
+      const res = await axios.post(`${BASE}/api/admin-leadership`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
@@ -157,10 +157,10 @@ const AdminLeadership = () => {
       fd.append('name',     form.name);
       fd.append('position', form.position);
       fd.append('status',   form.status ? 1 : 0);
-      fd.append('_method',  'PUT');                       // Laravel method spoofing
+      fd.append('_method',  'POST');                       // Laravel method spoofing
       if (imgFile) fd.append('leadership_img', imgFile);
 
-      const res = await axios.post(`${BASE}/api/leadership/${getId(editTarget)}`, fd, {
+      const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
@@ -193,7 +193,7 @@ const AdminLeadership = () => {
       fd.append('status',  newStatus);
       fd.append('_method', 'PUT');
 
-      await axios.post(`${BASE}/api/leadership/${getId(member)}`, fd, {
+      await axios.post(`${BASE}/api/admin-leadership/${getId(member)}`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
@@ -214,7 +214,7 @@ const AdminLeadership = () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await axios.delete(`${BASE}/api/leadership/${getId(deleteTarget)}`, axiosConfig);
+      await axios.delete(`${BASE}/api/admin-leadership/${getId(deleteTarget)}`, axiosConfig);
       setMembers((prev) => prev.filter((m) => getId(m) !== getId(deleteTarget)));
       setDeleteTarget(null);
     } catch (err) {

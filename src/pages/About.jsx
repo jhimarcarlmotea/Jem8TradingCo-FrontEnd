@@ -25,7 +25,6 @@ const resolveImg = (path) => {
   return path.startsWith('http') ? path : `${BASE}/storage/${path}`;
 };
 
-// 6 enterprise images: 4 real product images + 2 placeholders
 const ENTERPRISE_IMAGES = [
   { src: officeSuppliesImg, label: 'Office Supplies & Equipment'   },
   { src: personalCareImg,   label: 'Personal & Home Care'          },
@@ -44,10 +43,9 @@ const ENTERPRISE_IMAGES = [
 const About = () => {
   const [stats] = useState({ since: 2016, employees: '1–7', clients: 250 });
 
-  // Enterprise image cycling: show images[groupIndex*3 .. groupIndex*3+2]
   const [groupIndex, setGroupIndex] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
-  const totalGroups = 2; // 6 images / 3 per group = 2 groups
+  const totalGroups = 2;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -55,7 +53,7 @@ const About = () => {
       setTimeout(() => {
         setGroupIndex((prev) => (prev + 1) % totalGroups);
         setFadeIn(true);
-      }, 400); // fade out then swap
+      }, 400);
     }, 3500);
     return () => clearInterval(timer);
   }, []);
@@ -508,7 +506,7 @@ const About = () => {
                 {[0, 1].map((i) => (
                   <div
                     key={i}
-                    className="h-2 rounded-full transition-all duration-500"
+                    className="h-2 transition-all duration-500 rounded-full"
                     style={{
                       width: i === groupIndex ? 20 : 8,
                       background: i === groupIndex ? 'var(--green)' : 'var(--green-border)',
@@ -576,15 +574,26 @@ const About = () => {
           <p style={{ fontFamily: 'var(--font-sub)', fontSize: 16, color: 'rgba(255,255,255,0.75)', marginBottom: 40 }}>
             Ready to work with a trusted supply partner?
           </p>
-          <a
-            href="/contact"
-            className="inline-flex items-center gap-[10px] bg-white font-bold transition-all duration-300"
-            style={{ fontFamily: 'var(--font-body)', color: 'var(--green)', borderRadius: 'var(--r-md)', padding: '16px 40px', fontSize: 16, boxShadow: '0 8px 28px rgba(0,0,0,0.2)' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.background = '#f0faf5'; e.currentTarget.style.boxShadow = '0 14px 36px rgba(0,0,0,0.25)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.2)'; }}
-          >
-            Get Started →
-          </a>
+          <div className="inline-flex flex-wrap items-center justify-center gap-4">
+            <a
+              href="/contact"
+              className="inline-flex items-center gap-[10px] bg-white font-bold transition-all duration-300"
+              style={{ fontFamily: 'var(--font-body)', color: 'var(--green)', borderRadius: 'var(--r-md)', padding: '16px 40px', fontSize: 16, boxShadow: '0 8px 28px rgba(0,0,0,0.2)' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.background = '#f0faf5'; e.currentTarget.style.boxShadow = '0 14px 36px rgba(0,0,0,0.25)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.2)'; }}
+            >
+              Get Started →
+            </a>
+            <a
+              href="/faq"
+              className="inline-flex items-center gap-[10px] font-bold transition-all duration-300"
+              style={{ fontFamily: 'var(--font-body)', color: '#fff', borderRadius: 'var(--r-md)', padding: '16px 40px', fontSize: 16, border: '2px solid rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.08)' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.background = 'rgba(255,255,255,0.18)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.8)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'; }}
+            >
+              View FAQ →
+            </a>
+          </div>
         </div>
       </section>
 
