@@ -467,10 +467,22 @@ export default function Jem8HomePage() {
 
         if (isIncomplete) {
           setShowModal(true);
+          return;
+        }
+
+        try {
+          const addrRes = await api.get("/addresses");
+          const addrData = addrRes.data?.data ?? addrRes.data ?? [];
+          const addrs = Array.isArray(addrData) ? addrData : [];
+          if (addrs.length === 0) {
+            setShowModal(true);
+          }
+        } catch {
+          setShowModal(true);
         }
       }
     } catch (err) {
-      // not logged in — do nothing
+      // Not logged in — do nothing
     }
   };
   checkProfile();
@@ -481,9 +493,12 @@ export default function Jem8HomePage() {
       {showModal && (
   <CompleteProfileModal
     onGo={() => {
-      sessionStorage.setItem("profileModalDismissed", "true");
       setShowModal(false);
       navigate("/Profilepersonal", { state: { autoEdit: true } });
+    }}
+    onDismiss={() => {
+      sessionStorage.setItem("profileModalDismissed", "true");
+      setShowModal(false);
     }}
   />
 )}
