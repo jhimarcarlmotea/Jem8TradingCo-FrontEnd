@@ -10,6 +10,8 @@ export default function AdminMessages() {
   const [inputText, setInputText]     = useState("");
   const [contacts, setContacts]       = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingPreview, setPendingPreview] = useState(null);
 
   const selected = contacts.find((c) => c.id === selectedId);
 
@@ -124,6 +126,7 @@ export default function AdminMessages() {
 
   const bottomRef = useRef(null);
   const pollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -223,13 +226,15 @@ export default function AdminMessages() {
 
   const handleSend = async () => {
     const text = inputText.trim();
-    if (!text || !selectedId) return;
+    if (!text && !pendingFile) return;
+    if (!selectedId) return;
     try {
       const currentIsAdmin = isAdminUser(currentUser);
       const payload = { chatroom_id: selectedId, text };
       if (currentIsAdmin && selected && (selected.userId || selected.user_id)) {
         payload.target_user_id = selected.userId || selected.user_id;
       }
+      if (pendingFile) payload.file = pendingFile;
       await postChatMessage(payload);
       setInputText("");
       try {
@@ -237,9 +242,32 @@ export default function AdminMessages() {
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
         setContacts((prev) => prev.map((c) => c.id === selectedId ? { ...c, messages: serverMessages } : c));
       } catch (e) { /* ignore refresh error */ }
+      // clear pending file after successful send
+      if (pendingPreview) {
+        try { URL.revokeObjectURL(pendingPreview); } catch (e) {}
+      }
+      setPendingFile(null);
+      setPendingPreview(null);
     } catch (err) {
       console.error("Failed to send admin message:", err);
     }
+  };
+
+  // store selected file for preview and include when sending
+  const handleFileChange = (e) => {
+    const f = e?.target?.files && e.target.files[0];
+    if (!f) return;
+    try { if (pendingPreview) URL.revokeObjectURL(pendingPreview); } catch (e) {}
+    const url = f && f.type && f.type.startsWith('image/') ? URL.createObjectURL(f) : null;
+    setPendingFile(f);
+    setPendingPreview(url);
+    try { e.target.value = ''; } catch (er) {}
+  };
+
+  const removePendingFile = () => {
+    try { if (pendingPreview) URL.revokeObjectURL(pendingPreview); } catch (e) {}
+    setPendingFile(null);
+    setPendingPreview(null);
   };
 
   useEffect(() => {
@@ -537,17 +565,39 @@ export default function AdminMessages() {
 
                 {/* Input bar */}
                 <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-end gap-2.5 sticky bottom-0 z-20">
-                  <button className="w-[34px] h-[34px] rounded-full border border-gray-200 bg-gray-50 cursor-pointer text-base shrink-0 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                  <button onClick={() => fileInputRef.current?.click()} className="w-[34px] h-[34px] rounded-full border border-gray-200 bg-gray-50 cursor-pointer text-base shrink-0 flex items-center justify-center hover:bg-gray-100 transition-colors">
                     +
                   </button>
-                  <textarea
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder="Is there anything else I can help for you?"
-                    rows={2}
-                    className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 resize-none font-[inherit] bg-gray-50 leading-relaxed outline-none focus:border-blue-400 transition-colors"
-                  />
+                  <input ref={fileInputRef} type="file" accept="image/*,video/*,application/pdf,.doc,.docx" onChange={handleFileChange} style={{ display: 'none' }} />
+                  <div className="flex-1 relative">
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-2">
+                      {pendingFile && (
+                        <div className="mb-2">
+                          <div className="inline-flex items-center bg-white border border-gray-200 rounded-full shadow-sm px-3 py-1">
+                            <div className="flex items-center justify-center w-9 h-9 bg-gray-100 rounded-full overflow-hidden mr-3">
+                              {pendingPreview ? (
+                                <img src={pendingPreview} alt={pendingFile.name} className="w-9 h-9 object-cover" />
+                              ) : (
+                                <span className="text-xs font-medium text-gray-700">{String(pendingFile.name).split('.').pop()?.toUpperCase()}</span>
+                              )}
+                            </div>
+                            <div className="max-w-[220px] text-sm text-gray-800 truncate">{pendingFile.name}</div>
+                            <button onClick={removePendingFile} className="ml-3 w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <textarea
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                        placeholder="Is there anything else I can help for you?"
+                        rows={2}
+                        className="w-full resize-none px-3 py-2 text-sm text-gray-700 bg-transparent border-none outline-none"
+                      />
+                    </div>
+                  </div>
                   <button
                     onClick={handleSend}
                     className="w-[38px] h-[38px] rounded-full border-none bg-blue-600 cursor-pointer shrink-0 flex items-center justify-center hover:bg-blue-700 transition-colors"

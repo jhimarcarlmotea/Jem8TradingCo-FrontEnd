@@ -105,11 +105,14 @@ export default function Messages() {
   const [activeThread, setActiveThread] = useState(null);
   const [activeTab, setActiveTab]       = useState("Inbox");
   const [input, setInput]               = useState("");
+  const [pendingFile, setPendingFile]   = useState(null);
+  const [pendingPreview, setPendingPreview] = useState(null);
   const [searchQuery, setSearchQuery]   = useState("");
   const [unauthenticated, setUnauthenticated] = useState(false);
   const [currentUser, setCurrentUser]   = useState(null);
   const bottomRef                       = useRef(null);
   const pollRef = useRef(null);
+    const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   const thread = threads.find((t) => t.id === activeThread);
@@ -127,6 +130,24 @@ export default function Messages() {
     // messages returned for the chatroom (both sender and receiver).
     // Server should return only the chatroom's messages.
     return Array.isArray(messages) ? messages : [];
+  };
+
+  // When selecting a file, store it for preview and include it when user sends
+  const handleFileChange = (e) => {
+    const f = e?.target?.files && e.target.files[0];
+    if (!f) return;
+    // clear previous preview URL
+    try { if (pendingPreview) URL.revokeObjectURL(pendingPreview); } catch (e) {}
+    const url = f && f.type && f.type.startsWith('image/') ? URL.createObjectURL(f) : null;
+    setPendingFile(f);
+    setPendingPreview(url);
+    try { e.target.value = ''; } catch (er) {}
+  };
+
+  const removePendingFile = () => {
+    try { if (pendingPreview) URL.revokeObjectURL(pendingPreview); } catch (e) {}
+    setPendingFile(null);
+    setPendingPreview(null);
   };
 
   // Auto-scroll to bottom when messages change
@@ -151,7 +172,7 @@ export default function Messages() {
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text && !pendingFile) return; // require text or file
 
     const optimisticMsg = {
       id: Date.now(),
@@ -172,6 +193,7 @@ export default function Messages() {
     try {
       const currentIsAdmin = isAdminUser(currentUser);
       const payload = { chatroom_id: activeThread, text };
+      if (pendingFile) payload.file = pendingFile;
       if (currentIsAdmin && thread && (thread.userId || thread.user_id)) {
         payload.target_user_id = thread.userId || thread.user_id;
       }
@@ -182,6 +204,8 @@ export default function Messages() {
         setThreads((prev) =>
           prev.map((t) => (t.id === activeThread ? { ...t, messages: serverMessages.length > 0 ? serverMessages : t.messages } : t))
         );
+        // clear pending file after successful send
+        if (pendingFile) removePendingFile();
       } catch (err2) {
         console.warn("Failed to refresh messages after send:", err2);
       }
@@ -913,29 +937,51 @@ export default function Messages() {
               {/* Attach */}
               <button
                 aria-label="Attach file"
+                onClick={() => fileInputRef.current?.click()}
                 className="w-[38px] h-[38px] flex items-center justify-center rounded-full bg-[#f1f5f9] text-[18px] text-[#64748b] border-none cursor-pointer transition-all duration-200 hover:bg-[#edf4f0] hover:text-[#4d7b65] flex-shrink-0"
               >
                 📎
               </button>
+              <input ref={fileInputRef} type="file" accept="image/*,video/*,application/pdf,.doc,.docx" onChange={handleFileChange} style={{ display: 'none' }} />
 
-              {/* Textarea wrap */}
+              {/* Textarea wrap with inline preview inside the message box */}
               <div className="flex-1 relative">
-                <textarea
-                  className="w-full resize-none px-[14px] py-[10px] bg-[#f1f5f9] border-[1.5px] border-transparent rounded-[12px] text-[14px] text-[#1e293b] outline-none transition-all duration-200 focus:border-[#4d7b65] focus:bg-white focus:shadow-[0_0_0_3px_rgba(77,123,101,0.12)] placeholder:text-[#94a3b8] leading-[1.5]"
-                  placeholder="Type your message…"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  rows={1}
-                  style={{ maxHeight: "120px", overflowY: "auto" }}
-                />
+                <div className="bg-[#f1f5f9] border-[1.5px] border-transparent rounded-[12px] p-2">
+                  {pendingFile && (
+                    <div className="mb-2">
+                      <div className="inline-flex items-center bg-white border border-gray-200 rounded-full shadow-sm px-3 py-1">
+                        <div className="flex items-center justify-center w-9 h-9 bg-gray-100 rounded-full overflow-hidden mr-3">
+                          {pendingPreview ? (
+                            <img src={pendingPreview} alt={pendingFile.name} className="w-9 h-9 object-cover" />
+                          ) : (
+                            <span className="text-xs font-medium text-gray-700">{String(pendingFile.name).split('.').pop()?.toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div className="max-w-[220px] text-sm text-gray-800 truncate">{pendingFile.name}</div>
+                        <button onClick={removePendingFile} className="ml-3 w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <textarea
+                    className="w-full resize-none px-[10px] py-[8px] bg-transparent border-none rounded-none text-[14px] text-[#1e293b] outline-none transition-all duration-200 placeholder:text-[#94a3b8] leading-[1.5]"
+                    placeholder="Type your message…"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    style={{ maxHeight: "120px", overflowY: "auto" }}
+                  />
+                </div>
               </div>
 
               {/* Send button */}
               <button
                 aria-label="Send"
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() && !pendingFile}
                 className={`w-[40px] h-[40px] rounded-full flex items-center justify-center text-[18px] border-none flex-shrink-0 transition-all duration-200 ${
                   input.trim()
                     ? "bg-[#4d7b65] text-white cursor-pointer shadow-[0_2px_8px_rgba(77,123,101,0.35)] hover:bg-[#3a5e4e] hover:scale-[1.06]"
