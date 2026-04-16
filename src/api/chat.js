@@ -3,7 +3,12 @@ import api from "./axios";
 export async function postChatMessage(payload) {
   try {
     // Support both JSON messages and multipart file uploads.
-    // If caller passes payload.file or payload.files, send FormData so files can be uploaded.
+    // If caller passes a FormData, send it directly.
+    if (typeof FormData !== 'undefined' && payload instanceof FormData) {
+      const response = await api.post('/chat/messages', payload, { withCredentials: true });
+      return response.data;
+    }
+
     const providedId = payload && (payload.chatroom_id ?? payload.chatroomId ?? payload.chatroom);
 
     // When uploading files, accept either `file` (File) or `files` (Array<File>)
@@ -11,9 +16,13 @@ export async function postChatMessage(payload) {
     if (hasFile) {
       const form = new FormData();
       if (providedId !== undefined && providedId !== null) form.append('chatroom_id', providedId);
-      // include an optional text/message field if provided
-      const msg = payload.messages || payload.text || payload.message || payload.messages === 0 ? payload.messages : null;
-      if (msg !== null && msg !== undefined) form.append('messages', msg);
+
+      // include an optional text/message field if provided — coerce to string
+      let msg = null;
+      if (payload && (payload.messages !== undefined)) msg = payload.messages;
+      else if (payload && (payload.text !== undefined)) msg = payload.text;
+      else if (payload && (payload.message !== undefined)) msg = payload.message;
+      if (msg !== null && msg !== undefined) form.append('messages', String(msg));
 
       if (payload.file) {
         form.append('file', payload.file);
@@ -34,10 +43,14 @@ export async function postChatMessage(payload) {
       return response.data;
     }
 
-    // fallback: regular JSON message send
+    // fallback: regular JSON message send — ensure messages is a string
     const body = {};
     if (providedId !== undefined && providedId !== null) body.chatroom_id = providedId;
-    body.messages = payload.messages || payload.text || payload.message || payload;
+    if (payload && (payload.messages !== undefined)) body.messages = String(payload.messages);
+    else if (payload && (payload.text !== undefined)) body.messages = String(payload.text);
+    else if (payload && (payload.message !== undefined)) body.messages = String(payload.message);
+    else body.messages = String(payload ?? '');
+
     const response = await api.post('/chat/messages', body, { withCredentials: true });
     return response.data;
   } catch (error) {

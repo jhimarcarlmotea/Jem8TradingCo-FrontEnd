@@ -10,7 +10,7 @@ const normalizeAvatar = (url) => {
   if (/^data:|^https?:\/\//i.test(url)) return url;
   const orig = String(url);
   if (orig.startsWith('/')) return orig;
-  let base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || process.env.REACT_APP_API_URL || '';
+  let base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || '';
   try {
     if (!base && api && api.defaults && api.defaults.baseURL) {
       base = String(api.defaults.baseURL).replace(/\/api\/?$/, '');
@@ -28,6 +28,85 @@ const svgFallback = (letter = 'A', bg = '#4d7b65') => {
   const txt = String(letter).charAt(0).toUpperCase() || 'A';
   const svg = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><rect width='100%' height='100%' fill='${bg}' rx='12' ry='12'/><text x='50%' y='50%' dy='.35em' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='34' fill='#fff'>${txt}</text></svg>`;
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+};
+
+// Normalize file URLs for attachments (similar to avatar logic)
+const normalizeFileUrl = (url) => {
+  if (!url) return null;
+  if (/^data:|^https?:\/\//i.test(url)) return url;
+  const path = String(url).replace(/^\/+/, '');
+  let base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || '';
+  try { if (!base && api && api.defaults && api.defaults.baseURL) base = String(api.defaults.baseURL).replace(/\/api\/?$/, ''); } catch (e) {}
+  if (path.toLowerCase().startsWith('storage/') || /\/storage\//i.test(path)) return base ? base.replace(/\/+$/, '') + '/' + path : '/' + path;
+  return base ? base.replace(/\/+$/, '') + '/storage/' + path : '/storage/' + path;
+};
+
+const extractAttachments = (msg) => {
+  if (!msg) return [];
+  let list = [];
+  if (Array.isArray(msg.attachments) && msg.attachments.length) list = msg.attachments;
+  else if (msg.attachment) list = [msg.attachment];
+  else if (Array.isArray(msg.files) && msg.files.length) list = msg.files;
+  else if (msg.file) list = [msg.file];
+  else if (msg.img) list = [{ url: msg.img }];
+  // also scan msg properties for file-like structures
+  Object.keys(msg).forEach((k) => {
+    const v = msg[k];
+    if (!v) return;
+    if (Array.isArray(v)) v.forEach((el) => { if (isFileLike(el)) list.push(el); });
+    else if (typeof v === 'object') { if (isFileLike(v)) list.push(v); }
+    else if (typeof v === 'string') {
+      if (/\.(pdf|docx?|png|jpe?g|gif|webp|mp4|mov)$/i.test(v) || /(^chat\/|\/storage\/)/i.test(v)) list.push({ url: v, filename: v });
+    }
+  });
+
+  const normalized = list.map((a) => {
+    if (!a) return null;
+    if (typeof a === 'string') return { url: normalizeFileUrl(a), filename: a, mime: null };
+    const url = a.url || a.path || a.file_url || a.img || a.stored_name || a.storedName || a.filename || a.name || null;
+    const filename = a.filename || a.name || a.stored_name || a.storedName || (typeof a === 'string' ? a : null) || null;
+    let mime = a.mime || a.type || a.mime_type || null;
+
+    // Guess image mime types from filename/URL when server omitted mime
+    if (!mime) {
+      const probe = String(filename || url || '').split('?')[0].split('#')[0];
+      const ext = (probe.split('.').pop() || '').toLowerCase();
+      const imgExts = ['jpg','jpeg','png','gif','webp','svg','bmp','tiff','tif'];
+      if (imgExts.includes(ext)) mime = 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
+    }
+
+    return { url: normalizeFileUrl(url || filename), filename, mime };
+  }).filter(Boolean);
+
+  // Deduplicate attachments by normalized URL (ignore query/hash)
+  const seen = new Set();
+  const dedup = [];
+  for (const a of normalized) {
+    try {
+      const key = (a.url || a.filename || '').split('?')[0].split('#')[0];
+      if (!key) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(a);
+    } catch (e) {
+      if (!dedup.includes(a)) dedup.push(a);
+    }
+  }
+  return dedup;
+};
+
+const isFileLike = (obj) => {
+  if (!obj) return false;
+  if (typeof obj === 'string') return false;
+  return ['filename','name','stored_name','storedName','path','url','file_url','mime','type'].some(k => Object.prototype.hasOwnProperty.call(obj, k));
+};
+
+const FileIcon = ({ filename, mime, className }) => {
+  const ext = (filename || '').split('.').pop()?.toLowerCase();
+  if (mime && mime.startsWith('image')) return (<svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h2" stroke="#4b5563" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+  if (ext === 'pdf' || mime === 'application/pdf') return (<svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="#c8232c" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+  if (['doc','docx'].includes(ext) || /word/i.test(mime || '')) return (<svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+  return (<svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#4b5563" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
 };
 
 /* ── Seed conversations ── */
@@ -117,6 +196,17 @@ export default function Messages() {
 
   const thread = threads.find((t) => t.id === activeThread);
 
+  // Prepare a deduplicated, stable message list for rendering
+  const messagesToRender = (() => {
+    const raw = Array.isArray(thread?.messages) ? thread.messages : [];
+    const m = new Map();
+    raw.forEach((item, idx) => {
+      const key = item?.id ?? item?.message_id ?? `${item?.user_id ?? item?.sender_id ?? ''}-${item?.created_at ?? item?.time ?? idx}`;
+      if (!m.has(key)) m.set(key, item);
+    });
+    return Array.from(m.values());
+  })();
+
   // Helper: robustly extract user id and admin flag from API responses
   const getUserId = (u) => u?.id ?? u?.user_id ?? u?.data?.id ?? u?.data?.user_id ?? null;
   const isAdminUser = (u) => !!(
@@ -192,12 +282,23 @@ export default function Messages() {
 
     try {
       const currentIsAdmin = isAdminUser(currentUser);
-      const payload = { chatroom_id: activeThread, text };
-      if (pendingFile) payload.file = pendingFile;
+      // Laravel expects `messages` as a string
+      const payload = { chatroom_id: activeThread, messages: String(text || '') };
       if (currentIsAdmin && thread && (thread.userId || thread.user_id)) {
         payload.target_user_id = thread.userId || thread.user_id;
       }
-      await postChatMessage(payload);
+
+      // Send multipart if there's a file, otherwise send JSON
+      if (pendingFile) {
+        const fd = new FormData();
+        if (payload.chatroom_id !== undefined && payload.chatroom_id !== null) fd.append('chatroom_id', payload.chatroom_id);
+        fd.append('messages', String(payload.messages));
+        if (payload.target_user_id) fd.append('target_user_id', payload.target_user_id);
+        fd.append('file', pendingFile);
+        await postChatMessage(fd);
+      } else {
+        await postChatMessage(payload);
+      }
       try {
         const msgsResp = await getChatMessages(activeThread);
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
@@ -472,8 +573,27 @@ export default function Messages() {
         const safeMsgs = filterMessagesForUser(serverMessages, currentUidForFetch);
         const sortedSafeMsgs = sortMessagesAsc(safeMsgs);
         if (!mounted) return;
+
+        // derive stable key for last message to detect changes
+        const messageKey = (m) => m?.id ?? m?.message_id ?? `${m?.user_id ?? m?.sender_id ?? ''}-${m?.created_at ?? m?.time ?? ''}`;
+        const newLast = sortedSafeMsgs.length ? messageKey(sortedSafeMsgs[sortedSafeMsgs.length - 1]) : null;
+
+        const existing = (threads.find((t) => t.id === activeThread) || {}).messages || [];
+        const existingSorted = sortMessagesAsc(existing);
+        const prevLast = existingSorted.length ? messageKey(existingSorted[existingSorted.length - 1]) : null;
+
+        // If nothing changed, skip updating to avoid jumping during refresh
+        if (prevLast === newLast && existingSorted.length === sortedSafeMsgs.length) {
+          return;
+        }
+
+        // update messages for the active thread
         setThreads((prev) => prev.map((t) => (t.id === activeThread ? { ...t, messages: sortedSafeMsgs.length > 0 ? sortedSafeMsgs : t.messages } : t)));
-        try { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {}
+
+        // scroll only when there is a new message or initial load
+        if (!prevLast || (newLast && newLast !== prevLast)) {
+          try { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {}
+        }
       } catch (err) {
         console.warn('Polling messages failed:', err);
       }
@@ -843,7 +963,7 @@ export default function Messages() {
 
             {/* Messages area */}
             <div className="flex-1 overflow-y-auto px-[24px] py-[20px] flex flex-col gap-[14px]">
-              {thread?.messages.map((msg, msgIdx) => {
+              {messagesToRender.map((msg, msgIdx) => {
                 const currentUserId = getUserId(currentUser);
                 const currentIsAdmin = isAdminUser(currentUser);
 
@@ -869,9 +989,9 @@ export default function Messages() {
                 // Use computed `isFromMe` directly for layout (left/right)
                 const displayIsFromMe = isFromMe;
 
-                return (
+                    return (
                   <div
-                    key={msg.id ?? `msg-${msgIdx}-${msg.time || msg.from || ""}`}
+                    key={msg.id ?? msg.message_id ?? `msg-${msgIdx}-${msg.created_at || msg.time || ''}`}
                     className={`flex items-end gap-[10px] ${displayIsFromMe ? "flex-row-reverse" : "flex-row"}`}
                   >
                     {/* Sender avatar (only for received) */}
@@ -911,6 +1031,19 @@ export default function Messages() {
                           onError={(e) => { e.target.style.display = "none"; }}
                         />
                       )}
+                      {/* Other attachments */}
+                      {extractAttachments(msg).map((att, ai) => (
+                        <div key={ai} className="mb-2">
+                          {att.mime && att.mime.startsWith('image') ? (
+                            <img src={att.url} alt={att.filename || 'attachment'} className="max-w-full rounded-[12px] mb-[6px] border border-[#e2e8f0] shadow-sm" style={{ maxHeight: 220, objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                          ) : (
+                            <a href={att.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-3 py-2 bg-white border border-[#e2e8f0] rounded-[12px] text-sm text-[#1e293b] shadow-sm">
+                              <FileIcon filename={att.filename} mime={att.mime} className="shrink-0" />
+                              <div className="truncate max-w-[360px]">{att.filename || att.url}</div>
+                            </a>
+                          )}
+                        </div>
+                      ))}
                       {getMsgText(msg) && (
                         <div
                           className={`px-[14px] py-[10px] rounded-[18px] text-[14px] leading-[1.55] shadow-sm ${

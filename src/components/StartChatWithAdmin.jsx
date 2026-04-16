@@ -56,7 +56,7 @@ export default function StartChatWithAdmin({
           // reuse same normalization rules as frontend api utils
           if (/^data:|^https?:\/\//i.test(avatarCandidate)) avatarUrl = avatarCandidate;
           else if (avatarCandidate) {
-            const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || process.env.REACT_APP_API_URL || '';
+            const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || '';
             const path = String(avatarCandidate).replace(/^\/+/, '');
             avatarUrl = base ? base.replace(/\/+$/, '') + '/storage/' + path : '/storage/' + path;
           }

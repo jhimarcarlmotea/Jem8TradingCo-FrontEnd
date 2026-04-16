@@ -15,6 +15,17 @@ export default function AdminMessages() {
 
   const selected = contacts.find((c) => c.id === selectedId);
 
+  // Deduplicate selected messages for rendering and use stable keys
+  const selectedMessagesToRender = (() => {
+    const raw = Array.isArray(selected?.messages) ? selected.messages : [];
+    const m = new Map();
+    raw.forEach((item, idx) => {
+      const key = item?.id ?? item?.message_id ?? `${item?.user_id ?? item?.sender_id ?? ''}-${item?.created_at ?? item?.time ?? idx}`;
+      if (!m.has(key)) m.set(key, item);
+    });
+    return Array.from(m.values());
+  })();
+
   // Helper: robustly extract user id and admin flag from API responses
   const getUserId = (u) => u?.id ?? u?.user_id ?? u?.data?.id ?? u?.data?.user_id ?? null;
   const isAdminUser = (u) => !!(
@@ -74,7 +85,7 @@ export default function AdminMessages() {
     // If backend returned a site-root-relative path (e.g. "/images/default-avatar.svg"),
     // keep it as-is so frontend/public assets load correctly.
     if (orig.startsWith('/')) return orig;
-    let base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || process.env.REACT_APP_API_URL || '';
+    let base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || '';
     // Fallback: if axios api baseURL is available, derive backend base (strip /api)
     try {
       if (!base && api && api.defaults && api.defaults.baseURL) {
@@ -122,6 +133,102 @@ export default function AdminMessages() {
     } catch (e) {
       return messages;
     }
+  };
+
+  // Extract attachments from various API shapes and normalize URL
+  const getMessageAttachments = (msg) => {
+    if (!msg) return [];
+    let list = [];
+
+    // common named fields
+    if (Array.isArray(msg.attachments) && msg.attachments.length) list = list.concat(msg.attachments);
+    if (msg.attachment) list.push(msg.attachment);
+    if (Array.isArray(msg.files) && msg.files.length) list = list.concat(msg.files);
+    if (msg.file) list.push(msg.file);
+    if (msg.img) list.push({ url: msg.img });
+
+    // also scan object properties for file-like structures
+    Object.keys(msg).forEach((k) => {
+      const v = msg[k];
+      if (!v) return;
+      if (Array.isArray(v)) {
+        v.forEach((el) => { if (isFileLike(el)) list.push(el); });
+      } else if (typeof v === 'object') {
+        if (isFileLike(v)) list.push(v);
+      } else if (typeof v === 'string') {
+        // string that looks like a storage path or filename
+        if (/\.(pdf|docx?|png|jpe?g|gif|webp|mp4|mov)$/i.test(v) || /(^chat\/|\/storage\/)/i.test(v)) {
+          list.push({ url: v, filename: v });
+        }
+      }
+    });
+
+    // normalize to objects with url, filename, mime
+    const normalized = list.map((a) => {
+      if (!a) return null;
+      if (typeof a === 'string') return { url: normalizeFileUrl(a), filename: a, mime: null };
+      const url = a.url || a.path || a.file_url || a.img || a.stored_name || a.storedName || a.filename || a.name || null;
+      const filename = a.filename || a.name || a.stored_name || a.storedName || (typeof a === 'string' ? a : null) || null;
+      let mime = a.mime || a.type || a.mime_type || null;
+
+      // If server omitted mime, guess from filename/url extension (so images render)
+      if (!mime) {
+        const probe = String(filename || url || '').split('?')[0].split('#')[0];
+        const ext = (probe.split('.').pop() || '').toLowerCase();
+        const imgExts = ['jpg','jpeg','png','gif','webp','svg','bmp','tiff','tif'];
+        if (imgExts.includes(ext)) mime = 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
+      }
+
+      return { url: normalizeFileUrl(url || filename), filename, mime };
+    }).filter(Boolean);
+
+    // Deduplicate attachments by their normalized URL (ignore query/hash)
+    const seen = new Set();
+    const dedup = [];
+    for (const a of normalized) {
+      try {
+        const key = (a.url || a.filename || '').split('?')[0].split('#')[0];
+        if (!key) continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        dedup.push(a);
+      } catch (e) {
+        if (!dedup.includes(a)) dedup.push(a);
+      }
+    }
+    return dedup;
+  };
+
+  const isFileLike = (obj) => {
+    if (!obj) return false;
+    if (typeof obj === 'string') return false;
+    return ['filename','name','stored_name','storedName','path','url','file_url','mime','type'].some(k => Object.prototype.hasOwnProperty.call(obj, k));
+  };
+
+  const normalizeFileUrl = (url) => {
+    if (!url) return null;
+    if (/^data:|^https?:\/\//i.test(url)) return url;
+    const p = String(url).replace(/^\/+/, '');
+    try {
+      const base = (api && api.defaults && api.defaults.baseURL) ? String(api.defaults.baseURL).replace(/\/api\/?$/, '') : '';
+      if (p.toLowerCase().startsWith('storage/') || /\/storage\//i.test(p)) return base ? base.replace(/\/+$/, '') + '/' + p : '/' + p;
+      return base ? base.replace(/\/+$/, '') + '/storage/' + p : '/storage/' + p;
+    } catch (e) { return '/' + p; }
+  };
+
+  const FileIcon = ({ filename, mime, className }) => {
+    const ext = (filename || '').split('.').pop()?.toLowerCase();
+    if (mime && mime.startsWith('image')) {
+      return (<svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h2" stroke="#4b5563" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+    }
+    if (ext === 'pdf' || mime === 'application/pdf') {
+      return (<svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="#c8232c" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+    }
+    if (['doc','docx'].includes(ext) || /word/i.test(mime || '')) {
+      return (<svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+    }
+    // generic file
+    return (<svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#4b5563" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
   };
 
   const bottomRef = useRef(null);
@@ -230,12 +337,24 @@ export default function AdminMessages() {
     if (!selectedId) return;
     try {
       const currentIsAdmin = isAdminUser(currentUser);
-      const payload = { chatroom_id: selectedId, text };
+      // Always send `messages` as a string (Laravel expects a string)
+      const payload = { chatroom_id: selectedId, messages: String(text || '') };
       if (currentIsAdmin && selected && (selected.userId || selected.user_id)) {
         payload.target_user_id = selected.userId || selected.user_id;
       }
-      if (pendingFile) payload.file = pendingFile;
-      await postChatMessage(payload);
+
+      // If a file is pending, send as multipart/form-data; otherwise send JSON
+      if (pendingFile) {
+        const fd = new FormData();
+        // append known fields explicitly so `messages` is a string part
+        if (payload.chatroom_id !== undefined && payload.chatroom_id !== null) fd.append('chatroom_id', payload.chatroom_id);
+        fd.append('messages', String(payload.messages));
+        if (payload.target_user_id) fd.append('target_user_id', payload.target_user_id);
+        fd.append('file', pendingFile);
+        await postChatMessage(fd);
+      } else {
+        await postChatMessage(payload);
+      }
       setInputText("");
       try {
         const msgsResp = await getChatMessages(selectedId);
@@ -279,9 +398,29 @@ export default function AdminMessages() {
         const msgsResp = await getChatMessages(selectedId);
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
         if (!mounted) return;
-        setContacts((prev) => prev.map((c) => c.id === selectedId ? { ...c, messages: sortMessagesAsc(serverMessages) } : c));
-        // scroll to bottom after messages load
-        try { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {}
+
+        // derive a stable key for last message to detect changes
+        const messageKey = (m) => m?.id ?? m?.message_id ?? `${m?.user_id ?? m?.sender_id ?? ''}-${m?.created_at ?? m?.time ?? ''}`;
+        const msgsSorted = sortMessagesAsc(serverMessages);
+        const newLast = msgsSorted.length ? messageKey(msgsSorted[msgsSorted.length - 1]) : null;
+
+        // find existing messages for this selected contact
+        const existing = (contacts.find((c) => c.id === selectedId) || {}).messages || [];
+        const existingSorted = sortMessagesAsc(existing);
+        const prevLast = existingSorted.length ? messageKey(existingSorted[existingSorted.length - 1]) : null;
+
+        // If nothing changed, skip state update to avoid UI jump while polling
+        if (prevLast === newLast && existingSorted.length === msgsSorted.length) {
+          return;
+        }
+
+        // update messages
+        setContacts((prev) => prev.map((c) => c.id === selectedId ? { ...c, messages: msgsSorted } : c));
+
+        // scroll only when a new message arrived (last key changed) or this is initial load
+        if (!prevLast || (newLast && newLast !== prevLast)) {
+          try { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {}
+        }
       } catch (err) {
         console.warn('Polling admin messages failed:', err);
       }
@@ -482,7 +621,7 @@ export default function AdminMessages() {
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-24">
-                  {Array.isArray(selected.messages) && selected.messages.map((msg) => {
+                  {Array.isArray(selectedMessagesToRender) && selectedMessagesToRender.map((msg, ai) => {
                     const currentUserId = getUserId(currentUser);
                     const currentIsAdmin = isAdminUser(currentUser);
 
@@ -510,8 +649,8 @@ export default function AdminMessages() {
                     // displayFromMe: true = align to right (messages from current user)
                     const displayFromMe = fromMe;
                     const senderName = msg.sender_name || msg.sender?.name || (fromMe ? (currentUser?.name || currentUser?.data?.first_name || "Admin") : selected.name?.split(" ")[0]);
-                    return (
-                      <div key={msg.id || msg.created_at || Math.random()} className={`flex items-end gap-2 ${displayFromMe ? "justify-end" : "justify-start"}`}>
+                      return (
+                      <div key={msg.id ?? msg.message_id ?? `msg-${ai}-${msg.created_at || msg.time || ''}`} className={`flex items-end gap-2 ${displayFromMe ? "justify-end" : "justify-start"}`}>
                         {!displayFromMe && (
                           (() => {
                             const senderAvatarRaw = msg.avatarUrl || msg.avatar_url || msg.user?.profile_picture || msg.user?.avatarUrl || selected.avatarUrl || null;
@@ -548,6 +687,19 @@ export default function AdminMessages() {
                               </div>
                             )}
                             {getMsgText(msg)}
+                            {/* Attachments */}
+                            {getMessageAttachments(msg).map((att, ai) => (
+                              <div key={ai} className="mt-2">
+                                {att.mime && att.mime.startsWith('image') ? (
+                                  <img src={att.url} alt={att.filename || 'attachment'} className="max-w-full rounded-md border border-gray-200" style={{ maxHeight: 260, objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                                ) : (
+                                  <a href={att.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-3 py-2 bg-white border border-gray-200 rounded-md text-sm text-gray-700 shadow-sm">
+                                    <FileIcon filename={att.filename} mime={att.mime} className="shrink-0" />
+                                    <div className="truncate max-w-[260px]">{att.filename || att.url}</div>
+                                  </a>
+                                )}
+                              </div>
+                            ))}
                           </div>
                           <div className={`text-[10px] text-gray-400 mt-1 ${fromMe ? "text-right" : "text-left"}`}>
                             {msg.status}
