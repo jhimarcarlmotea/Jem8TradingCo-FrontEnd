@@ -18,9 +18,14 @@ export default function Register() {
   });
 
   const handleChange = (e) => {
+    const name = e.target.name;
+    let val = e.target.value;
+    if (name === 'phone_number') {
+      val = String(val).replace(/\D/g, '').slice(0, 11);
+    }
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: val,
     });
   };
 
@@ -169,7 +174,9 @@ export default function Register() {
                   📱
                 </span>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
                   name="phone_number"
                   value={formData.phone_number}
                   onChange={handleChange}

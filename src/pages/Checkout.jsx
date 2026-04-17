@@ -188,7 +188,14 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
   const remaining   = FREE_SHIPPING_MIN - subtotal;
 
   const handleDeliveryChange = (e) => setDelivery((d) => ({ ...d, [e.target.name]: e.target.value }));
-  const handlePayFieldChange = (e) => setPayFields((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const handlePayFieldChange = (e) => {
+    const name = e.target.name;
+    let val = e.target.value;
+    if (/mobile|phone/i.test(name)) {
+      val = String(val).replace(/\D/g, '').slice(0, 11);
+    }
+    setPayFields((f) => ({ ...f, [name]: val }));
+  };
   const activePayment = PAYMENT_METHODS.find((m) => m.id === payMethod);
 
   // ── Receipt image handlers ────────────────────────────────────────────────
@@ -583,6 +590,8 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
                           <input
                             name={f.name}
                             type={f.type || "text"}
+                            inputMode={/mobile|phone/i.test(f.name) ? "numeric" : undefined}
+                            maxLength={/mobile|phone/i.test(f.name) ? 11 : undefined}
                             placeholder={f.placeholder || ""}
                             value={payFields[f.name] || ""}
                             onChange={handlePayFieldChange}
