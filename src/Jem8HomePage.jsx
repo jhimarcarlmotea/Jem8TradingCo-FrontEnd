@@ -416,10 +416,18 @@ function CtaBanner() {
 }
 
 /* ── Complete Profile Modal ── */
-function CompleteProfileModal({ onGo }) {
+function CompleteProfileModal({ onGo, onDismiss }) {
   return (
-    <div className="fixed inset-0 bg-black/55 z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/55 z-[9999] flex items-center justify-center p-4"
+      onClick={() => onDismiss && onDismiss()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="bg-white rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="pb-5 border-b px-7 pt-7 border-slate-100">
           <div className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
             ✦ Complete Profile

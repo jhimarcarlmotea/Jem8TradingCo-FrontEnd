@@ -748,23 +748,64 @@ const stockStatus = isPreOrder
                 <h3 className="text-lg font-bold text-[#1a2e22] mb-4">Specifications</h3>
                 <table className="w-full border-collapse text-sm">
                   <tbody>
-                    {[
-                      ["Product ID", `#${product.id}`],
-                      ["Category", catLabel || "—"],
-                      ["Brand", "JEM 8 Certified"],
-                      ["Stock", `${stock} units`],
-                      ["Status", stockStatus.label, stockStatus.color],
-                      ["On Sale", isOnSale ? "Yes" : "No"],
-                      ["Rating", reviews > 0 ? `${avgRating.toFixed(1)} / 5.0 (${reviews} reviews)` : "No reviews yet"],
-                      ["Delivery", "Metro Manila: 1–2 days · Laguna: 2–3 days"],
-                      ["Bulk Pricing", "Available for 10+ units"],
-                      ...(product.created_at ? [["Listed", new Date(product.created_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})]] : []),
-                    ].map(([label, value, color], i) => (
-                      <tr key={i} className="border-b border-[#f0f4f1]">
-                        <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">{label}</td>
-                        <td className="px-4 py-3 text-gray-700" style={color ? { color, fontWeight: 600 } : {}}>{value}</td>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Product ID</td>
+                      <td className="px-4 py-3 text-gray-700">#{productId ?? product.product_id ?? "N/A"}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Category</td>
+                      <td className="px-4 py-3 text-gray-700">{catLabel || product.category_name || "—"}{product.category_id ? ` (ID ${product.category_id})` : ''}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Brand</td>
+                      <td className="px-4 py-3 text-gray-700">{product.brand ?? product.manufacturer ?? "JEM 8 Certified"}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Stock</td>
+                      <td className="px-4 py-3 text-gray-700">{Number(product.product_stocks ?? product.stock ?? stock) > 0 ? `${Number(product.product_stocks ?? product.stock ?? stock)} units` : "Out of stock"}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Status</td>
+                      <td className="px-4 py-3 text-gray-700" style={{ color: stockStatus.color, fontWeight: 600 }}>{stockStatus.label}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">On Sale</td>
+                      <td className="px-4 py-3 text-gray-700">{isOnSale ? "Yes" : "No"}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Rating</td>
+                      <td className="px-4 py-3 text-gray-700">{reviews > 0 ? `${avgRating.toFixed(1)} / 5.0 (${reviews} review${reviews !== 1 ? 's' : ''})` : "No reviews yet"}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Unit</td>
+                      <td className="px-4 py-3 text-gray-700">{product.unit ?? product.unit_type ?? "—"}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Size / Color</td>
+                      <td className="px-4 py-3 text-gray-700">{[product.size, product.color].filter(Boolean).join(' · ') || '—'}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Price</td>
+                      <td className="px-4 py-3 text-gray-700">₱{(Number(product.price ?? price) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Acquired Price</td>
+                      <td className="px-4 py-3 text-gray-700">{product.acquired_price ? `₱${Number(product.acquired_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '—'}</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Delivery</td>
+                      <td className="px-4 py-3 text-gray-700">Metro Manila: 1–2 days · Laguna: 2–3 days</td>
+                    </tr>
+                    <tr className="border-b border-[#f0f4f1]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Bulk Pricing</td>
+                      <td className="px-4 py-3 text-gray-700">Available for 10+ units</td>
+                    </tr>
+                    {product.created_at && (
+                      <tr className="border-b border-[#f0f4f1]">
+                        <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">Listed</td>
+                        <td className="px-4 py-3 text-gray-700">{new Date(product.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

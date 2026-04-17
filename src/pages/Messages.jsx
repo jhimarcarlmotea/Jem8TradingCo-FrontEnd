@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { postChatMessage, getChatRooms, getChatMessages } from "../api/chat";
 import api from "../api/axios";
 import CompanyLogo from "../assets/Logo — Jem 8 Circle Trading Co (1).png";
@@ -189,12 +189,38 @@ export default function Messages() {
   const [searchQuery, setSearchQuery]   = useState("");
   const [unauthenticated, setUnauthenticated] = useState(false);
   const [currentUser, setCurrentUser]   = useState(null);
+  const [product, setProduct] = useState(null);
   const bottomRef                       = useRef(null);
   const pollRef = useRef(null);
     const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const thread = threads.find((t) => t.id === activeThread);
+
+  useEffect(() => {
+    try {
+      // Prefer navigation state (router push) if available
+      const st = location && location.state;
+      if (st) {
+        const maybeProduct = st.product || st.product_name || st.productName || null;
+        if (maybeProduct) {
+          if (typeof maybeProduct === 'string') setProduct({ id: st.product_id || st.productId || null, name: maybeProduct });
+          else setProduct(typeof maybeProduct === 'object' ? maybeProduct : { id: st.product_id || st.productId || null, name: String(maybeProduct) });
+          return;
+        }
+      }
+
+      // Fallback to query params
+      const params = new URLSearchParams(location?.search || window.location.search);
+      const pid = params.get('product_id') || params.get('productId') || params.get('product');
+      let pname = params.get('product_name') || params.get('productName') || params.get('product');
+      if (pname) {
+        try { pname = String(pname).replace(/\+/g, ' '); } catch (e) {}
+      }
+      if (pid || pname) setProduct({ id: pid, name: pname });
+    } catch (e) { }
+  }, [location?.search, location?.state]);
 
   // Prepare a deduplicated, stable message list for rendering
   const messagesToRender = (() => {
@@ -952,12 +978,15 @@ export default function Messages() {
                 )}
               </div>
               <div className="flex flex-col">
-                <div className="text-[15px] font-bold text-[#1e293b]">
-                    Jem 8 Trading Co.
-                  </div>
+                <div className="text-[15px] font-bold text-[#1e293b]">Jem 8 Trading Co.</div>
                 <div className="text-[12px] text-[#64748b]">
                   {thread?.isAdmin ? "🟢 Online · JEM 8 Support Team" : "JEM 8 Circle Trading Co."}
                 </div>
+                {product?.name && (
+                  <div className="text-[13px] text-[#4d7b65] mt-[4px] truncate max-w-[480px]">
+                    Product: {product.name}
+                  </div>
+                )}
               </div>
             </div>
 
