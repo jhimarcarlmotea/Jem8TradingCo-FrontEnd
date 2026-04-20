@@ -18,7 +18,7 @@ export default function Cart() {
   const [items,      setItems]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
-  const [checkedIds, setCheckedIds] = useState(new Set()); // ← new
+  const [checkedIds, setCheckedIds] = useState(new Set());
 
   // ── Fetch cart ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -60,7 +60,8 @@ export default function Cart() {
         setItems(merged);
         // Keep global cart context in sync so header badge updates correctly
         try { syncCart(merged); } catch (e) { /* ignore if not available */ }
-        // Check all items by default
+        // ✅ Check ALL items by default so subtotal/count show correctly
+setCheckedIds(new Set());
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load cart. Please try again.");
       } finally {
@@ -436,7 +437,7 @@ export default function Cart() {
             </div>
 
             <div className="flex flex-wrap gap-1.5 justify-center">
-              {["GCash", "Maya", "BPI", "COD", "Check"].map((p) => (
+              {["GCash", "Deposit", "Bank Transfer", "COD", "Check"].map((p) => (
                 <span
                   key={p}
                   className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#f3f8f5] text-[#4d7b65] border border-[#d1e8da]"

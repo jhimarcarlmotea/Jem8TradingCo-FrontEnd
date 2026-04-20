@@ -27,17 +27,18 @@ const PAYMENT_METHODS = [
     requiresReceipt: true,
   },
   {
-    id: "maya",
-    label: "Maya (PayMaya)",
-    icon: "💚",
-    tag: "E-Wallet",
-    tagColor: "#00C562",
-    desc: "Pay via Maya e-wallet",
+    id: "deposit",
+    label: "Deposit",
+    icon: "🏧",
+    tag: "Deposit",
+    tagColor: "#0ea5e9",
+    desc: "Pay via bank or cash deposit",
     fields: [
-      { name: "mobile_number", label: "Maya Mobile Number", placeholder: "09XXXXXXXXX", type: "tel" },
-      { name: "account_name", label: "Maya Account Name",   placeholder: "Full Name on Maya" },
+      { name: "bank_name",        label: "Bank Name",        placeholder: "e.g. BPI, BDO, Metrobank" },
+      { name: "account_name",     label: "Account Name",     placeholder: "Your account name" },
+      { name: "reference_number", label: "Reference / Slip Number", placeholder: "Deposit slip or transaction reference" },
     ],
-    note: "A Maya payment link will be sent to your mobile number. Complete payment within 1 hour.",
+    note: "Deposit to: BPI Savings — JEM 8 Circle Trading Co. — Account No. 1234-5678-90. Upload your deposit slip or send proof of payment to our email.",
     requiresReceipt: true,
   },
   {
@@ -125,11 +126,17 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
           status:   c.product?.status ?? "in_stock",
         }));
 
-        const finalItems = selectedItemIds.size > 0
-          ? formatted.filter((i) => selectedItemIds.has(i.id))
-          : formatted;
+ // Use qty from selectedItems (which reflects the updated qty from Cart)
+const finalItems = selectedItemIds.size > 0
+  ? formatted
+      .filter((i) => selectedItemIds.has(i.id))
+      .map((i) => {
+        const fromCart = selectedItems.find((s) => s.id === i.id);
+        return fromCart ? { ...i, qty: fromCart.qty } : i;
+      })
+  : formatted;
 
-        setItems(finalItems);
+setItems(finalItems);
       } catch (err) {
         setCartError(err.response?.data?.message || "Failed to load cart.");
       } finally {
@@ -612,12 +619,12 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
                           <img
                             src={receiptPreview}
                             alt="Receipt preview"
-                            className="w-full max-h-52 object-contain block"
+                            className="block object-contain w-full max-h-52"
                           />
                           <button
                             type="button"
                             onClick={handleRemoveReceipt}
-                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white border-none text-sm font-bold cursor-pointer flex items-center justify-center leading-none shadow-md hover:bg-red-600 transition-colors"
+                            className="absolute flex items-center justify-center text-sm font-bold leading-none text-white transition-colors bg-red-500 border-none rounded-full shadow-md cursor-pointer top-2 right-2 w-7 h-7 hover:bg-red-600"
                             title="Remove receipt"
                           >
                             ×
@@ -626,7 +633,7 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
                         <div className="flex items-center gap-2 text-[12px] text-[#4d7b65] font-semibold">
                           <span>✓</span>
                           <span>{receiptFile?.name}</span>
-                          <span className="text-slate-400 font-normal">
+                          <span className="font-normal text-slate-400">
                             ({(receiptFile?.size / 1024).toFixed(1)} KB)
                           </span>
                         </div>
@@ -739,7 +746,7 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
                     )}
                     {/* ── Receipt preview in Review step ── */}
                     {receiptPreview && (
-                      <div className="mt-3 flex items-center gap-3">
+                      <div className="flex items-center gap-3 mt-3">
                         <img
                           src={receiptPreview}
                           alt="Receipt"
@@ -906,7 +913,7 @@ const selectedItemIds = new Set(selectedItems.map((i) => i.id));
               </div>
 
               <div className="flex flex-wrap gap-1.5 justify-center mb-3">
-                {["GCash", "Maya", "BPI", "COD", "Check"].map((p) => (
+                {["GCash", "Deposit", "Bank Transfer", "COD", "Check"].map((p) => (
                   <span
                     key={p}
                     className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#f3f8f5] text-[#4d7b65] border border-[#d1e8da]"
