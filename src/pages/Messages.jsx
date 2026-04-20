@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { postChatMessage, getChatRooms, getChatMessages } from "../api/chat";
 import api from "../api/axios";
@@ -193,6 +193,11 @@ export default function Messages() {
   const bottomRef                       = useRef(null);
   const pollRef = useRef(null);
     const fileInputRef = useRef(null);
+  const textRef = useRef(null);
+  const inputTextRef = useRef("");
+  const inputDebounceRef = useRef(null);
+  const isTypingRef = useRef(false);
+  const typingTimeoutRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -223,7 +228,7 @@ export default function Messages() {
   }, [location?.search, location?.state]);
 
   // Prepare a deduplicated, stable message list for rendering
-  const messagesToRender = (() => {
+  const messagesToRender = useMemo(() => {
     const raw = Array.isArray(thread?.messages) ? thread.messages : [];
     const m = new Map();
     raw.forEach((item, idx) => {
@@ -231,7 +236,7 @@ export default function Messages() {
       if (!m.has(key)) m.set(key, item);
     });
     return Array.from(m.values());
-  })();
+  }, [thread?.messages]);
 
   // Helper: robustly extract user id and admin flag from API responses
   const getUserId = (u) => u?.id ?? u?.user_id ?? u?.data?.id ?? u?.data?.user_id ?? null;
@@ -259,6 +264,13 @@ export default function Messages() {
     setPendingPreview(url);
     try { e.target.value = ''; } catch (er) {}
   };
+
+  // Debounced, uncontrolled input handling to avoid re-render on every keystroke
+  useEffect(() => {
+    return () => {
+      if (inputDebounceRef.current) clearTimeout(inputDebounceRef.current);
+    };
+  }, []);
 
   const removePendingFile = () => {
     try { if (pendingPreview) URL.revokeObjectURL(pendingPreview); } catch (e) {}
@@ -593,6 +605,7 @@ export default function Messages() {
 
     const poll = async () => {
       try {
+        if (isTypingRef.current) return;
         const msgsResp = await getChatMessages(activeThread);
         const serverMessages = Array.isArray(msgsResp) ? msgsResp : msgsResp.messages || [];
         const currentUidForFetch = getUserId(currentUser);
@@ -1128,10 +1141,25 @@ export default function Messages() {
                   )}
 
                   <textarea
+                    ref={textRef}
                     className="w-full resize-none px-[10px] py-[8px] bg-transparent border-none rounded-none text-[14px] text-[#1e293b] outline-none transition-all duration-200 placeholder:text-[#94a3b8] leading-[1.5]"
                     placeholder="Type your message…"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    defaultValue={input}
+                    onChange={(e) => {
+                      inputTextRef.current = e.target.value;
+                      // mark typing active and debounce typing indicator
+                      isTypingRef.current = true;
+                      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                      typingTimeoutRef.current = setTimeout(() => { isTypingRef.current = false; }, 1200);
+
+                      // Debounce updating React state to avoid frequent renders while typing.
+                      if (inputDebounceRef.current) clearTimeout(inputDebounceRef.current);
+                      inputDebounceRef.current = setTimeout(() => {
+                        const val = inputTextRef.current;
+                        // update only when value actually changed to prevent redundant renders
+                        if (val !== input) setInput(val);
+                      }, 400);
+                    }}
                     onKeyDown={handleKeyDown}
                     rows={1}
                     style={{ maxHeight: "120px", overflowY: "auto" }}
