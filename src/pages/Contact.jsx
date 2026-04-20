@@ -208,6 +208,7 @@ export default function Contact() {
                 <StartChatWithAdmin
                   initialMessage={"Hello admin, I have a question about your products."}
                   onStarted={({ chatroomId }) => navigate(`/messages?chatroom_id=${chatroomId}`)}
+                  showButton={false}
                 />
               </div>
 

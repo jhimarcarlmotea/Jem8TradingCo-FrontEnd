@@ -1,13 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import AdminNav from "../components/AdminNav";
-
-// ── Axios base config ──────────────────────────────────────────────────────────
-const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/admin",
-  withCredentials: true,
-  headers: { "Content-Type": "application/json", Accept: "application/json" },
-});
 
 // ── Status display config ──────────────────────────────────────────────────────
 const statusConfig = {
@@ -35,8 +28,10 @@ function ReplyModal({ contact, onClose, onReplied }) {
     setSending(true);
     setError("");
     try {
-      await api.post(`/contacts/${contact.message_id}/reply`, { reply_message: replyMessage });
-      onReplied(contact.message_id);
+      const cid = contact.id ?? contact.message_id;
+      if (!cid) throw new Error('Missing contact id');
+      await api.post(`/admin/contacts/${cid}/reply`, { reply_message: replyMessage });
+      onReplied(cid);
       onClose();
     } catch (e) {
       setError(e.response?.data?.message || "Failed to send reply.");
@@ -103,7 +98,7 @@ export default function AdminContactMessages() {
     setLoading(true);
     setError("");
     try {
-      const res = await api.get("/contacts");
+      const res = await api.get("/admin/contacts");
       setMessages(res.data.data ?? []);
     } catch (e) {
       setError(e.response?.data?.message || "Failed to load messages.");
@@ -118,8 +113,8 @@ export default function AdminContactMessages() {
     if (!window.confirm("Delete this message?")) return;
     setDeletingId(id);
     try {
-      await api.delete(`/contacts/${id}`);
-      setMessages((prev) => prev.filter((m) => m.id !== id));
+      await api.delete(`/admin/contacts/${id}`);
+      setMessages((prev) => prev.filter((m) => (m.id === id ? false : (m.message_id === id ? false : true))));
     } catch (e) {
       alert(e.response?.data?.message || "Delete failed.");
     } finally {
@@ -129,7 +124,7 @@ export default function AdminContactMessages() {
 
   const handleReplied = (id) => {
     setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, status: "replied" } : m))
+      prev.map((m) => (m.id === id || m.message_id === id ? { ...m, status: "replied" } : m))
     );
   };
 
@@ -231,7 +226,7 @@ export default function AdminContactMessages() {
                 const cfg = statusConfig[msg.status] ?? statusConfig.pending;
                 return (
                   <div
-                    key={msg.id}
+                    key={msg.id ?? msg.message_id}
                     className="bg-white rounded-2xl px-5 py-4 shadow-sm flex items-start gap-4"
                   >
                     {/* Avatar */}
@@ -275,10 +270,10 @@ export default function AdminContactMessages() {
                           Reply
                         </button>
                         <button
-                          onClick={() => handleDelete(msg.id)}
-                          disabled={deletingId === msg.id}
+                          onClick={() => handleDelete(msg.id ?? msg.message_id)}
+                          disabled={deletingId === (msg.id ?? msg.message_id)}
                           className={`px-2.5 py-1 rounded-md border border-red-300 bg-red-50 text-red-600 text-sm transition-opacity
-                            ${deletingId === msg.id ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-red-100"}`}
+                            ${deletingId === (msg.id ?? msg.message_id) ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-red-100"}`}
                         >
                           🗑
                         </button>
