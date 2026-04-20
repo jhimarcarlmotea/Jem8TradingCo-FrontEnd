@@ -2,18 +2,43 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { me } from "../api/auth";
 
-const mainNavItems = [
-  { label: "Dashboard", icon: "⊞", href: "/adminDashboard" },
-  { label: "Products", icon: "📦", href: "/adminProducts" },
-  { label: "Orders", icon: "🛒", href: "/adminOrders" },
-  { label: "Blog Post", icon: "📝", href: "/adminBlogpost" },
-  { label: "Account Management", icon: "👤", href: "/adminAccountmanagement" },
-  { label: "Customer Reports", icon: "📊", href: "/adminContact" },
-  { label: "Leadership Management", icon: "🏆", href: "/adminLeadership" },
-  { label: "Backup & Recovery", icon: "💾", href: "/adminBackup" },
-  { label: "Reviews", icon: "⭐", href: "/adminReviews" },
-  { label: "Messages", icon: "✉️", href: "/adminMessage" },
-  { label: "Activity Log", icon: "📋", href: "/adminActivitylogs" },
+const navGroups = [
+  {
+    group: "Overview",
+    items: [
+      { label: "Dashboard", icon: "⊞", href: "/adminDashboard" },
+    ],
+  },
+  {
+    group: "Equipments and Supplies",
+    items: [
+      { label: "Products", icon: "📦", href: "/adminProducts" },
+      { label: "Orders", icon: "🛒", href: "/adminOrders" },
+      { label: "Reviews", icon: "⭐", href: "/adminReviews" },
+    ],
+  },
+  {
+    group: "Content",
+    items: [
+      { label: "Blog Post", icon: "📝", href: "/adminBlogpost" },
+      { label: "Messages", icon: "✉️", href: "/adminMessage" },
+    ],
+  },
+  {
+    group: "People",
+    items: [
+      { label: "Account Management", icon: "👤", href: "/adminAccountmanagement" },
+      { label: "Leadership Management", icon: "🏆", href: "/adminLeadership" },
+      { label: "Customer Reports", icon: "📊", href: "/adminContact" },
+    ],
+  },
+  {
+    group: "System",
+    items: [
+      { label: "Activity Log", icon: "📋", href: "/adminActivitylogs" },
+      { label: "Backup & Recovery", icon: "💾", href: "/adminBackup" },
+    ],
+  },
 ];
 
 const settingsItems = [
@@ -42,12 +67,10 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
     fetchUser();
   }, []);
 
-  // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Auto-close sidebar when resizing to desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -58,7 +81,6 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
     return () => window.removeEventListener("resize", handleResize);
   }, [setSidebarOpen]);
 
-  // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
     if (sidebarOpen) {
       document.body.style.overflow = "hidden";
@@ -107,7 +129,6 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
             alt="JEM 8 CIRCLE"
             className="object-contain w-auto h-12"
           />
-          {/* Close button — mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
             className="flex items-center justify-center w-8 h-8 text-gray-500 transition-colors bg-transparent border-none rounded-lg cursor-pointer md:hidden hover:text-gray-700 hover:bg-gray-100"
@@ -124,21 +145,23 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
 
       {/* Navigation Links */}
       <nav className="flex-1 min-h-0 p-3 overflow-y-auto">
-        <div className="mb-1">
-          <p className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-            Navigation
-          </p>
-          {mainNavItems.map((item) => (
-            <NavLink key={item.label} item={item} />
-          ))}
-        </div>
+        {navGroups.map((group, groupIndex) => (
+          <div key={group.group} className={groupIndex !== 0 ? "mt-3" : ""}>
+            <p className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+              {group.group}
+            </p>
+            {group.items.map((item) => (
+              <NavLink key={item.label} item={item} />
+            ))}
+          </div>
+        ))}
 
         {/* Divider */}
         <div className="h-px mx-3 my-3 bg-gray-100" />
 
         <div>
           <p className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-            System
+            Preferences
           </p>
           {settingsItems.map((item) => (
             <NavLink key={item.label} item={item} />
@@ -186,7 +209,7 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
         aria-hidden="true"
       />
 
-      {/* Mobile sidebar — slides in from left */}
+      {/* Mobile sidebar */}
       <aside
         className={`md:hidden fixed top-0 left-0 w-[260px] h-screen bg-white border-r border-gray-200 z-50 transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
@@ -196,7 +219,7 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
         {navContent}
       </aside>
 
-      {/* Desktop sidebar — always visible */}
+      {/* Desktop sidebar */}
       <aside
         className="hidden md:flex w-[242px] min-w-[242px] bg-white border-r border-gray-200 flex-col sticky top-0 h-screen"
         aria-label="Admin navigation"
