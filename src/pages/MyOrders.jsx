@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Header } from "../components/Layout";
 
@@ -214,6 +214,7 @@ const TABS = [
 
 /* ─── Order Detail Panel ──────────────────────────────────── */
 function OrderDetail({ order, onReceiptClick }) {
+  const navigate   = useNavigate();
   const colors     = STATUS_COLORS[order.status] ?? STATUS_COLORS.processing;
   const trackerIdx = getTrackerIndex(order.status);
   const receiptImage  = order.receipt?.image  ?? null;
@@ -412,12 +413,23 @@ function OrderDetail({ order, onReceiptClick }) {
 
         {/* ── Actions ── */}
         <div className="flex gap-3 flex-wrap">
-          <Link
-            to="/products"
-            className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline hover:bg-[#3d6552] transition-colors"
-          >
-            Order Again →
-          </Link>
+         <button
+        onClick={() =>
+          navigate("/checkout", {
+            state: {
+              reorderItems: order.items.map((item) => ({
+                productId: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                image: item.image,
+              })),
+            },
+          })
+        }
+        className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold cursor-pointer border-none hover:bg-[#3d6552] transition-colors"
+      >
+        Order Again →
+      </button>
           <Link
             to="/contact"
             className="inline-block px-6 py-2.5 bg-white text-[#4d7b65] border-[1.5px] border-[#c0ddd0] rounded-xl text-sm font-bold no-underline hover:bg-[#f0f7f3] transition-colors"

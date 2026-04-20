@@ -24,8 +24,15 @@ export default function Contact() {
   const [sending, setSending] = useState(false);
   const [error, setError]     = useState(null);
 
-  const handleChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    const name = e.target.name;
+    let val = e.target.value;
+    if (name === 'phone') {
+      // keep digits only and limit to 11 characters
+      val = String(val).replace(/\D/g, '').slice(0, 11);
+    }
+    setForm((f) => ({ ...f, [name]: val }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -136,7 +143,9 @@ export default function Contact() {
                     <label className="text-xs font-semibold text-[#374151]">Phone Number</label>
                     <input
                       name="phone" type="tel" value={form.phone} onChange={handleChange}
-                      placeholder="+63 (02) 345-6789"
+                      placeholder="+63 912 345 6789"
+                      inputMode="numeric"
+                      maxLength={11}
                       className="px-3.5 py-2.5 border border-[#c5ddd0] rounded-xl text-sm text-[#1a2e22] bg-[#fafcfb] outline-none focus:border-[#4d7b65] focus:ring-2 focus:ring-[#4d7b65]/10 focus:bg-white transition-all placeholder-[#9ca3af]"
                     />
                   </div>
@@ -199,6 +208,7 @@ export default function Contact() {
                 <StartChatWithAdmin
                   initialMessage={"Hello admin, I have a question about your products."}
                   onStarted={({ chatroomId }) => navigate(`/messages?chatroom_id=${chatroomId}`)}
+                  showButton={false}
                 />
               </div>
 

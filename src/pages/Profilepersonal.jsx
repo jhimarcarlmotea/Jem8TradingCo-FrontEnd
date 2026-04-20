@@ -1,7 +1,7 @@
 // ─── ProfilePersonal.jsx (Full Tailwind — no CSS imports) ────────────────────
 import { useEffect, useState, useRef } from "react";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useBlocker } from "react-router-dom";
 import { logout, me, updateProfile } from "../api/auth";
 import OrdersOverview from './OrdersOverview';
 import PasswordSecurity from './PasswordSecurity';
@@ -9,6 +9,7 @@ import Notification from './Notification';
 import { toast } from "react-toastify";
 import { getUserAddresses, addAddress as apiAddAddress, updateAddress as apiUpdateAddress, deleteAddress as apiDeleteAddress } from "../api/address";
 import axios from "axios";
+
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
@@ -219,7 +220,40 @@ function CompleteProfileModal({ form, onChange, onSubmit, completing }) {
     </div>
   );
 }
-
+    // ─── Block Navigation Modal ───────────────────────────────────────────────────
+function BlockNavModal({ onStay }) {
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
+    >
+      <div
+        className="complete-modal-in bg-white rounded-[20px] w-full max-w-[420px] overflow-hidden"
+        style={{ boxShadow: "0 40px 100px rgba(0,0,0,0.25)" }}
+      >
+        <div className="px-7 pt-7 pb-5 border-b border-gray-100">
+          <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-500 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3 tracking-wide">
+            ⚠ Incomplete Profile
+          </div>
+          <div className="text-xl font-bold text-gray-900 mb-1.5">
+            Please complete your profile first
+          </div>
+          <div className="text-[13px] text-gray-400 leading-relaxed">
+            Please fill in all required fields before proceeding. Your profile is incomplete.
+          </div>
+        </div>
+        <div className="flex justify-end px-7 py-5">
+          <button
+            onClick={onStay}
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-gray-900 text-white border-none rounded-lg text-[13px] font-semibold cursor-pointer hover:bg-gray-700 transition-all duration-150"
+          >
+            <CheckIcon /> Complete Profile
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── Address Modal ────────────────────────────────────────────────────────────
 function AddressModal({ onClose, onSave, editingAddress }) {
   const [form, setForm] = useState(editingAddress || {
@@ -519,8 +553,10 @@ function Breadcrumb({ label }) {
 }
 
 // ─── Personal Information Tab ─────────────────────────────────────────────────
-function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, setAddresses }) {
-  const [isEditing, setIsEditing] = useState(false);
+
+function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, setAddresses, autoEdit = false, onFormChange }) {
+
+  const [isEditing, setIsEditing] = useState(autoEdit);
   const [form, setForm] = useState({
     first_name: user?.first_name || "", last_name: user?.last_name || "",
     email: user?.email || "", phone_number: user?.phone_number || "",
@@ -530,14 +566,53 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
   const [showModal, setShowModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
+  
+  useEffect(() => {
+    if (autoEdit) setIsEditing(true);
+  }, [autoEdit]);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isProfileIncomplete = (f) =>
+    !f.first_name || !f.last_name || !f.phone_number ||
+    !f.company_name || !f.position || !f.business_type || !f.tin_number;
+
+  const handleChange = (e) => {
+    const updated = { ...form, [e.target.name]: e.target.value };
+    setForm(updated);
+    if (onFormChange) onFormChange(updated);
+  };
+
+  useEffect(() => {
+    if (onFormChange) onFormChange(form);
+  }, []);
+
+  // Block browser back/forward/close when autoEdit and profile incomplete
+  useEffect(() => {
+    if (!autoEdit) return;
+
+    const handleBeforeUnload = (e) => {
+      if (isProfileIncomplete(form)) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [form, autoEdit]);
+
+  
+
   const handleSave = () => { if (onUserUpdate) onUserUpdate(form); setIsEditing(false); };
+
   const handleCancel = () => {
-    setForm({ first_name: user?.first_name||"", last_name: user?.last_name||"", email: user?.email||"",
-      phone_number: user?.phone_number||"", company_name: user?.company_name||"",
-      position: user?.position||"", business_type: user?.business_type||"",
-      tin_number: user?.tin_number||"" });
+    setForm({
+      first_name: user?.first_name || "", last_name: user?.last_name || "",
+      email: user?.email || "", phone_number: user?.phone_number || "",
+      company_name: user?.company_name || "", position: user?.position || "",
+      business_type: user?.business_type || "", tin_number: user?.tin_number || "",
+    });
     setIsEditing(false);
   };
 
@@ -585,6 +660,8 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
         />
       )}
 
+      
+
       <Breadcrumb label="Personal Information · Manage your profile and contact details" />
 
       {/* Profile Details Card */}
@@ -615,13 +692,13 @@ function PersonalInformation({ user, onUserUpdate, onPhotoUpdate, addresses, set
           <EditableField label="Last Name"                   name="last_name"     value={form.last_name}     isEditing={isEditing} onChange={handleChange} />
           <EditableField label="Email Address"               name="email"         value={form.email}         isEditing={isEditing} onChange={handleChange} />
           <EditableField label="Phone / Mobile Number"       name="phone_number"  value={form.phone_number}  isEditing={isEditing} onChange={handleChange} />
-          <EditableField label="Company Name (Optional)"     name="company_name"  value={form.company_name}  isEditing={isEditing} onChange={handleChange} />
-          <EditableField label="Position / Title (Optional)" name="position"      value={form.position}      isEditing={isEditing} onChange={handleChange} />
+          <EditableField label="Company Name"     name="company_name"  value={form.company_name}  isEditing={isEditing} onChange={handleChange} />
+          <EditableField label="Position / Title" name="position"      value={form.position}      isEditing={isEditing} onChange={handleChange} />
           <div className="col-span-1">
-            <EditableField label="Business Type (Optional)"  name="business_type" value={form.business_type} isEditing={isEditing} onChange={handleChange} />
+            <EditableField label="Business Type"  name="business_type" value={form.business_type} isEditing={isEditing} onChange={handleChange} />
           </div>
           <div className="col-span-1">
-            <EditableField label="Company TIN Number (Optional)" name="tin_number" value={form.tin_number} isEditing={isEditing} onChange={handleChange} />
+            <EditableField label="Company TIN Number" name="tin_number" value={form.tin_number} isEditing={isEditing} onChange={handleChange} />
           </div>
         </div>
       </div>
@@ -667,7 +744,42 @@ export default function ProfilePersonal() {
   const [completeForm, setCompleteForm]               = useState({ first_name: "", last_name: "", phone_number: "" });
   const [completing, setCompleting]                   = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [autoEdit, setAutoEdit] = useState(location.state?.autoEdit ?? false);
+  const isLoggingOut = useRef(false);
 
+  // ─── Nav Guard State ───────────────────────────────────────────────────────
+  const [pendingNav, setPendingNav]         = useState(null);
+  const [showNavBlock, setShowNavBlock]     = useState(false);
+  const [profileForm, setProfileForm]       = useState(null);
+  const [profileComplete, setProfileComplete] = useState(false);
+
+  const isIncomplete = (f) =>
+    f && (!f.first_name || !f.last_name || !f.phone_number ||
+    !f.company_name || !f.position || !f.business_type || !f.tin_number);
+
+  const isIncompleteWithAddress = (f, addrs) =>
+    isIncomplete(f) || !addrs || addrs.length === 0;
+
+  const onFormChange = (f) => {
+    setProfileForm(f);
+    setProfileComplete(!isIncompleteWithAddress(f, addresses));
+  };
+
+  const guardedNavigate = (destination) => {
+  // If destination is a function (tab switch within page), always allow it
+  if (typeof destination === "function") {
+    destination();
+    return;
+  }
+  // Only block actual page navigation away
+  if (autoEdit && isIncompleteWithAddress(profileForm, addresses)) {
+    setPendingNav(destination);
+    setShowNavBlock(true);
+  } else {
+    navigate(destination);
+  }
+};
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -675,17 +787,35 @@ export default function ProfilePersonal() {
         if (response.status === 200 && response.data.status === "success") {
           const userData = response.data.data;
           setUser(userData);
-          if (!userData.phone_number || !userData.first_name) {
-            setCompleteForm({ first_name: userData.first_name||"", last_name: userData.last_name||"", phone_number: userData.phone_number||"" });
-            setShowCompleteProfile(true);
-          }
+
+          const isGoogleUser = !!userData.google_id;
+          const hasIncompleteProfile =
+            !userData.first_name ||
+            !userData.last_name ||
+            !userData.phone_number ||
+            !userData.company_name ||
+            !userData.position ||
+            !userData.business_type ||
+            !userData.tin_number;
+
+          // fetch addresses first so we can check completeness
+          let fetchedAddresses = [];
           try {
             const addrRes = await getUserAddresses();
             if (addrRes.status === 200) {
               const addrData = addrRes.data?.data ?? addrRes.data ?? [];
-              setAddresses(Array.isArray(addrData) ? addrData : []);
+              fetchedAddresses = Array.isArray(addrData) ? addrData : [];
+              setAddresses(fetchedAddresses);
             }
           } catch (addrErr) { console.error("Failed to fetch addresses:", addrErr); }
+
+          const hasNoAddress = fetchedAddresses.length === 0;
+
+          if (isGoogleUser && (hasIncompleteProfile || hasNoAddress)) {
+            setAutoEdit(true);
+          } else if (!isGoogleUser && (hasIncompleteProfile || hasNoAddress)) {
+            setAutoEdit(true);
+          }
         }
       } catch (error) { console.error(error); }
       finally { setLoading(false); }
@@ -707,6 +837,29 @@ export default function ProfilePersonal() {
     if (user) fetchOrdersCount();
   }, [user]);
 
+   // Listen for logout from the header navigation
+useEffect(() => {
+  const handleExternalLogout = () => {
+    isLoggingOut.current = true;
+  };
+  window.addEventListener("auth-logout", handleExternalLogout);
+  return () => window.removeEventListener("auth-logout", handleExternalLogout);
+}, []);
+
+const blocker = useBlocker(
+  ({ currentLocation, nextLocation }) =>
+    !isLoggingOut.current &&
+    autoEdit &&
+    isIncompleteWithAddress(profileForm, addresses) &&
+    currentLocation.pathname !== nextLocation.pathname
+);
+
+useEffect(() => {
+  if (blocker.state === "blocked") {
+    setShowNavBlock(true);
+    setPendingNav(() => () => blocker.proceed());
+  }
+}, [blocker.state]);
   const handleCompleteProfile = async () => {
     if (!completeForm.first_name.trim() || !completeForm.last_name.trim() || !completeForm.phone_number.trim()) {
       toast.error("Please fill in all required fields."); return;
@@ -733,8 +886,16 @@ export default function ProfilePersonal() {
   };
 
   const Logout = async () => {
+    isLoggingOut.current = true; 
     const data = await logout();
-    if (data) { window.dispatchEvent(new CustomEvent("auth-logout")); navigate("/login"); }
+    if (data) {
+      setAutoEdit(false);
+      sessionStorage.removeItem("profileModalDismissed");
+      window.dispatchEvent(new CustomEvent("auth-logout"));
+      navigate("/login", { replace: true });
+    } else {
+      isLoggingOut.current = false;
+    }
   };
 
   if (loading) return <p className="p-8 text-gray-400">Loading...</p>;
@@ -747,9 +908,16 @@ export default function ProfilePersonal() {
       case "orders":   return <OrdersOverview userId={user?.id} />;
       case "password": return <PasswordSecurity />;
       case "notif":    return <Notification />;
-      default: return (
-        <PersonalInformation user={user} onUserUpdate={handleUserUpdate} onPhotoUpdate={handlePhotoUpdate}
-          addresses={addresses} setAddresses={setAddresses} />
+     default: return (
+        <PersonalInformation
+          user={user}
+          onUserUpdate={handleUserUpdate}
+          onPhotoUpdate={handlePhotoUpdate}
+          addresses={addresses}
+          setAddresses={setAddresses}
+          autoEdit={autoEdit}
+          onFormChange={onFormChange}   
+        />
       );
     }
   };
@@ -758,11 +926,29 @@ export default function ProfilePersonal() {
     <>
       <style>{KEYFRAMES}</style>
 
-      {/* Complete Profile Modal — blocks until filled */}
-      {showCompleteProfile && (
-        <CompleteProfileModal form={completeForm} onChange={setCompleteForm}
-          onSubmit={handleCompleteProfile} completing={completing} />
-      )}
+      
+    {showCompleteProfile && (
+    <CompleteProfileModal form={completeForm} onChange={setCompleteForm}
+      onSubmit={handleCompleteProfile} completing={completing} />
+  )}
+
+  {showNavBlock && (
+    <BlockNavModal
+      onStay={() => {
+        setShowNavBlock(false);
+        setPendingNav(null);
+        if (blocker.state === "blocked") blocker.reset();
+      }}
+      onLeave={() => {
+        setShowNavBlock(false);
+        if (pendingNav) pendingNav();
+        setPendingNav(null);
+        if (blocker.state === "blocked") blocker.proceed();
+      }}
+    />
+  )}
+
+    
 
       {/* Page — pt-[108px] = 68px header + 40px breathing room */}
       <div className="relative min-h-screen pt-[108px] pb-20 overflow-hidden"
@@ -796,7 +982,8 @@ export default function ProfilePersonal() {
     const badgeValue = key === "orders" ? ordersCount : 0;
     const isActive = activeMenu === key;
     return (
-      <button key={key} onClick={() => setActiveMenu(key)}
+      <button key={key}
+  onClick={() => guardedNavigate(() => setActiveMenu(key))}
         className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] cursor-pointer text-[13px] text-left transition-all duration-150
           ${isActive
             ? "bg-emerald-50 border-l-emerald-500 text-emerald-700 font-semibold [&_svg]:stroke-emerald-500"
@@ -811,10 +998,10 @@ export default function ProfilePersonal() {
             <hr className="mx-5 my-2 border-gray-100" />
 
             <div className="px-3 pb-4">
-              <button onClick={Logout}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] border-l-transparent cursor-pointer text-[13px] text-left text-red-500 font-normal hover:bg-red-50 hover:translate-x-0.5 transition-all duration-150 [&_svg]:stroke-red-500">
-                <LogoutIcon /> Logout
-              </button>
+              <button onClick={() => Logout()}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] border-l-transparent cursor-pointer text-[13px] text-left text-red-500 font-normal hover:bg-red-50 hover:translate-x-0.5 transition-all duration-150 [&_svg]:stroke-red-500">
+            <LogoutIcon /> Logout
+          </button>
             </div>
           </aside>
 

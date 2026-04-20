@@ -90,8 +90,14 @@ function EditModal({ account, onClose, onSave, saving }) {
       .finally(() => setFetching(false));
   }, [account.id]);
 
-  const handleChange = (e) =>
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    const name = e.target.name;
+    let val = e.target.value;
+    if (name === 'phone_number') {
+      val = String(val).replace(/\D/g, '').slice(0, 11);
+    }
+    setForm((prev) => ({ ...prev, [name]: val }));
+  };
 
   const fields = [
     { label: "First Name",   name: "first_name",   placeholder: "Enter first name",   type: "text"  },
@@ -132,6 +138,8 @@ function EditModal({ account, onClose, onSave, saving }) {
                 className={inputCls}
                 type={f.type}
                 name={f.name}
+                maxLength={f.name === 'phone_number' ? 11 : undefined}
+                inputMode={f.name === 'phone_number' ? 'numeric' : undefined}
                 value={form?.[f.name] ?? ""}
                 onChange={handleChange}
                 placeholder={f.placeholder}

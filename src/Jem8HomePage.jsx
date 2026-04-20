@@ -416,17 +416,25 @@ function CtaBanner() {
 }
 
 /* ── Complete Profile Modal ── */
-function CompleteProfileModal({ onGo }) {
+function CompleteProfileModal({ onGo, onDismiss }) {
   return (
-    <div className="fixed inset-0 bg-black/55 z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/55 z-[9999] flex items-center justify-center p-4"
+      onClick={() => onDismiss && onDismiss()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="bg-white rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="pb-5 border-b px-7 pt-7 border-slate-100">
           <div className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
             ✦ Complete Profile
           </div>
           <h2 className="text-xl font-bold text-slate-900 mb-1.5">Complete your profile</h2>
           <p className="text-[13px] text-slate-500 leading-relaxed">
-            You signed in with Google. Please complete your profile details to continue using your account.
+            Please complete your profile details to continue using your account.
           </p>
         </div>
         <div className="py-5 px-7">
@@ -448,29 +456,60 @@ export default function Jem8HomePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkProfile = async () => {
-      try {
-        const res = await me();
-        if (res.status === 200 && res.data.status === "success") {
-          const user = res.data.data;
-          if (!user.first_name || !user.phone_number) {
+  const checkProfile = async () => {
+    if (sessionStorage.getItem("profileModalDismissed")) return;
+
+    try {
+      const res = await me();
+      if (res.status === 200 && res.data.status === "success") {
+        const user = res.data.data;
+
+        const isIncomplete =
+          !user.first_name ||
+          !user.last_name ||
+          !user.phone_number ||
+          !user.company_name ||
+          !user.position ||
+          !user.business_type ||
+          !user.tin_number;
+
+        if (isIncomplete) {
+          setShowModal(true);
+          return;
+        }
+
+        try {
+          const addrRes = await api.get("/addresses");
+          const addrData = addrRes.data?.data ?? addrRes.data ?? [];
+          const addrs = Array.isArray(addrData) ? addrData : [];
+          if (addrs.length === 0) {
             setShowModal(true);
           }
+        } catch {
+          setShowModal(true);
         }
-      } catch (err) {
-        // not logged in or network error — do nothing
       }
-    };
-    checkProfile();
-  }, []);
+    } catch (err) {
+      // Not logged in — do nothing
+    }
+  };
+  checkProfile();
+}, []);
 
   return (
     <>
       {showModal && (
-        <CompleteProfileModal
-          onGo={() => { setShowModal(false); navigate("/Profilepersonal"); }}
-        />
-      )}
+  <CompleteProfileModal
+    onGo={() => {
+      setShowModal(false);
+      navigate("/Profilepersonal", { state: { autoEdit: true } });
+    }}
+    onDismiss={() => {
+      sessionStorage.setItem("profileModalDismissed", "true");
+      setShowModal(false);
+    }}
+  />
+)}
       <Header />
       <main>
         <Hero />

@@ -13,6 +13,7 @@ export default function StartChatWithAdmin({
   onStarted,
   productId = null,
   productName = null,
+  showButton = true,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -56,7 +57,7 @@ export default function StartChatWithAdmin({
           // reuse same normalization rules as frontend api utils
           if (/^data:|^https?:\/\//i.test(avatarCandidate)) avatarUrl = avatarCandidate;
           else if (avatarCandidate) {
-            const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || process.env.REACT_APP_API_URL || '';
+            const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || '';
             const path = String(avatarCandidate).replace(/^\/+/, '');
             avatarUrl = base ? base.replace(/\/+$/, '') + '/storage/' + path : '/storage/' + path;
           }
@@ -126,18 +127,22 @@ export default function StartChatWithAdmin({
   return (
     <div className="w-full">
       <div className="flex items-center gap-3">
-        <button
-          onClick={startChat}
-          disabled={loading}
-          className="inline-flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-[#2f855a] to-[#1e40af] hover:from-[#2b7a50] hover:to-[#1b3aa0] transition-colors shadow-sm"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span>{loading ? 'Starting chat…' : 'Contact Admin / Start Chat'}</span>
-        </button>
+        {showButton && (
+          <>
+            <button
+              onClick={startChat}
+              disabled={loading}
+              className="inline-flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-[#2f855a] to-[#1e40af] hover:from-[#2b7a50] hover:to-[#1b3aa0] transition-colors shadow-sm"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>{loading ? 'Starting chat…' : 'Contact Admin / Start Chat'}</span>
+            </button>
 
-        <div className="text-xs text-gray-500">Available Mon–Fri, 9am–5pm</div>
+            {/* <div className="text-xs text-gray-500">Available Mon–Fri, 9am–5pm</div> */}
+          </>
+        )}
       </div>
 
       {error && (
