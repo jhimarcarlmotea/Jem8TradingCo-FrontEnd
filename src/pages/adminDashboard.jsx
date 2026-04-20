@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminNav from '../components/AdminNav';
 import api from "../api/axios";
 
@@ -102,7 +102,6 @@ function BarChart({ data }) {
   );
 }
 
-// ── FIXED LineChart — full months visible, properly contained ─────────────────
 function LineChart({ thisYear = {}, lastYear = {} }) {
   const months = [1,2,3,4,5,6,7,8,9,10,11,12];
   const labels  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -110,7 +109,6 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
   const lastVals = months.map(m => Number(lastYear[m] ?? 0));
   const max = Math.max(...thisVals, ...lastVals, 1);
 
-  // viewBox: wide enough for 12 labels, tall enough for chart + labels
   const vw = 500, vh = 120;
   const padL = 10, padR = 10, padT = 10, padB = 22;
   const chartW = vw - padL - padR;
@@ -159,7 +157,6 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
         </clipPath>
       </defs>
 
-      {/* Grid lines */}
       {[0, 0.5, 1].map((pct, i) => (
         <line key={i}
           x1={padL} x2={padL + chartW}
@@ -169,27 +166,22 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
         />
       ))}
 
-      {/* Area fill */}
       <path
         d={`${d1} L ${thisPts[thisPts.length-1].x} ${areaBottom} L ${thisPts[0].x} ${areaBottom} Z`}
         fill="url(#areaGrad2)"
         clipPath="url(#chartClip2)"
       />
 
-      {/* Last year dashed line */}
       <path d={d2} fill="none" stroke="#CBD5E1" strokeWidth="1.2" strokeDasharray="3 2"
         strokeLinecap="round" strokeLinejoin="round" />
 
-      {/* This year line */}
       <path d={d1} fill="none" stroke="#3B82F6" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round" />
 
-      {/* Dots */}
       {thisPts.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="3" fill="white" stroke="#3B82F6" strokeWidth="1.8" />
       ))}
 
-      {/* X-axis month labels — always visible at fixed y */}
       {labels.map((l, i) => (
         <text key={i}
           x={thisPts[i].x}
@@ -326,12 +318,127 @@ const Avatar = ({ name, index, size = 32 }) => {
   );
 };
 
+// ── Hamburger Icon ─────────────────────────────────────────────────────────────
+const HamburgerIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="4" width="16" height="2" rx="1" fill="#374151" />
+    <rect x="2" y="9" width="16" height="2" rx="1" fill="#374151" />
+    <rect x="2" y="14" width="16" height="2" rx="1" fill="#374151" />
+  </svg>
+);
+
+// ── Close Icon ─────────────────────────────────────────────────────────────────
+const CloseIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 2L16 16M16 2L2 16" stroke="#374151" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+// ── Mobile Drawer ──────────────────────────────────────────────────────────────
+function MobileDrawer({ open, onClose }) {
+  const overlayRef = useRef(null);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    if (open) document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        ref={overlayRef}
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.45)",
+          zIndex: 998,
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 0.25s ease",
+        }}
+      />
+
+      {/* Drawer panel */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: 270,
+          zIndex: 999,
+          background: "#FFFFFF",
+          boxShadow: "4px 0 24px rgba(15,23,42,0.12)",
+          transform: open ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* Drawer header */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "16px 18px",
+          borderBottom: "1px solid rgba(226,232,240,0.8)",
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", letterSpacing: "-0.3px" }}>
+            Admin Panel
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: "#F1F5F9",
+              border: "none",
+              borderRadius: 8,
+              width: 32,
+              height: 32,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "#E2E8F0"}
+            onMouseLeave={e => e.currentTarget.style.background = "#F1F5F9"}
+            aria-label="Close menu"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        {/* Drawer body — renders AdminNav in sidebar mode */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <AdminNav sidebarOpen={true} setSidebarOpen={() => {}} inDrawer={true} onClose={onClose} />
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [data, setData]               = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [data, setData]             = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -373,32 +480,116 @@ export default function AdminDashboard() {
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
- 
-
   const marketingData = Object.entries(traffic.revenue_by_address ?? {}).slice(0, 5).map(([city, v], i) => ({
-  city:  city,
-  pct:   Number(v),
-  color: CHART_COLORS[i % CHART_COLORS.length],
-}));
-const marketingTotal   = marketingData.reduce((s, d) => s + d.pct, 0) || 1;
-const marketingWithPct = marketingData.map(d => ({
-  ...d,
-  pct: parseFloat(((d.pct / marketingTotal) * 100).toFixed(1)),
-}));
+    city:  city,
+    pct:   Number(v),
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+  const marketingTotal   = marketingData.reduce((s, d) => s + d.pct, 0) || 1;
+  const marketingWithPct = marketingData.map(d => ({
+    ...d,
+    pct: parseFloat(((d.pct / marketingTotal) * 100).toFixed(1)),
+  }));
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#F0F7F2", fontFamily: "'DM Sans', 'Nunito', system-ui, sans-serif" }}>
-      <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+     <style>{`
+    .dashboard-main {
+      padding: 16px 14px;
+    }
+    @media (min-width: 640px) {
+      .dashboard-main {
+        padding: 20px 24px;
+      }
+    }
+    .dashboard-columns {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: flex-start;
+      width: 100%;
+    }
+    .dashboard-right-col {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .sales-revenue-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 640px) {
+      .sales-revenue-grid {
+        grid-template-columns: 1fr 1.6fr;
+      }
+    }
+    @media (min-width: 1024px) {
+      .dashboard-columns {
+        flex-direction: row;
+      }
+      .dashboard-right-col {
+        width: 248px;
+        min-width: 248px;
+      }
+      .hamburger-btn {
+        display: none !important;
+      }
+    }
+    @media (max-width: 1023px) {
+      .dashboard-right-col {
+        display: none !important;
+      }
+    }
+      .desktop-sidebar {
+  display: none;
+  }
+  @media (min-width: 1024px) {
+    .desktop-sidebar {
+      display: block;
+    }
+  }
+  `}</style>
 
-      <main style={{ flex: 1, minWidth: 0, padding: "20px 24px", overflowX: "hidden" }}>
+      {/* ── Sidebar: visible on lg+ screens, hidden on mobile/tablet ── */}
+    <div className="desktop-sidebar">
+      <AdminNav sidebarOpen={true} setSidebarOpen={() => {}} />
+    </div>
+
+      {/* ── Mobile/Tablet drawer ── */}
+      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      <main className="dashboard-main" style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
 
         {/* ── Top bar ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+
+          {/* Hamburger button — visible only on mobile/tablet (hidden on lg+) */}
           <button
-            style={{ display: "none", background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#374151", padding: "6px 8px", borderRadius: 8 }}
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >☰</button>
+            onClick={() => setDrawerOpen(true)}
+            className="lg:hidden hamburger-btn" 
+            aria-label="Open navigation menu"
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid rgba(226,232,240,0.8)",
+              borderRadius: 10,
+              width: 38,
+              height: 38,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              flexShrink: 0,
+              boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
+              transition: "background 0.15s, box-shadow 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#F8FAFC"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,23,42,0.10)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.06)"; }}
+          >
+            <HamburgerIcon />
+          </button>
+
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", margin: 0, letterSpacing: "-0.4px" }}>Dashboard</h1>
             <p style={{ fontSize: 11, color: "#94A3B8", margin: 0, marginTop: 1 }}>Welcome back — here's what's happening today.</p>
@@ -416,19 +607,19 @@ const marketingWithPct = marketingData.map(d => ({
         </div>
 
         {/* ── Stats row ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
           {stats.map((stat) => (
             <StatCard key={stat.label} {...stat} loading={loading} />
           ))}
         </div>
 
         {/* ── Main columns ── */}
-        <div style={{ display: "flex", flexDirection: "row", gap: 14, alignItems: "flex-start" }}>
+        <div className="dashboard-columns">
 
           {/* ── Left column ── */}
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
 
-            {/* ── Line chart — compact, fixed height ── */}
+            {/* ── Line chart ── */}
             <Card style={{ padding: "14px 16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Total Users Overview</span>
@@ -445,9 +636,7 @@ const marketingWithPct = marketingData.map(d => ({
               </div>
               <div style={{ fontSize: 10, color: "#3B82F6", fontWeight: 600, marginBottom: 6 }}>New Accounts / Month</div>
 
-              {/* Fixed-height chart container — no overflow */}
               <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-                {/* Y-axis labels */}
                 <div style={{
                   display: "flex",
                   flexDirection: "column",
@@ -463,7 +652,6 @@ const marketingWithPct = marketingData.map(d => ({
                   <span>Mid</span>
                   <span>Lo</span>
                 </div>
-                {/* Chart — fixed height, no overflow clipping so labels show */}
                 <div style={{ flex: 1, minWidth: 0, height: 130 }}>
                   {loading
                     ? <Skeleton style={{ height: "100%", width: "100%" }} />
@@ -521,7 +709,7 @@ const marketingWithPct = marketingData.map(d => ({
             </Card>
 
             {/* ── Metric cards grid ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
 
               {/* Products */}
               <Card>
@@ -605,57 +793,57 @@ const marketingWithPct = marketingData.map(d => ({
                 }
               </Card>
 
-              {/* Sales + Revenue — full width side by side */}
-        <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1.6fr", gap: 12 }}>
+              {/* Sales + Revenue — full width side by side on desktop, stacked on mobile */}
+              <div className="sales-revenue-grid" style={{ gridColumn: "1 / -1", gap: 12 }}>
 
-          <Card style={{ margin: 0 }}>
-            <CardTitle>📊 Sales This Year</CardTitle>
-            {loading
-              ? <Skeleton style={{ height: 180, width: "100%" }} />
-              : salesChartData.length > 0
-                ? <div style={{ height: 180, overflow: "hidden", paddingTop: 40 }}><BarChart data={salesChartData} /></div>
-                : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No sales data yet.</p>
-            }
-          </Card>
+                <Card style={{ margin: 0 }}>
+                  <CardTitle>📊 Sales This Year</CardTitle>
+                  {loading
+                    ? <Skeleton style={{ height: 180, width: "100%" }} />
+                    : salesChartData.length > 0
+                      ? <div style={{ height: 180, overflow: "hidden", paddingTop: 40 }}><BarChart data={salesChartData} /></div>
+                      : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No sales data yet.</p>
+                  }
+                </Card>
 
-          <Card style={{ margin: 0 }}>
-            <CardTitle>🗺 Revenue by Location</CardTitle>
-            {loading
-              ? <div style={{ display: "flex", gap: 24 }}>
-                  <Skeleton style={{ width: 112, height: 112, borderRadius: "50%" }} />
-                  <Skeleton style={{ flex: 1, height: 80 }} />
-                </div>
-              : marketingWithPct.length > 0
-                ? <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-                    <DonutChart data={marketingWithPct} />
-                    <div style={{ flex: 1 }}>
-                      {marketingWithPct.map((m, i) => (
-                        <div key={m.city} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: i < marketingWithPct.length - 1 ? 12 : 0 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ width: 9, height: 9, borderRadius: "50%", background: m.color, display: "inline-block", flexShrink: 0 }} />
-                            <span style={{ fontSize: 12, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.city}</span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 120, height: 5, borderRadius: 4, background: "#F1F5F9", overflow: "hidden" }}>
-                              <div style={{ width: `${m.pct}%`, height: "100%", background: m.color, borderRadius: 4 }} />
-                            </div>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", minWidth: 38, textAlign: "right" }}>{m.pct}%</span>
+                <Card style={{ margin: 0 }}>
+                  <CardTitle>🗺 Revenue by Location</CardTitle>
+                  {loading
+                    ? <div style={{ display: "flex", gap: 24 }}>
+                        <Skeleton style={{ width: 112, height: 112, borderRadius: "50%" }} />
+                        <Skeleton style={{ flex: 1, height: 80 }} />
+                      </div>
+                    : marketingWithPct.length > 0
+                      ? <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+                          <DonutChart data={marketingWithPct} />
+                          <div style={{ flex: 1 }}>
+                            {marketingWithPct.map((m, i) => (
+                              <div key={m.city} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: i < marketingWithPct.length - 1 ? 12 : 0 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{ width: 9, height: 9, borderRadius: "50%", background: m.color, display: "inline-block", flexShrink: 0 }} />
+                                  <span style={{ fontSize: 12, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.city}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <div style={{ width: 120, height: 5, borderRadius: 4, background: "#F1F5F9", overflow: "hidden" }}>
+                                    <div style={{ width: `${m.pct}%`, height: "100%", background: m.color, borderRadius: 4 }} />
+                                  </div>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", minWidth: 38, textAlign: "right" }}>{m.pct}%</span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No location data yet.</p>
-            }
-          </Card>
+                      : <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>No location data yet.</p>
+                  }
+                </Card>
 
-        </div>
+              </div>
 
             </div>
           </div>
 
           {/* ── Right column ── */}
-          <div style={{ width: 248, minWidth: 248, display: "flex", flexDirection: "column", gap: 12 }} className="hidden lg:flex">
+          <div className="dashboard-right-col">
 
             {/* Notifications */}
             <Card>
@@ -668,31 +856,60 @@ const marketingWithPct = marketingData.map(d => ({
               }>
                 Notifications
               </CardTitle>
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {loading
-                  ? [1,2,3].map(i => <Skeleton key={i} style={{ height: 44, width: "100%", marginBottom: 3 }} />)
-                  : (notifs.recent ?? []).map((n, i) => (
-                  <div key={n.notification_id ?? i}
-                    style={{
-                      display: "flex", gap: 8, alignItems: "flex-start",
-                      padding: "7px 8px",
-                      borderRadius: 9,
-                      background: !n.is_read ? "#EFF6FF" : "transparent",
-                    }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                      background: !n.is_read ? "#DBEAFE" : "#F1F5F9",
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-                    }}>
-                      {n.type === "order" ? "🛒" : n.type === "user" ? "👤" : n.type === "product" ? "📦" : "🔔"}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#0F172A", lineHeight: 1.3 }}>{n.title}</div>
-                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.message}</div>
-                      <div style={{ fontSize: 9, color: "#CBD5E1", marginTop: 1 }}>{timeAgo(n.created_at)}</div>
-                    </div>
-                  </div>
-                ))}
+                  ? [1,2,3].map(i => <Skeleton key={i} style={{ height: 60, width: "100%", marginBottom: 3 }} />)
+                  : (notifs.recent ?? []).length === 0
+                    ? <p style={{ fontSize: 11, color: "#94A3B8", margin: "8px 0" }}>No notifications yet.</p>
+                    : (notifs.recent ?? []).map((n, i) => {
+                        const iconMap = {
+                          order:   { icon: "🛒", bg: "#EFF6FF", dot: "#3B82F6" },
+                          user:    { icon: "👤", bg: "#ECFDF5", dot: "#10B981" },
+                          product: { icon: "📦", bg: "#F5F3FF", dot: "#8B5CF6" },
+                          contact: { icon: "✉️", bg: "#FFFBEB", dot: "#F59E0B" },
+                        };
+                        const s = iconMap[n.type] ?? { icon: "🔔", bg: "#F1F5F9", dot: "#94A3B8" };
+                        return (
+                          <div key={n.notification_id ?? i}
+                            style={{
+                              display: "flex", gap: 8, alignItems: "flex-start",
+                              padding: "8px",
+                              borderRadius: 10,
+                              background: !n.is_read ? s.bg : "transparent",
+                              transition: "background 0.15s",
+                            }}>
+                            <div style={{
+                              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                              background: !n.is_read ? s.bg : "#F1F5F9",
+                              border: `1.5px solid ${!n.is_read ? s.dot + "33" : "#E2E8F0"}`,
+                              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
+                              marginTop: 1,
+                            }}>
+                              {s.icon}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "#0F172A", lineHeight: 1.3 }}>
+                                  {n.title}
+                                </div>
+                                {!n.is_read && (
+                                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot, flexShrink: 0, marginTop: 4 }} />
+                                )}
+                              </div>
+                              <div style={{
+                                fontSize: 10, color: "#64748B", marginTop: 2,
+                                lineHeight: 1.4,
+                                wordBreak: "break-word",
+                                whiteSpace: "normal",
+                              }}>
+                                {n.message}
+                              </div>
+                              <div style={{ fontSize: 9, color: "#CBD5E1", marginTop: 3 }}>{timeAgo(n.created_at)}</div>
+                            </div>
+                          </div>
+                        );
+                      })
+                }
               </div>
             </Card>
 
