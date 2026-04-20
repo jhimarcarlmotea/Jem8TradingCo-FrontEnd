@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios';
+import { getBlogs } from '../api/blogs';
 
 const BASE = 'http://127.0.0.1:8000';
-
-const api = axios.create({
-  baseURL:         `${BASE}/api`,
-  withCredentials: true,
-  headers:         { Accept: 'application/json' },
-});
 
 /* ─── Category config ─────────────────────────────────────── */
 const CAT_CONFIG = {
@@ -62,6 +57,11 @@ export default function BlogPost() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(null);
   const [activeImg,    setActiveImg]    = useState(0);
+  const [viewerOpen,   setViewerOpen]   = useState(false);
+  const [viewerIndex,  setViewerIndex]  = useState(0);
+
+  const images  = Array.isArray(post?.images) ? post.images : [];
+  const mainImg = images[activeImg] ? resolveImgFromObj(images[activeImg]) : null;
 
   useEffect(() => {
     if (!cfg) navigate('/blog', { replace: true });
@@ -75,15 +75,16 @@ export default function BlogPost() {
     setActiveImg(0);
 
     api.get(`/blogs/${id}`)
-      .then(({ data }) => {
+      .then((res) => {
         if (!mounted) return;
+        const data = res?.data ?? res;
         const p = data?.data ?? data?.blog ?? data;
         setPost(p);
-        return api.get('/blogs');
+        return getBlogs();
       })
-      .then((res) => {
-        if (!mounted || !res) return;
-        const all = Array.isArray(res.data) ? res.data : (res.data?.data ?? res.data?.posts ?? []);
+      .then((rows) => {
+        if (!mounted || !rows) return;
+        const all = Array.isArray(rows) ? rows : [];
 
         // Match by category_name string — no hardcoded IDs
         const targetCatName = SLUG_TO_CAT_NAME[category] ?? '';
@@ -98,12 +99,38 @@ export default function BlogPost() {
         setRelatedPosts(related);
       })
       .catch((err) => {
-        if (mounted) setError(err.response?.data?.message ?? 'Failed to load post.');
+        if (mounted) setError(err?.message || err?.response?.data?.message || 'Failed to load post.');
       })
       .finally(() => { if (mounted) setLoading(false); });
 
     return () => { mounted = false; };
   }, [id, category, cfg]);
+
+  // Viewer keyboard navigation and helpers
+  const closeViewer = () => setViewerOpen(false);
+  const prevImage = () => {
+    const len = images.length;
+    if (len === 0) return;
+    setViewerIndex((idx) => (idx - 1 + len) % len);
+    setActiveImg((idx) => (idx - 1 + len) % len);
+  };
+  const nextImage = () => {
+    const len = images.length;
+    if (len === 0) return;
+    setViewerIndex((idx) => (idx + 1) % len);
+    setActiveImg((idx) => (idx + 1) % len);
+  };
+
+  useEffect(() => {
+    if (!viewerOpen) return undefined;
+    const handler = (e) => {
+      if (e.key === 'Escape') closeViewer();
+      if (e.key === 'ArrowLeft') prevImage();
+      if (e.key === 'ArrowRight') nextImage();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [viewerOpen, images.length]);
 
   if (loading) return <Skeleton />;
 
@@ -122,8 +149,6 @@ export default function BlogPost() {
     );
   }
 
-  const images  = Array.isArray(post.images) ? post.images : [];
-  const mainImg = images[activeImg] ? resolveImgFromObj(images[activeImg]) : null;
   const catName = post.category?.category_name ?? cfg?.name ?? '';
 
   return (
@@ -131,8 +156,13 @@ export default function BlogPost() {
 
       {/* ── Hero Image ── */}
       {mainImg ? (
-        <div className="relative overflow-hidden bg-[#1a2e22]" style={{ height: 100 }}>
-          <img src={mainImg} alt={post.blog_title} className="w-full h-full object-cover opacity-50 blur-sm" />
+            <div className="relative overflow-hidden bg-[#1a2e22]" style={{ height: 100 }}>
+              <img
+                src={mainImg}
+                alt={post.blog_title}
+                className="w-full h-full object-cover opacity-50 blur-sm cursor-pointer"
+                onClick={() => { setViewerIndex(activeImg); setViewerOpen(true); }}
+              />
           <div className="absolute inset-0 bg-gradient-to-t from-[#1a2e22]/80 via-transparent to-transparent" />
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-bold border border-white/30">
@@ -184,14 +214,14 @@ export default function BlogPost() {
         </h1>
 
         {/* Thumbnail strip */}
-        {images.length > 1 && (
+            {images.length > 1 && (
           <div className="flex gap-2 mb-6 flex-wrap">
             {images.map((img, i) => {
               const src = resolveImgFromObj(img);
               return src ? (
                 <button
                   key={img.id ?? i}
-                  onClick={() => setActiveImg(i)}
+                  onClick={() => { setActiveImg(i); setViewerIndex(i); setViewerOpen(true); }}
                   className={`w-16 h-12 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all cursor-pointer p-0
                     ${i === activeImg ? 'border-[#4d7b65]' : 'border-slate-200 hover:border-[#4d7b65]'}`}
                 >
@@ -235,7 +265,7 @@ export default function BlogPost() {
                     src={src}
                     alt={img.alt_text ?? `image-${i}`}
                     className="w-full h-48 object-cover rounded-xl border border-[#e8f0eb] cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => setActiveImg(i)}
+                    onClick={() => { setActiveImg(i); setViewerIndex(i); setViewerOpen(true); }}
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 ) : null;
@@ -255,7 +285,32 @@ export default function BlogPost() {
         </div>
       </div>
 
-      {/* ── Related Posts ── */}
+        {/* ── Image Viewer Modal ── */}
+        {viewerOpen && images.length > 0 && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            onClick={closeViewer}
+          >
+            <div className="relative max-w-[90vw] max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+              <button onClick={closeViewer} className="absolute top-3 right-3 text-white bg-black/40 rounded-full w-9 h-9 flex items-center justify-center text-xl">×</button>
+
+              <button onClick={prevImage} className="absolute left-3 text-white text-3xl px-3 py-2 select-none">‹</button>
+
+              <div className="max-w-full max-h-full flex items-center justify-center">
+                <img
+                  src={resolveImgFromObj(images[viewerIndex])}
+                  alt={post?.blog_title}
+                  className="max-h-[80vh] max-w-[90vw] object-contain rounded"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+
+              <button onClick={nextImage} className="absolute right-3 text-white text-3xl px-3 py-2 select-none">›</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Related Posts ── */}
       {relatedPosts.length > 0 && (
         <section className="bg-white border-t border-[#e8f0eb] py-12">
           <div className="container mx-auto px-4 max-w-5xl">
