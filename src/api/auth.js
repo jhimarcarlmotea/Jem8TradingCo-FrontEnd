@@ -1,4 +1,5 @@
 import api from "./axios";
+import axios from "axios";
 import { toast } from "react-toastify";
 
 // ==============================
@@ -18,6 +19,9 @@ export const me = async () => {
 // ==============================
 export const loginUser = async (credentials) => {
   try {
+    // Ensure Sanctum CSRF cookie is set for SPA session authentication
+    await axios.get("http://127.0.0.1:8000/sanctum/csrf-cookie", { withCredentials: true });
+
     const { data } = await api.post("/login", credentials);
     
     console.log("Full login response:", data);
