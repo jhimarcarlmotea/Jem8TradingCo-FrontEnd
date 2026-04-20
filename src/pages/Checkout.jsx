@@ -97,19 +97,62 @@ export default function Checkout() {
   // ── Selected item IDs passed from Cart ───────────────────────────────────
  const selectedItems   = location.state?.selectedItems ?? [];
 const selectedItemIds = new Set(selectedItems.map((i) => i.id));
+const reorderItems    = location.state?.reorderItems ?? [];
 
   const [items, setItems]             = useState([]);
   const [loadingCart, setLoadingCart] = useState(true);
   const [cartError, setCartError]     = useState(null);
 
   useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        setLoadingCart(true);
-        setCartError(null);
+  const fetchCart = async () => {
+    try {
+      setLoadingCart(true);
+      setCartError(null);
+
+      if (reorderItems.length > 0) {
+        const responses = await Promise.all(
+          reorderItems.map((item) =>
+            axios.post(
+              `${BASE}/cart/add`,
+              { product_id: item.productId, quantity: item.quantity },
+              { withCredentials: true }
+            )
+          )
+        );
+
+        // collect the newly added cart_ids from the response
+        const newCartIds = new Set(
+        responses.map((r) => r.data?.cart?.cart_id).filter(Boolean)
+      );
+
         const res       = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
         const cartItems = res.data.cartItems ?? [];
-        const formatted = cartItems.map((c) => ({
+        const formatted = cartItems
+          .filter((c) => newCartIds.has(c.cart_id))
+          .map((c) => ({
+            id:        c.cart_id,
+            productId: c.product?.product_id,
+            name:      c.product?.product_name || "Unknown product",
+            image:
+              c.product?.primary_image_url ||
+              (c.product?.images?.find((img) => img.is_primary)?.image_path
+                ? `http://127.0.0.1:8000/storage/${c.product.images.find((img) => img.is_primary).image_path}`
+                : "https://placehold.co/80x80"),
+            rawPrice: Number(c.product?.price || 0),
+            price:    `₱${Number(c.product?.price || 0).toLocaleString()}`,
+            qty:      c.quantity,
+            cat:      c.product?.category_id || "Product",
+            status:   c.product?.status ?? "in_stock",
+          }));
+
+        setItems(formatted);
+        setLoadingCart(false);
+        return;
+      }
+
+      const res       = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
+      const cartItems = res.data.cartItems ?? [];
+      const formatted = cartItems.map((c) => ({
           id:        c.cart_id,
           productId: c.product?.product_id,
           name:      c.product?.product_name || "Unknown product",
