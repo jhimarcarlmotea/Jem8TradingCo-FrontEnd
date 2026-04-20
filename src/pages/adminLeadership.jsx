@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import AdminNav from '../components/AdminNav';
-import '../style/adminLeadership.css';
 
 const BASE = 'http://127.0.0.1:8000';
 
@@ -18,8 +17,6 @@ const getInitials = (name) =>
 
 const AVATAR_COLORS = ['#c2c2c2', '#a8d5ba', '#aac4e8', '#f5c6a0', '#d4b3f0', '#f9c0c0'];
 
-// ── Primary key helper — admin_leadership model uses `leadership_id` ──
-// Falls back to `id` in case the API serialises it differently
 const getId = (member) => member?.leadership_id ?? member?.id;
 
 const resolveImg = (member) => {
@@ -28,7 +25,6 @@ const resolveImg = (member) => {
   return p.startsWith('http') ? p : `${BASE}/storage/${p}`;
 };
 
-// ── Shared error parser for Laravel validation responses ──
 const parseError = (err) => {
   const data = err.response?.data;
   if (!data) return 'An unexpected error occurred.';
@@ -38,31 +34,154 @@ const parseError = (err) => {
   return data.message ?? 'An unexpected error occurred.';
 };
 
+const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-lg text-[13px] text-slate-900 bg-white outline-none box-border font-[inherit] placeholder-slate-400 focus:border-blue-500 transition-colors disabled:opacity-50";
+const labelCls = "block text-[11px] font-semibold text-slate-600 mb-1.5 uppercase tracking-wide";
+
+// ─── Overlay ──────────────────────────────────────────────────────────────────
+function Overlay({ children, onClose, narrow }) {
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 bg-slate-900/55 backdrop-blur-[4px] flex items-center justify-center z-[1000] p-3 sm:p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`bg-white w-full rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-h-[94vh] overflow-y-auto ${narrow ? "max-w-[400px]" : "max-w-[500px]"}`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalHeader({ title, subtitle, onClose }) {
+  return (
+    <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-white border-b sm:px-6 sm:py-5 border-slate-100 rounded-t-2xl">
+      <div className="flex-1 min-w-0 pr-3">
+        <h2 className="m-0 text-[15px] sm:text-[17px] font-bold text-slate-900 truncate">{title}</h2>
+        {subtitle && <p className="m-0 mt-0.5 text-xs text-slate-400 truncate">{subtitle}</p>}
+      </div>
+      <button
+        onClick={onClose}
+        className="flex items-center justify-center flex-shrink-0 w-8 h-8 text-lg transition-colors border rounded-lg cursor-pointer border-slate-200 bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+      >×</button>
+    </div>
+  );
+}
+
+// ─── Mobile Member Card ───────────────────────────────────────────────────────
+function MemberCard({ member, idx, onView, onEdit, onDelete, onToggle }) {
+  const imgSrc = resolveImg(member);
+  return (
+    <div className="overflow-hidden bg-white border shadow-sm rounded-xl border-slate-100">
+      <div className="p-3">
+        <div className="flex items-center gap-3 mb-2.5">
+          <div
+            className="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden border rounded-full border-slate-100"
+            style={{ backgroundColor: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length] }}
+          >
+            {imgSrc
+              ? <img src={imgSrc} alt={member.name} className="object-cover w-full h-full" onError={(e) => { e.target.style.display = 'none'; }} />
+              : <span className="text-sm font-bold text-slate-600">{getInitials(member.name)}</span>
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-slate-900 text-[13px] leading-snug truncate">{member.name}</div>
+            <div className="text-xs truncate text-slate-400">{member.position}</div>
+          </div>
+          <button
+            onClick={onToggle}
+            className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 cursor-pointer transition-colors
+              ${member.status
+                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200"
+              }`}
+          >
+            {member.status ? '● Visible' : '○ Hidden'}
+          </button>
+        </div>
+
+        <div className="flex gap-1.5 pt-2.5 border-t border-slate-100">
+          <button onClick={onView}
+            className="flex-1 py-1.5 text-[11px] font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors">
+            👁 View
+          </button>
+          <button onClick={onEdit}
+            className="flex-1 py-1.5 text-[11px] font-semibold border border-blue-200 rounded-lg bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100 transition-colors">
+            ✏️ Edit
+          </button>
+          <button onClick={onDelete}
+            className="flex-1 py-1.5 text-[11px] font-semibold border border-red-200 rounded-lg bg-red-50 text-red-600 cursor-pointer hover:bg-red-100 transition-colors">
+            🗑️ Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Skeletons ────────────────────────────────────────────────────────────────
+function MobileSkeletons() {
+  return Array.from({ length: 4 }).map((_, i) => (
+    <div key={i} className="overflow-hidden bg-white border rounded-xl border-slate-100">
+      <div className="p-3">
+        <div className="flex items-center gap-3 mb-2.5">
+          <div className="flex-shrink-0 w-12 h-12 rounded-full animate-pulse bg-slate-100" />
+          <div className="flex-1 space-y-1.5">
+            <div className="w-32 h-3.5 rounded-md animate-pulse bg-slate-100" />
+            <div className="h-3 rounded-md w-44 animate-pulse bg-slate-100" />
+          </div>
+          <div className="w-16 h-6 rounded-full animate-pulse bg-slate-100" />
+        </div>
+        <div className="flex gap-1.5 pt-2.5 border-t border-slate-100">
+          <div className="flex-1 rounded-lg h-7 animate-pulse bg-slate-100" />
+          <div className="flex-1 rounded-lg h-7 animate-pulse bg-slate-100" />
+          <div className="flex-1 rounded-lg h-7 animate-pulse bg-slate-100" />
+        </div>
+      </div>
+    </div>
+  ));
+}
+
+function DesktopSkeletons() {
+  return Array.from({ length: 5 }).map((_, i) => (
+    <tr key={i} className="border-b border-slate-50">
+      <td className="px-4 py-3.5"><div className="w-6 h-3.5 rounded-md animate-pulse bg-slate-100" /></td>
+      <td className="px-4 py-3.5"><div className="rounded-full w-11 h-11 animate-pulse bg-slate-100" /></td>
+      <td className="px-4 py-3.5"><div className="w-36 h-3.5 rounded-md animate-pulse bg-slate-100" /></td>
+      <td className="px-4 py-3.5"><div className="w-48 h-3.5 rounded-md animate-pulse bg-slate-100" /></td>
+      <td className="px-4 py-3.5"><div className="w-16 h-6 rounded-full animate-pulse bg-slate-100" /></td>
+      <td className="px-4 py-3.5">
+        <div className="flex gap-1.5">
+          <div className="w-8 rounded-md h-7 animate-pulse bg-slate-100" />
+          <div className="w-8 rounded-md h-7 animate-pulse bg-slate-100" />
+          <div className="w-8 rounded-md h-7 animate-pulse bg-slate-100" />
+        </div>
+      </td>
+    </tr>
+  ));
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 const AdminLeadership = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [members, setMembers]         = useState([]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState(null);
 
-  // ── Modal states ──
   const [showModal, setShowModal]       = useState(false);
-  const [editTarget, setEditTarget]     = useState(null); // null = add, object = edit
+  const [editTarget, setEditTarget]     = useState(null);
   const [viewTarget, setViewTarget]     = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  // ── Form state ──
   const emptyForm = { name: '', position: '', status: true };
-  const [form, setForm]         = useState(emptyForm);
-  const [imgFile, setImgFile]   = useState(null);
+  const [form, setForm]             = useState(emptyForm);
+  const [imgFile, setImgFile]       = useState(null);
   const [imgPreview, setImgPreview] = useState(null);
 
-  // ── Submit flags ──
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting]     = useState(false);
 
-  // ─────────────────────────────────
-  // Fetch all
-  // ─────────────────────────────────
   const fetchMembers = async () => {
     setLoading(true);
     setError(null);
@@ -80,9 +199,6 @@ const AdminLeadership = () => {
 
   useEffect(() => { fetchMembers(); }, []);
 
-  // ─────────────────────────────────
-  // Modal helpers
-  // ─────────────────────────────────
   const openAdd = () => {
     setEditTarget(null);
     setForm(emptyForm);
@@ -106,110 +222,69 @@ const AdminLeadership = () => {
     setImgPreview(URL.createObjectURL(file));
   };
 
-  // ─────────────────────────────────
-  // Create
-  // ─────────────────────────────────
   const handleAdd = async () => {
-    if (!form.name.trim() || !form.position.trim()) {
-      alert('Name and Position are required.');
-      return;
-    }
-    if (!imgFile) {
-      alert('A photo is required when adding a member.');
-      return;
-    }
-
+    if (!form.name.trim() || !form.position.trim()) { alert('Name and Position are required.'); return; }
+    if (!imgFile) { alert('A photo is required when adding a member.'); return; }
     setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append('name',           form.name);
-      fd.append('position',       form.position);
-      fd.append('status',         form.status ? 1 : 0);  // boolean → 0/1 for Laravel
+      fd.append('name', form.name);
+      fd.append('position', form.position);
+      fd.append('status', form.status ? 1 : 0);
       fd.append('leadership_img', imgFile);
-
       const res = await axios.post(`${BASE}/api/admin-leadership`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
-
       setMembers((prev) => [...prev, res.data.data]);
       setShowModal(false);
     } catch (err) {
-      console.error('Add failed:', err);
       alert(parseError(err));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ─────────────────────────────────
-  // Update
-  // ─────────────────────────────────
   const handleEdit = async () => {
-    if (!form.name.trim() || !form.position.trim()) {
-      alert('Name and Position are required.');
-      return;
-    }
-
+    if (!form.name.trim() || !form.position.trim()) { alert('Name and Position are required.'); return; }
     setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append('name',     form.name);
+      fd.append('name', form.name);
       fd.append('position', form.position);
-      fd.append('status',   form.status ? 1 : 0);
-      fd.append('_method',  'POST');                       // Laravel method spoofing
+      fd.append('status', form.status ? 1 : 0);
+      fd.append('_method', 'POST');
       if (imgFile) fd.append('leadership_img', imgFile);
-
       const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
-
-      setMembers((prev) =>
-        prev.map((m) => getId(m) === getId(editTarget) ? res.data.data : m)
-      );
+      setMembers((prev) => prev.map((m) => getId(m) === getId(editTarget) ? res.data.data : m));
       setShowModal(false);
     } catch (err) {
-      console.error('Edit failed:', err);
       alert(parseError(err));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ─────────────────────────────────
-  // Toggle visibility (inline PATCH)
-  // ─────────────────────────────────
   const toggleVisible = async (member) => {
     const newStatus = member.status ? 0 : 1;
-
-    // Optimistic update
-    setMembers((prev) =>
-      prev.map((m) => getId(m) === getId(member) ? { ...m, status: newStatus } : m)
-    );
-
+    setMembers((prev) => prev.map((m) => getId(m) === getId(member) ? { ...m, status: newStatus } : m));
     try {
       const fd = new FormData();
-      fd.append('status',  newStatus);
+      fd.append('status', newStatus);
       fd.append('_method', 'PUT');
-
       await axios.post(`${BASE}/api/admin-leadership/${getId(member)}`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
     } catch (err) {
-      console.error('Toggle failed:', err);
-      // Revert on failure
-      setMembers((prev) =>
-        prev.map((m) => getId(m) === getId(member) ? { ...m, status: member.status } : m)
-      );
+      setMembers((prev) => prev.map((m) => getId(m) === getId(member) ? { ...m, status: member.status } : m));
       alert(parseError(err));
     }
   };
 
-  // ─────────────────────────────────
-  // Delete
-  // ─────────────────────────────────
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -218,293 +293,273 @@ const AdminLeadership = () => {
       setMembers((prev) => prev.filter((m) => getId(m) !== getId(deleteTarget)));
       setDeleteTarget(null);
     } catch (err) {
-      console.error('Delete failed:', err);
       alert(parseError(err));
     } finally {
       setDeleting(false);
     }
   };
 
-  // ─────────────────────────────────
-  // Unified save dispatcher
-  // ─────────────────────────────────
-  const saveForm = () => {
-    if (editTarget === null) handleAdd();
-    else handleEdit();
-  };
+  const saveForm = () => editTarget === null ? handleAdd() : handleEdit();
 
-  // ─────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────
   return (
-    <div className="lm-layout">
+    <div className="flex min-h-screen bg-[#F0F7F2] font-sans">
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <div className="lm-body">
+      <main className="flex-1 w-0 min-w-0 pb-10 overflow-x-hidden">
 
-        {/* Mobile top bar */}
-        <div className="lm-topbar">
-          <button className="lm-hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu">☰</button>
-          <div className="lm-topbar__heading">
-            <span className="lm-topbar__icon">🏆</span>
-            <span className="lm-topbar__label">Leadership Management</span>
+        {/* Top Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-4 pb-0 sm:pt-5 sm:px-7">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="text-xl bg-transparent border-none cursor-pointer lg:hidden text-slate-700"
+            >☰</button>
+            <h1 className="m-0 text-[18px] sm:text-xl font-bold text-slate-900">Leadership Management</h1>
           </div>
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 border-none rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors whitespace-nowrap"
+          >
+            + Add Member
+          </button>
         </div>
 
-        <div className="lm-page">
-
-          {/* Desktop page header */}
-          <div className="lm-page-header">
-            <div>
-              <h2 className="lm-page-header__title">Leadership Management</h2>
-              <p className="lm-page-header__sub">Manage leadership, workers and their committee</p>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3.5 px-3 sm:px-7 py-4 sm:py-5">
+          {[
+            { label: "Total Members", value: loading ? "—" : members.length,                                      sub: "All team members" },
+            { label: "Visible",       value: loading ? "—" : members.filter((m) => m.status).length,              sub: "Shown on site"    },
+            { label: "Hidden",        value: loading ? "—" : members.filter((m) => !m.status).length,             sub: "Not displayed"    },
+          ].map((s) => (
+            <div key={s.label} className="px-3 py-3 bg-white border shadow-sm sm:px-4 sm:py-4 rounded-xl border-slate-100">
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 sm:mb-1.5 leading-tight">{s.label}</div>
+              <div className="text-[22px] sm:text-[26px] font-extrabold text-slate-900 leading-none">{s.value}</div>
+              <div className="text-[9px] sm:text-[10px] text-slate-400 mt-1 font-semibold tracking-wide">{s.sub}</div>
             </div>
-            <button className="lm-btn lm-btn--add" onClick={openAdd}>
-              <span className="lm-btn__plus">＋</span> Add Team Member
-            </button>
-          </div>
+          ))}
+        </div>
 
-          {/* Mobile add button */}
-          <div className="lm-mobile-add">
-            <button className="lm-btn lm-btn--add" onClick={openAdd}>
-              <span className="lm-btn__plus">＋</span> Add Team Member
-            </button>
+        {/* Error */}
+        {error && (
+          <div className="mx-3 sm:mx-7 mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-[13px] flex items-center justify-between">
+            <span>⚠️ {error}</span>
+            <button onClick={fetchMembers} className="text-xs text-blue-600 underline bg-transparent border-none cursor-pointer">Retry</button>
           </div>
+        )}
 
-          {/* Error banner */}
-          {error && (
-            <div style={{
-              margin: '0 0 16px', padding: '12px 16px', background: '#FEF2F2',
-              border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
-              <span>⚠️ {error}</span>
-              <button
-                onClick={fetchMembers}
-                style={{ fontSize: '12px', color: '#155DFC', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-              >Retry</button>
+        {/* ── Mobile card grid ── */}
+        {!loading && members.length > 0 && (
+          <div className="block px-3 pb-4 sm:hidden">
+            <div className="grid grid-cols-1 gap-3">
+              {members.map((member, idx) => (
+                <MemberCard
+                  key={getId(member)}
+                  member={member}
+                  idx={idx}
+                  onView={() => setViewTarget(member)}
+                  onEdit={() => openEdit(member)}
+                  onDelete={() => setDeleteTarget(member)}
+                  onToggle={() => toggleVisible(member)}
+                />
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ── Table ── */}
-          <div className="lm-table-wrap">
-            <table className="lm-table">
-              <thead>
-                <tr>
-                  <th className="lm-th lm-th--num">#</th>
-                  <th className="lm-th lm-th--img">Image</th>
-                  <th className="lm-th lm-th--name">Full Name</th>
-                  <th className="lm-th lm-th--pos">Position</th>
-                  <th className="lm-th lm-th--vis">Visible</th>
-                  <th className="lm-th lm-th--act">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i} className="lm-row">
-                      {[40, 56, 180, 220, 80, 120].map((w, j) => (
-                        <td key={j} className="lm-td" style={{ padding: '14px 16px' }}>
-                          <div style={{
-                            height: j === 1 ? '44px' : '14px',
-                            width: j === 1 ? '44px' : `${w}px`,
-                            borderRadius: j === 1 ? '50%' : '6px',
-                            background: '#F1F5F9',
-                            backgroundImage: 'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)',
-                            backgroundSize: '200% 100%',
-                            animation: 'lm-shimmer 1.4s infinite',
-                          }} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                ) : members.length === 0 ? (
+        {/* Mobile skeleton */}
+        {loading && (
+          <div className="block px-3 pb-4 space-y-3 sm:hidden">
+            <MobileSkeletons />
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && members.length === 0 && !error && (
+          <div className="mx-3 sm:mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="py-12 text-sm text-center text-slate-400">No members found.</div>
+          </div>
+        )}
+
+        {/* ── Desktop table ── */}
+        {!loading && members.length > 0 && (
+          <div className="hidden sm:block mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[13px]">
+                <thead className="border-b bg-slate-50 border-slate-100">
                   <tr>
-                    <td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>
-                      No members found.
-                    </td>
+                    {["#", "Image", "Full Name", "Position", "Visible", "Action"].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ) : (
-                  members.map((m, idx) => {
-                    const imgSrc = resolveImg(m);
+                </thead>
+                <tbody>
+                  {members.map((member, idx) => {
+                    const imgSrc = resolveImg(member);
                     return (
-                      <tr key={getId(m)} className="lm-row">
-                        <td className="lm-td lm-td--num">{idx + 1}</td>
-                        <td className="lm-td lm-td--img">
+                      <tr key={getId(member)} className="border-b border-slate-50 last:border-b-0 hover:[&_td]:bg-[#F8FAFF] transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs align-middle text-slate-400">{idx + 1}</td>
+                        <td className="px-4 py-3 align-middle">
                           <div
-                            className="lm-avatar"
+                            className="flex items-center justify-center flex-shrink-0 overflow-hidden border rounded-full w-11 h-11 border-slate-100"
                             style={{ backgroundColor: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length] }}
                           >
                             {imgSrc
-                              ? <img src={imgSrc} alt={m.name} onError={(e) => { e.target.style.display = 'none'; }} />
-                              : <span>{getInitials(m.name)}</span>
+                              ? <img src={imgSrc} alt={member.name} className="object-cover w-full h-full" onError={(e) => { e.target.style.display = 'none'; }} />
+                              : <span className="text-xs font-bold text-slate-600">{getInitials(member.name)}</span>
                             }
                           </div>
                         </td>
-                        <td className="lm-td lm-td--name">{m.name}</td>
-                        <td className="lm-td lm-td--pos">{m.position}</td>
-                        <td className="lm-td lm-td--vis">
+                        <td className="px-4 py-3 font-semibold align-middle text-slate-900">{member.name}</td>
+                        <td className="px-4 py-3 align-middle text-slate-500">{member.position}</td>
+                        <td className="px-4 py-3 align-middle">
                           <button
-                            className={`lm-badge ${m.status ? 'lm-badge--visible' : 'lm-badge--hidden'}`}
-                            onClick={() => toggleVisible(m)}
-                            title="Click to toggle visibility"
+                            onClick={() => toggleVisible(member)}
+                            className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border cursor-pointer transition-colors whitespace-nowrap
+                              ${member.status
+                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200"
+                              }`}
                           >
-                            {m.status ? '● Visible' : '○ Hidden'}
+                            {member.status ? '● Visible' : '○ Hidden'}
                           </button>
                         </td>
-                        <td className="lm-td lm-td--act">
-                          <div className="lm-actions">
-                            <button
-                              className="lm-action-btn lm-action-btn--view"
-                              onClick={() => setViewTarget(m)}
-                              aria-label="View details"
-                              title="View"
-                            >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                              </svg>
-                            </button>
-                            <button
-                              className="lm-action-btn lm-action-btn--edit"
-                              onClick={() => openEdit(m)}
-                              aria-label="Edit member"
-                              title="Edit"
-                            >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                              </svg>
-                            </button>
-                            <button
-                              className="lm-action-btn lm-action-btn--del"
-                              onClick={() => setDeleteTarget(m)}
-                              aria-label="Delete member"
-                              title="Delete"
-                            >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                              </svg>
-                            </button>
+                        <td className="px-4 py-3 align-middle">
+                          <div className="flex gap-1.5">
+                            <button onClick={() => setViewTarget(member)} className="px-3 py-1 text-xs font-semibold transition-colors border rounded-md cursor-pointer border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100">View</button>
+                            <button onClick={() => openEdit(member)} className="px-3 py-1 text-xs font-semibold text-blue-700 transition-colors border border-blue-200 rounded-md cursor-pointer bg-blue-50 hover:bg-blue-100">Edit</button>
+                            <button onClick={() => setDeleteTarget(member)} className="px-3 py-1 text-xs font-semibold text-red-600 transition-colors border border-red-200 rounded-md cursor-pointer bg-red-50 hover:bg-red-100">Delete</button>
                           </div>
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Member count */}
-          {!loading && members.length > 0 && (
-            <div style={{ padding: '10px 0 0', fontSize: '12px', color: '#94A3B8' }}>
-              {members.length} member{members.length !== 1 ? 's' : ''} total
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
+          </div>
+        )}
 
-        </div>
-      </div>
+        {/* Desktop skeleton */}
+        {loading && (
+          <div className="hidden sm:block mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[13px]">
+                <thead className="border-b bg-slate-50 border-slate-100">
+                  <tr>
+                    {["#", "Image", "Full Name", "Position", "Visible", "Action"].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody><DesktopSkeletons /></tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-      {/* ══════════════════════════════════════
-          ADD / EDIT MODAL
-      ══════════════════════════════════════ */}
+        {/* Count footer */}
+        {!loading && members.length > 0 && (
+          <div className="px-3 sm:px-7 pt-2.5 text-xs text-slate-400">
+            {members.length} member{members.length !== 1 ? 's' : ''} total
+          </div>
+        )}
+
+      </main>
+
+      {/* ── Add / Edit Modal ── */}
       {showModal && (
-        <div className="lm-overlay" onClick={() => setShowModal(false)}>
-          <div className="lm-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="lm-modal__title">
-              {editTarget === null ? 'Add Team Member' : 'Edit Team Member'}
-            </h3>
+        <Overlay onClose={() => setShowModal(false)}>
+          <ModalHeader
+            title={editTarget === null ? 'Add Team Member' : 'Edit Team Member'}
+            subtitle={editTarget ? editTarget.name : undefined}
+            onClose={() => setShowModal(false)}
+          />
+          <div className="px-4 py-5 sm:px-6">
 
             {/* Image upload */}
-            <label className="lm-modal__label">
-              Photo {editTarget === null && <span style={{ color: '#DC2626' }}>*</span>}
+            <label className={labelCls}>
+              Photo {editTarget === null && <span className="text-red-500">*</span>}
             </label>
             <label
               htmlFor="lm-img-upload"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                border: '2px dashed #CBD5E1', borderRadius: '10px',
-                padding: '12px 16px', cursor: 'pointer', background: '#F8FAFC',
-                marginBottom: '16px', transition: 'border-color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#155DFC')}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#CBD5E1')}
+              className="flex items-center gap-3 border-2 border-dashed border-slate-300 rounded-xl p-3.5 cursor-pointer bg-slate-50 hover:border-blue-500 transition-colors mb-3"
             >
               {imgPreview ? (
-                <img
-                  src={imgPreview}
-                  alt="preview"
-                  style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #E2E8F0', flexShrink: 0 }}
-                />
+                <img src={imgPreview} alt="preview" className="flex-shrink-0 object-cover border-2 rounded-full w-14 h-14 border-slate-200" />
               ) : (
-                <div style={{
-                  width: '56px', height: '56px', borderRadius: '50%', background: '#E2E8F0',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '22px', flexShrink: 0,
-                }}>🧑</div>
+                <div className="flex items-center justify-center flex-shrink-0 text-2xl rounded-full w-14 h-14 bg-slate-200">🧑</div>
               )}
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+                <div className="text-[13px] font-semibold text-slate-700">
                   {imgPreview ? 'Click to change photo' : 'Click to upload photo'}
                 </div>
-                <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>JPEG, PNG — max 2 MB</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">JPEG, PNG — max 2 MB</div>
               </div>
               <input
                 id="lm-img-upload"
                 type="file"
                 accept="image/jpeg,image/png,image/jpg"
                 onChange={handleImgChange}
-                style={{ display: 'none' }}
+                className="hidden"
               />
             </label>
             {imgPreview && (
               <button
                 type="button"
                 onClick={() => { setImgPreview(null); setImgFile(null); }}
-                style={{ fontSize: '12px', color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '12px', padding: 0 }}
+                className="text-[12px] text-red-600 bg-transparent border-none cursor-pointer mb-4 p-0 hover:text-red-700"
               >
                 ✕ Remove photo
               </button>
             )}
 
-            <label className="lm-modal__label">Full Name</label>
-            <input
-              className="lm-modal__input"
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder="e.g. Ms. Shella R. Acibar"
-            />
+            <div className="mb-4">
+              <label className={labelCls}>Full Name</label>
+              <input
+                className={inputCls}
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g. Ms. Shella R. Acibar"
+              />
+            </div>
 
-            <label className="lm-modal__label">Position</label>
-            <input
-              className="lm-modal__input"
-              value={form.position}
-              onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))}
-              placeholder="e.g. Co-Owner of Jem 8 Circle"
-            />
+            <div className="mb-4">
+              <label className={labelCls}>Position</label>
+              <input
+                className={inputCls}
+                value={form.position}
+                onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))}
+                placeholder="e.g. Co-Owner of Jem 8 Circle"
+              />
+            </div>
 
-            <div className="lm-modal__toggle-row">
-              <span className="lm-modal__label" style={{ margin: 0 }}>Visible on site</span>
+            <div className="flex items-center justify-between px-1 mb-6">
+              <span className={labelCls} style={{ margin: 0 }}>Visible on site</span>
               <button
                 type="button"
-                className={`lm-toggle ${form.status ? 'lm-toggle--on' : ''}`}
                 onClick={() => setForm((p) => ({ ...p, status: !p.status }))}
+                className={`relative w-11 h-6 rounded-full border-none cursor-pointer transition-colors flex-shrink-0 ${form.status ? 'bg-blue-600' : 'bg-slate-300'}`}
               >
-                <span className="lm-toggle__knob" />
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.status ? 'left-5' : 'left-0.5'}`}
+                />
               </button>
             </div>
 
-            <div className="lm-modal__actions">
+            <div className="flex gap-2.5">
               <button
-                className="lm-btn lm-btn--outline"
                 onClick={() => setShowModal(false)}
                 disabled={submitting}
+                className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                className="lm-btn lm-btn--add"
                 onClick={saveForm}
                 disabled={submitting}
+                className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${submitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 cursor-pointer hover:bg-blue-700'}`}
               >
                 {submitting
                   ? (editTarget === null ? 'Adding…' : 'Saving…')
@@ -513,82 +568,82 @@ const AdminLeadership = () => {
               </button>
             </div>
           </div>
-        </div>
+        </Overlay>
       )}
 
-      {/* ══════════════════════════════════════
-          VIEW MODAL
-      ══════════════════════════════════════ */}
+      {/* ── View Modal ── */}
       {viewTarget && (() => {
         const imgSrc = resolveImg(viewTarget);
         return (
-          <div className="lm-overlay" onClick={() => setViewTarget(null)}>
-            <div className="lm-modal" onClick={(e) => e.stopPropagation()}>
-              <h3 className="lm-modal__title">Member Details</h3>
-              <div className="lm-modal__avatar-wrap">
-                <div
-                  className="lm-avatar lm-avatar--lg"
-                  style={{ backgroundColor: imgSrc ? 'transparent' : '#a8d5ba' }}
-                >
-                  {imgSrc
-                    ? <img src={imgSrc} alt={viewTarget.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                    : <span>{getInitials(viewTarget.name)}</span>
-                  }
-                </div>
-              </div>
-              <p className="lm-modal__detail-name">{viewTarget.name}</p>
-              <p className="lm-modal__detail-pos">{viewTarget.position}</p>
-              <p
-                className={`lm-badge ${viewTarget.status ? 'lm-badge--visible' : 'lm-badge--hidden'}`}
-                style={{ display: 'inline-block', margin: '8px auto 0' }}
+          <Overlay onClose={() => setViewTarget(null)} narrow>
+            <ModalHeader title="Member Details" onClose={() => setViewTarget(null)} />
+            <div className="px-4 py-6 text-center sm:px-6">
+              <div
+                className="flex items-center justify-center w-20 h-20 mx-auto mb-4 overflow-hidden border-2 rounded-full border-slate-100"
+                style={{ backgroundColor: imgSrc ? 'transparent' : '#a8d5ba' }}
               >
+                {imgSrc
+                  ? <img src={imgSrc} alt={viewTarget.name} className="object-cover w-full h-full" onError={(e) => { e.target.style.display = 'none'; }} />
+                  : <span className="text-xl font-bold text-slate-600">{getInitials(viewTarget.name)}</span>
+                }
+              </div>
+              <div className="font-bold text-slate-900 text-[16px] mb-1">{viewTarget.name}</div>
+              <div className="text-slate-400 text-[13px] mb-4">{viewTarget.position}</div>
+              <span className={`inline-flex text-[11px] font-semibold px-3 py-1 rounded-full border
+                ${viewTarget.status
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-slate-100 text-slate-500 border-slate-300"
+                }`}>
                 {viewTarget.status ? '● Visible' : '○ Hidden'}
-              </p>
-              <div className="lm-modal__actions" style={{ marginTop: '20px' }}>
-                <button className="lm-btn lm-btn--outline" onClick={() => setViewTarget(null)}>Close</button>
-                <button className="lm-btn lm-btn--add" onClick={() => { openEdit(viewTarget); setViewTarget(null); }}>Edit</button>
+              </span>
+              <div className="flex gap-2.5 mt-6">
+                <button
+                  onClick={() => setViewTarget(null)}
+                  className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => { openEdit(viewTarget); setViewTarget(null); }}
+                  className="flex-1 py-2.5 border-none rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors"
+                >
+                  ✏️ Edit
+                </button>
               </div>
             </div>
-          </div>
+          </Overlay>
         );
       })()}
 
-      {/* ══════════════════════════════════════
-          DELETE CONFIRM MODAL
-      ══════════════════════════════════════ */}
+      {/* ── Delete Modal ── */}
       {deleteTarget && (
-        <div className="lm-overlay" onClick={() => setDeleteTarget(null)}>
-          <div className="lm-modal lm-modal--sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="lm-modal__title">Delete Member?</h3>
-            <p className="lm-modal__body-text">
-              Are you sure you want to remove <strong>{deleteTarget.name}</strong>? This action cannot be undone.
+        <Overlay onClose={() => setDeleteTarget(null)} narrow>
+          <div className="px-6 py-8 text-center sm:px-7">
+            <div className="mb-3 text-5xl">🗑️</div>
+            <h3 className="m-0 mb-2 text-[18px] font-bold text-slate-900">Delete Member?</h3>
+            <p className="m-0 mb-1.5 text-sm text-slate-500">
+              "<strong className="text-slate-700">{deleteTarget.name}</strong>"
             </p>
-            <div className="lm-modal__actions">
+            <p className="m-0 mb-6 text-[13px] text-slate-400">This action cannot be undone.</p>
+            <div className="flex gap-2.5">
               <button
-                className="lm-btn lm-btn--outline"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
+                className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                className="lm-btn lm-btn--danger"
                 onClick={confirmDelete}
                 disabled={deleting}
+                className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${deleting ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 cursor-pointer hover:bg-red-700'}`}
               >
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>
-        </div>
+        </Overlay>
       )}
-
-      <style>{`
-        @keyframes lm-shimmer {
-          0%   { background-position: -200% 0 }
-          100% { background-position:  200% 0 }
-        }
-      `}</style>
     </div>
   );
 };

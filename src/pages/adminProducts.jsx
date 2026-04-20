@@ -6,7 +6,6 @@ import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs";
 const BASE = "http://127.0.0.1:8000";
 const ITEMS_PER_PAGE = 20;
 
-// ── Color options (enum) ──
 const COLOR_OPTIONS = [
   "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink",
   "Black", "White", "Gray", "Brown", "Beige", "Maroon", "Navy",
@@ -44,7 +43,7 @@ const splitColors = (raw) => {
 const Overlay = ({ children, onClose, wide, extraWide }) => (
   <div
     onClick={onClose}
-    className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center z-[1000] p-4"
+    className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center z-[1000] p-3 sm:p-4"
   >
     <div
       onClick={e => e.stopPropagation()}
@@ -56,14 +55,14 @@ const Overlay = ({ children, onClose, wide, extraWide }) => (
 );
 
 const ModalHeader = ({ title, subtitle, onClose }) => (
-  <div className="sticky top-0 z-10 flex items-center justify-between px-6 pt-5 pb-4 bg-white border-b border-slate-100 rounded-t-2xl">
-    <div>
-      <h2 className="m-0 text-[17px] font-bold text-slate-900">{title}</h2>
-      {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+  <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-4 pb-3 bg-white border-b sm:px-6 sm:pt-5 sm:pb-4 border-slate-100 rounded-t-2xl">
+    <div className="flex-1 min-w-0 pr-3">
+      <h2 className="m-0 text-[15px] sm:text-[17px] font-bold text-slate-900 truncate">{title}</h2>
+      {subtitle && <p className="mt-0.5 text-xs text-slate-400 truncate">{subtitle}</p>}
     </div>
     <button
       onClick={onClose}
-      className="flex items-center justify-center w-8 h-8 text-lg leading-none transition-colors border rounded-lg cursor-pointer border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+      className="flex items-center justify-center flex-shrink-0 w-8 h-8 text-lg leading-none transition-colors border rounded-lg cursor-pointer border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
     >
       ×
     </button>
@@ -77,7 +76,7 @@ const ImageUploadZone = ({ id, onchange, previews, onRemove, label }) => (
     </label>
     <label
       htmlFor={id}
-      className="block border-2 border-dashed border-slate-300 rounded-xl p-[18px] text-center cursor-pointer bg-slate-50 hover:border-blue-600 transition-colors mb-0"
+      className="block p-4 mb-0 text-center transition-colors border-2 border-dashed cursor-pointer border-slate-300 rounded-xl bg-slate-50 hover:border-blue-600"
     >
       <div className="mb-1 text-2xl">🖼️</div>
       <div className="text-[13px] font-semibold text-gray-700">Click to upload images</div>
@@ -85,7 +84,7 @@ const ImageUploadZone = ({ id, onchange, previews, onRemove, label }) => (
       <input id={id} type="file" multiple accept="image/*" onChange={onchange} className="hidden" />
     </label>
     {previews.length > 0 && (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 mt-2.5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2 mt-2.5">
         {previews.map((src, i) => (
           <div
             key={i}
@@ -139,13 +138,13 @@ const CategorySelect = ({ name, value, onChange, disabled, categories }) => (
   </div>
 );
 
-const StatusToggle = ({ value, onChange, name }) => (
-  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-3 mb-5">
+const StatusToggle = ({ value, onChange }) => (
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-3 mb-5">
     <div>
       <div className="text-[13px] font-semibold text-gray-700">Availability Status</div>
       <div className="text-[11px] text-slate-400">Set whether this product is In Stock or Pre-Order</div>
     </div>
-    <div className="flex gap-2">
+    <div className="flex flex-shrink-0 gap-2">
       <button
         type="button"
         onClick={() => onChange("in_stock")}
@@ -176,7 +175,7 @@ const SaleToggle = ({ checked, onChange, name }) => (
       <div className="text-[13px] font-semibold text-gray-700">Mark as On Sale</div>
       <div className="text-[11px] text-slate-400">Show a sale badge on this product</div>
     </div>
-    <label className="relative inline-block w-10 h-[22px] cursor-pointer">
+    <label className="relative inline-block w-10 h-[22px] cursor-pointer flex-shrink-0">
       <input type="checkbox" name={name} checked={checked} onChange={onChange} className="absolute w-0 h-0 opacity-0" />
       <div className={`absolute inset-0 rounded-[11px] transition-colors duration-200 ${checked ? "bg-blue-600" : "bg-slate-300"}`} />
       <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-all duration-200 shadow ${checked ? "left-[21px]" : "left-[3px]"}`} />
@@ -194,23 +193,6 @@ const ColorDot = ({ color, size = "w-3 h-3" }) => {
     />
   );
 };
-
-const ColorSelect = ({ value, onChange, name, className = "" }) => (
-  <div className="relative">
-    <select
-      name={name}
-      value={value ?? ""}
-      onChange={onChange}
-      className={`w-full px-[11px] py-[9px] border border-slate-200 rounded-lg text-[13px] outline-none appearance-none pr-8 bg-white cursor-pointer text-slate-900 ${className}`}
-    >
-      <option value="">— No Color —</option>
-      {COLOR_OPTIONS.map(c => (
-        <option key={c} value={c}>{c}</option>
-      ))}
-    </select>
-    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[11px]">▾</div>
-  </div>
-);
 
 // ────────────────────────────────────────────────────────────
 // Color Variants Editor
@@ -259,10 +241,10 @@ const ColorVariantsEditor = ({ variants, onChange }) => {
               <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[9px]">▾</div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">Stocks:</span>
+              <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap hidden sm:inline">Stocks:</span>
               <input type="number" min="0" value={v.stocks}
                 onChange={e => updateVariant(i, "stocks", parseInt(e.target.value) || 0)}
-                className="w-20 px-2 py-[7px] border border-slate-200 rounded-lg text-[12px] text-slate-900 bg-white outline-none text-center focus:border-blue-400 transition-colors" />
+                className="w-16 sm:w-20 px-2 py-[7px] border border-slate-200 rounded-lg text-[12px] text-slate-900 bg-white outline-none text-center focus:border-blue-400 transition-colors" />
             </div>
             <button type="button" onClick={() => removeVariant(i)}
               className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 cursor-pointer hover:bg-red-100 transition-colors text-[13px] shrink-0">
@@ -284,7 +266,7 @@ const ColorVariantsEditor = ({ variants, onChange }) => {
 // Export Modal
 // ────────────────────────────────────────────────────────────
 const ExportModal = ({ onClose, products, categories }) => {
-  const [format, setFormat] = useState(null); // null | "pdf" | "excel"
+  const [format, setFormat] = useState(null);
   const [exporting, setExporting] = useState(false);
 
   const resolveCat = (raw, fallback) =>
@@ -305,8 +287,8 @@ const ExportModal = ({ onClose, products, categories }) => {
       "Unit":         p.unit || "—",
       "Status":       getStatus(p.status),
       "On Sale":      p.isSale == 1 ? "Yes" : "No",
-"Price (PHP)":   parseFloat(p.price ?? 0).toFixed(2),
-"Acq. Price (PHP)": parseFloat(p.acquired_price ?? 0).toFixed(2),
+      "Price (PHP)":  parseFloat(p.price ?? 0).toFixed(2),
+      "Acq. Price (PHP)": parseFloat(p.acquired_price ?? 0).toFixed(2),
     }));
 
   const exportExcel = () => {
@@ -314,14 +296,11 @@ const ExportModal = ({ onClose, products, categories }) => {
     try {
       const rows = buildRows();
       const ws = XLSX.utils.json_to_sheet(rows);
-
-      // Column widths
       ws["!cols"] = [
         { wch: 6 }, { wch: 36 }, { wch: 20 }, { wch: 12 },
         { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 },
         { wch: 14 }, { wch: 16 },
       ];
-
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Products");
       XLSX.writeFile(wb, `products_export_${Date.now()}.xlsx`);
@@ -337,7 +316,6 @@ const ExportModal = ({ onClose, products, categories }) => {
   const exportPDF = async () => {
     setExporting(true);
     try {
-      // Dynamically load jsPDF + autoTable from CDN
       if (!window.jspdf) {
         await new Promise((res, rej) => {
           const s = document.createElement("script");
@@ -354,97 +332,58 @@ const ExportModal = ({ onClose, products, categories }) => {
           document.head.appendChild(s);
         });
       }
-
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-
-      // Header
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 41, 59);
       doc.text("List of Products", 14, 16);
-
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 116, 139);
       doc.text(`Exported: ${new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}`, 14, 22);
       doc.text(`Total: ${products.length} product(s)`, 14, 27);
-
       const rows = buildRows();
       const columns = Object.keys(rows[0] || {});
-
       doc.autoTable({
         startY: 32,
         head: [columns],
         body: rows.map(r => columns.map(c => r[c])),
-        styles: {
-          fontSize: 8,
-          cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
-          lineColor: [226, 232, 240],
-          lineWidth: 0.3,
-          font: "helvetica",
-          textColor: [30, 41, 59],
+        styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, lineColor: [226, 232, 240], lineWidth: 0.3, font: "helvetica", textColor: [30, 41, 59] },
+        headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          0: { cellWidth: 14, halign: "center" },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 38 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 15 },
+          6: { cellWidth: 22 },
+          7: { cellWidth: 16, halign: "center" },
+          8: { cellWidth: 30, halign: "right" },
+          9: { cellWidth: 30, halign: "right" },
         },
-        headStyles: {
-          fillColor: [37, 99, 235],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 8,
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252],
-        },
-columnStyles: {
-  0: { cellWidth: 14,  halign: "center" },  // #        →  8
-  1: { cellWidth: 70 },                     // Name     → 70
-  2: { cellWidth: 38 },                     // Category → 38
-  3: { cellWidth: 20 },                     // Color    → 20
-  4: { cellWidth: 20 },                     // Size     → 20
-  5: { cellWidth: 15 },                     // Unit     → 15
-  6: { cellWidth: 22 },                     // Status   → 22
-  7: { cellWidth: 16, halign: "center" },  // On Sale  → 16
-  8: { cellWidth: 30, halign: "right" },   // Price    → 30
-  9: { cellWidth: 30, halign: "right" },   // Acq.     → 30
-  // total: 8+70+38+20+20+15+22+16+30+30 = 269 ✓
-},
         didParseCell: (data) => {
-          // Color-code Status column
           if (data.section === "body" && data.column.index === 6) {
-            if (data.cell.raw === "In Stock") {
-              data.cell.styles.textColor = [5, 150, 105];
-              data.cell.styles.fontStyle = "bold";
-            } else if (data.cell.raw === "Pre-Order") {
-              data.cell.styles.textColor = [217, 119, 6];
-              data.cell.styles.fontStyle = "bold";
-            }
+            if (data.cell.raw === "In Stock") { data.cell.styles.textColor = [5, 150, 105]; data.cell.styles.fontStyle = "bold"; }
+            else if (data.cell.raw === "Pre-Order") { data.cell.styles.textColor = [217, 119, 6]; data.cell.styles.fontStyle = "bold"; }
           }
-          // Color-code On Sale column
-          if (data.section === "body" && data.column.index === 7) {
-            if (data.cell.raw === "Yes") {
-              data.cell.styles.textColor = [180, 83, 9];
-              data.cell.styles.fontStyle = "bold";
-            }
+          if (data.section === "body" && data.column.index === 7 && data.cell.raw === "Yes") {
+            data.cell.styles.textColor = [180, 83, 9]; data.cell.styles.fontStyle = "bold";
           }
         },
         margin: { left: 14, right: 14 },
         tableLineColor: [203, 213, 225],
         tableLineWidth: 0.3,
       });
-
-      // Page numbers
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
-        doc.text(
-          `Page ${i} of ${pageCount}`,
-          doc.internal.pageSize.getWidth() - 14,
-          doc.internal.pageSize.getHeight() - 8,
-          { align: "right" }
-        );
+        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 8, { align: "right" });
       }
-
       doc.save(`products_export_${Date.now()}.pdf`);
     } catch (err) {
       console.error(err);
@@ -462,112 +401,50 @@ columnStyles: {
 
   return (
     <Overlay onClose={onClose}>
-      <ModalHeader
-        title="Export Products"
-        subtitle={`${products.length} product(s) will be exported`}
-        onClose={onClose}
-      />
-      <div className="px-6 pt-5 pb-6">
-
-        <p className="text-[13px] text-slate-500 mb-4">
-          Choose a format to export your current product list:
-        </p>
-
-        {/* Format picker */}
+      <ModalHeader title="Export Products" subtitle={`${products.length} product(s) will be exported`} onClose={onClose} />
+      <div className="px-4 pt-5 pb-6 sm:px-6">
+        <p className="text-[13px] text-slate-500 mb-4">Choose a format to export your current product list:</p>
         <div className="grid grid-cols-2 gap-3 mb-6">
-          {/* Excel */}
-          <button
-            type="button"
-            onClick={() => setFormat("excel")}
-            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all text-left
-              ${format === "excel"
-                ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                : "border-slate-200 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/40"}`}
-          >
-            <div className="text-4xl">📊</div>
+          <button type="button" onClick={() => setFormat("excel")}
+            className={`flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-5 rounded-2xl border-2 cursor-pointer transition-all text-left
+              ${format === "excel" ? "border-emerald-500 bg-emerald-50 shadow-sm" : "border-slate-200 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/40"}`}>
+            <div className="text-3xl sm:text-4xl">📊</div>
             <div>
-              <div className={`text-[14px] font-bold mb-0.5 ${format === "excel" ? "text-emerald-700" : "text-slate-800"}`}>
-                Excel (.xlsx)
-              </div>
-              <div className="text-[11px] text-slate-400 leading-relaxed">
-                Spreadsheet format. Best for editing, filtering, and further data work.
-              </div>
+              <div className={`text-[13px] sm:text-[14px] font-bold mb-0.5 ${format === "excel" ? "text-emerald-700" : "text-slate-800"}`}>Excel (.xlsx)</div>
+              <div className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed hidden sm:block">Spreadsheet format. Best for editing, filtering, and further data work.</div>
             </div>
-            {format === "excel" && (
-              <div className="self-start mt-auto px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
-                ✓ Selected
-              </div>
-            )}
+            {format === "excel" && <div className="self-start mt-auto px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">✓ Selected</div>}
           </button>
-
-          {/* PDF */}
-          <button
-            type="button"
-            onClick={() => setFormat("pdf")}
-            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all text-left
-              ${format === "pdf"
-                ? "border-blue-500 bg-blue-50 shadow-sm"
-                : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"}`}
-          >
-            <div className="text-4xl">📄</div>
+          <button type="button" onClick={() => setFormat("pdf")}
+            className={`flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-5 rounded-2xl border-2 cursor-pointer transition-all text-left
+              ${format === "pdf" ? "border-blue-500 bg-blue-50 shadow-sm" : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"}`}>
+            <div className="text-3xl sm:text-4xl">📄</div>
             <div>
-              <div className={`text-[14px] font-bold mb-0.5 ${format === "pdf" ? "text-blue-700" : "text-slate-800"}`}>
-                PDF (.pdf)
-              </div>
-              <div className="text-[11px] text-slate-400 leading-relaxed">
-                Printable grid layout with all product details. Great for reports and sharing.
-              </div>
+              <div className={`text-[13px] sm:text-[14px] font-bold mb-0.5 ${format === "pdf" ? "text-blue-700" : "text-slate-800"}`}>PDF (.pdf)</div>
+              <div className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed hidden sm:block">Printable grid layout with all product details. Great for reports and sharing.</div>
             </div>
-            {format === "pdf" && (
-              <div className="self-start mt-auto px-2 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold">
-                ✓ Selected
-              </div>
-            )}
+            {format === "pdf" && <div className="self-start mt-auto px-2 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold">✓ Selected</div>}
           </button>
         </div>
-
-        {/* Preview of columns */}
         {format && (
           <div className="mb-5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
-              Columns included in export:
-            </div>
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Columns included in export:</div>
             <div className="flex flex-wrap gap-1.5">
-{["#", "Product Name", "Category", "Color", "Size", "Unit", "Status", "On Sale", "Price (PHP)", "Acq. Price (PHP)"].map(col => (
-                <span key={col} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] text-slate-600 font-medium">
-                  {col}
-                </span>
+              {["#", "Product Name", "Category", "Color", "Size", "Unit", "Status", "On Sale", "Price (PHP)", "Acq. Price (PHP)"].map(col => (
+                <span key={col} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] text-slate-600 font-medium">{col}</span>
               ))}
             </div>
           </div>
         )}
-
         <div className="flex gap-2.5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-gray-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors"
-          >
+          <button type="button" onClick={onClose}
+            className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-gray-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={!format || exporting}
+          <button type="button" onClick={handleExport} disabled={!format || exporting}
             className={`flex-[2] py-2.5 border-none rounded-lg text-white text-[13px] font-bold transition-colors
-              ${!format || exporting
-                ? "bg-slate-300 cursor-not-allowed"
-                : format === "pdf"
-                  ? "bg-blue-600 cursor-pointer hover:bg-blue-700"
-                  : "bg-emerald-600 cursor-pointer hover:bg-emerald-700"}`}
-          >
-            {exporting
-              ? "Exporting…"
-              : !format
-                ? "Select a format first"
-                : format === "pdf"
-                  ? "⬇ Download PDF"
-                  : "⬇ Download Excel"}
+              ${!format || exporting ? "bg-slate-300 cursor-not-allowed" : format === "pdf" ? "bg-blue-600 cursor-pointer hover:bg-blue-700" : "bg-emerald-600 cursor-pointer hover:bg-emerald-700"}`}>
+            {exporting ? "Exporting…" : !format ? "Select a format first" : format === "pdf" ? "⬇ Download PDF" : "⬇ Download Excel"}
           </button>
         </div>
       </div>
@@ -621,16 +498,10 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
     if (headerIdx === -1) headerIdx = 0;
 
     const headers = json[headerIdx].map(h => String(h).toLowerCase().trim());
-
     const colIdx = (...names) => {
       for (const n of names) {
         const idx = headers.findIndex(h => {
-          if (n === "size") {
-            return h === "size" || (
-              h.includes("size") && !h.includes("size_color") &&
-              !h.includes("size/color") && !h.includes("size color")
-            );
-          }
+          if (n === "size") return h === "size" || (h.includes("size") && !h.includes("size_color") && !h.includes("size/color") && !h.includes("size color"));
           return h.includes(n);
         });
         if (idx !== -1) return idx;
@@ -701,7 +572,6 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
         rows.push({ _key: `row_${keyIdx++}`, product_name: name, size, color: colorList[0] || "", unit, acquired_price: acquiredPrice, price: sellingPrice, category_id: "", description: "", isSale: false });
       }
     }
-
     return rows;
   };
 
@@ -801,7 +671,7 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
         }
         onClose={onClose}
       />
-      <div className="px-6 pt-5 pb-6">
+      <div className="px-4 pt-5 pb-6 sm:px-6">
 
         {step === "upload" && (
           <div>
@@ -810,17 +680,17 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => fileRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors mb-5
+              className={`border-2 border-dashed rounded-2xl p-8 sm:p-10 text-center cursor-pointer transition-colors mb-5
                 ${dragOver ? "border-blue-500 bg-blue-50" : "border-slate-300 bg-slate-50 hover:border-blue-400"}`}
             >
-              <div className="mb-3 text-5xl">📊</div>
-              <div className="text-[15px] font-bold text-slate-800 mb-1">Drop your Excel file here</div>
-              <div className="text-[12px] text-slate-400">or click to browse — supports .xlsx, .xls, .csv</div>
+              <div className="mb-3 text-4xl sm:text-5xl">📊</div>
+              <div className="text-[14px] sm:text-[15px] font-bold text-slate-800 mb-1">Drop your Excel file here</div>
+              <div className="text-[11px] sm:text-[12px] text-slate-400">or click to browse — supports .xlsx, .xls, .csv</div>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => handleFile(e.target.files[0])} />
             </div>
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-[12px] text-blue-700">
               <div className="font-bold mb-1.5">📋 Expected columns:</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
                 {[
                   ["ITEM DESCRIPTION", "→ Product Name (required)"],
                   ["SIZE_COLOR / SIZE", "→ Size field"],
@@ -829,7 +699,7 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                   ["ACQUIRED PRICE",   "→ Cost price"],
                   ["SELLING PRICE",    "→ Selling price"],
                 ].map(([col, desc]) => (
-                  <div key={col} className="flex gap-1">
+                  <div key={col} className="flex flex-wrap gap-1">
                     <span className="font-mono bg-white border border-blue-100 rounded px-1 text-[11px] shrink-0">{col}</span>
                     <span className="text-blue-500">{desc}</span>
                   </div>
@@ -851,7 +721,7 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                 <button onClick={() => setImportSearch("")} className="text-slate-400 hover:text-slate-600 cursor-pointer border-none bg-transparent text-[13px] px-1">✕</button>
               )}
             </div>
-            <div className="flex items-end gap-2 p-3 mb-4 border bg-amber-50 border-amber-200 rounded-xl">
+            <div className="flex flex-col items-stretch gap-2 p-3 mb-4 border sm:flex-row sm:items-end bg-amber-50 border-amber-200 rounded-xl">
               <div className="flex-1">
                 <label className="block text-[11px] font-semibold text-amber-800 mb-1 uppercase tracking-wide">Apply default category to unassigned rows</label>
                 <select value={defaultCategoryId} onChange={e => setDefaultCategoryId(e.target.value)}
@@ -875,7 +745,80 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                 <span><strong>{duplicateCount}</strong> row(s) already exist and will be <strong>skipped</strong>.</span>
               </div>
             )}
-            <div className="max-h-[48vh] overflow-y-auto pr-1 mb-4">
+
+            {/* Mobile card view for import preview */}
+            <div className="block sm:hidden max-h-[45vh] overflow-y-auto mb-4 space-y-2">
+              {displayedRows.length === 0 && (
+                <div className="py-8 text-center text-slate-400 text-[13px]">No products match your search</div>
+              )}
+              {displayedRows.map((row) => {
+                const idx = row._origIdx;
+                const dup = isDuplicate(row);
+                return (
+                  <div key={row._key} className={`rounded-xl border p-3 ${dup ? "bg-orange-50 border-orange-200 opacity-70" : "bg-white border-slate-200"}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <input value={row.product_name} onChange={e => updateRow(idx, "product_name", e.target.value)}
+                        className="flex-1 px-2 py-1.5 border border-slate-200 rounded-md text-[12px] bg-white outline-none focus:border-blue-400 font-medium" />
+                      {dup && <span title="Already exists" className="text-orange-400 text-[14px] shrink-0">⚠</span>}
+                      <div className="flex gap-1 shrink-0">
+                        <button type="button" onClick={() => duplicateRow(idx)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-[15px] font-bold cursor-pointer hover:bg-blue-100">+</button>
+                        <button type="button" onClick={() => removeRow(idx)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 text-[13px] cursor-pointer hover:bg-red-100">×</button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1">Color</div>
+                        <div className="flex items-center gap-1">
+                          {row.color && <ColorDot color={row.color} size="w-3 h-3" />}
+                          <select value={row.color || ""} onChange={e => updateRow(idx, "color", e.target.value)}
+                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white outline-none appearance-none cursor-pointer">
+                            <option value="">No Color</option>
+                            {COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1">Category *</div>
+                        <select value={row.category_id} onChange={e => updateRow(idx, "category_id", e.target.value)}
+                          className={`w-full px-2 py-1.5 border rounded-md text-[11px] outline-none appearance-none cursor-pointer ${!row.category_id ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}>
+                          <option value="">-- select --</option>
+                          {categories.map(cat => (
+                            <option key={cat.id ?? cat.category_id} value={cat.id ?? cat.category_id}>
+                              {cat.name ?? cat.category_name ?? cat.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1">Size</div>
+                        <input value={row.size} onChange={e => updateRow(idx, "size", e.target.value)} placeholder="e.g. 500ml"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white outline-none focus:border-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1">Unit</div>
+                        <input value={row.unit} onChange={e => updateRow(idx, "unit", e.target.value)} placeholder="btl/pc"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white outline-none focus:border-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1">Price ₱</div>
+                        <input type="number" step="0.01" value={row.price} onChange={e => updateRow(idx, "price", e.target.value)} placeholder="0.00"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white outline-none text-right focus:border-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1">Acq. ₱</div>
+                        <input type="number" step="0.01" value={row.acquired_price} onChange={e => updateRow(idx, "acquired_price", e.target.value)} placeholder="0.00"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-white outline-none text-right focus:border-blue-400" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden sm:block max-h-[48vh] overflow-y-auto pr-1 mb-4">
               <table className="w-full text-[12px] border-collapse">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-100 text-slate-600">
@@ -948,13 +891,9 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                         <td className="p-1.5">
                           <div className="flex items-center justify-center gap-1">
                             <button type="button" onClick={() => duplicateRow(idx)} title="Add color variant"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-[15px] font-bold cursor-pointer hover:bg-blue-100 transition-colors shrink-0 leading-none">
-                              +
-                            </button>
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-[15px] font-bold cursor-pointer hover:bg-blue-100 transition-colors shrink-0 leading-none">+</button>
                             <button type="button" onClick={() => removeRow(idx)} title="Remove row"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 text-[13px] cursor-pointer hover:bg-red-100 transition-colors shrink-0">
-                              ×
-                            </button>
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-500 text-[13px] cursor-pointer hover:bg-red-100 transition-colors shrink-0">×</button>
                           </div>
                         </td>
                       </tr>
@@ -963,9 +902,10 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between text-[12px] text-slate-400 mb-4">
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[12px] text-slate-400 mb-4 gap-1">
               <span>{importSearch ? `Showing ${displayedRows.length} of ${editableRows.length} rows` : `${importableCount} of ${editableRows.length} rows will be imported`}</span>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 {duplicateCount > 0 && <span className="text-orange-400">{duplicateCount} duplicate(s) will be skipped</span>}
                 <span className="text-red-400">{editableRows.filter(r => !r.category_id && !isDuplicate(r)).length} row(s) missing category</span>
               </div>
@@ -1027,6 +967,67 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
 };
 
 // ────────────────────────────────────────────────────────────
+// Mobile Product Card (replaces table row on mobile)
+// ────────────────────────────────────────────────────────────
+const ProductCard = ({ product, isSelected, onSelect, onView, onEdit, onDelete, BASE, resolveCat, getStatus, getStatusClass }) => {
+  const name     = product.product_name ?? product.name ?? "—";
+  const category = resolveCat(product.category, product.category_name);
+  const color    = product.color ?? "";
+  const size     = product.size ?? "—";
+  const unit     = product.unit ?? "—";
+  const price    = parseFloat(product.price ?? 0);
+  const status   = getStatus(product.status);
+  const thumb    = product.images?.[0]?.image_path ? `${BASE}/storage/${product.images[0].image_path}` : null;
+
+  return (
+    <div className={`bg-white rounded-xl border p-3 transition-colors ${isSelected ? "border-blue-400 bg-blue-50/40" : "border-gray-200"}`}>
+      <div className="flex items-start gap-3">
+        <input type="checkbox" checked={isSelected} onChange={() => onSelect(product.product_id)}
+          className="cursor-pointer w-4 h-4 mt-0.5 shrink-0" />
+        <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden text-xl bg-gray-100 border border-gray-200 rounded-lg">
+          {thumb ? <img src={thumb} alt={name} className="object-cover w-full h-full" /> : "📄"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className="font-semibold text-gray-900 text-[13px] leading-tight truncate flex-1">{name}</div>
+            <span className={`${getStatusClass(status)} px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap flex-shrink-0`}>{status}</span>
+          </div>
+          <div className="text-[11px] text-gray-500 mb-1">{category}</div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500 mb-2">
+            {color && (
+              <div className="flex items-center gap-1">
+                <ColorDot color={color} size="w-3 h-3" />
+                <span>{color}</span>
+              </div>
+            )}
+            {size !== "—" && <span>📐 {size}</span>}
+            {unit !== "—" && <span>⚖️ {unit}</span>}
+            {product.isSale == 1 && <span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-semibold">SALE</span>}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-blue-600 text-[14px]">₱{price.toFixed(2)}</span>
+            <div className="flex gap-1.5">
+              <button onClick={onView}
+                className="px-2 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-600 text-[10px] font-semibold cursor-pointer hover:opacity-80">
+                👁 View
+              </button>
+              <button onClick={onEdit}
+                className="px-2 py-1 rounded-md border border-gray-300 bg-white text-gray-700 text-[10px] font-semibold cursor-pointer hover:opacity-80">
+                ✏️ Edit
+              </button>
+              <button onClick={onDelete}
+                className="px-2 py-1 rounded-md border border-red-200 bg-red-50 text-red-600 text-[11px] cursor-pointer hover:opacity-80">
+                🗑
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ────────────────────────────────────────────────────────────
 // Main AdminProducts Component
 // ────────────────────────────────────────────────────────────
 const AdminProducts = () => {
@@ -1036,13 +1037,14 @@ const AdminProducts = () => {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [sidebarOpen, setSidebarOpen]           = useState(false);
   const [currentPage, setCurrentPage]           = useState(1);
+  const [showFilters, setShowFilters]           = useState(false);
 
   const [showAddModal, setShowAddModal]         = useState(false);
   const [showViewModal, setShowViewModal]       = useState(false);
   const [showEditModal, setShowEditModal]       = useState(false);
   const [showDeleteModal, setShowDeleteModal]   = useState(false);
   const [showImportModal, setShowImportModal]   = useState(false);
-  const [showExportModal, setShowExportModal]   = useState(false); // ← NEW
+  const [showExportModal, setShowExportModal]   = useState(false);
   const [activeProduct, setActiveProduct]       = useState(null);
   const [activeImgIdx, setActiveImgIdx]         = useState(0);
 
@@ -1070,9 +1072,6 @@ const AdminProducts = () => {
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const [editColor, setEditColor]         = useState("");
 
-  // ────────────────────────────────────────────
-  // Data fetching
-  // ────────────────────────────────────────────
   const fetchProducts = async () => {
     setProductsLoading(true);
     try {
@@ -1111,15 +1110,11 @@ const AdminProducts = () => {
 
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCategory, sortOrder]);
 
-  // ────────────────────────────────────────────
-  // Helpers
-  // ────────────────────────────────────────────
   const toggleSelect    = (id) =>
     setSelectedProducts(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
   const toggleSelectAll = () =>
     setSelectedProducts(selectedProducts.length === products.length ? [] : products.map(p => p.product_id ?? p.id));
 
-  const getStock  = (p) => parseInt(p.product_stocks ?? p.stock ?? 0);
   const getStatus = (status) => {
     if (status === "pre_order" || status === "Pre-Order") return "Pre-Order";
     return "In Stock";
@@ -1157,7 +1152,6 @@ const AdminProducts = () => {
     return Array.from({ length: 5 }, (_, i) => start + i);
   }, [totalPages, currentPage]);
 
-  // ── Modal openers ──
   const openView = (product) => { setActiveProduct(product); setActiveImgIdx(0); setShowViewModal(true); };
   const openEdit = (product) => {
     setActiveProduct(product);
@@ -1180,7 +1174,6 @@ const AdminProducts = () => {
   };
   const openDelete = (product) => { setActiveProduct(product); setShowDeleteModal(true); };
 
-  // ── Add handlers ──
   const handleAddChange = (e) => {
     const { name, value, type, checked } = e.target;
     setAddForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
@@ -1224,7 +1217,6 @@ const AdminProducts = () => {
     }
   };
 
-  // ── Edit handlers ──
   const handleEditChange = (e) => {
     const { name, value, type, checked } = e.target;
     setEditForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
@@ -1271,7 +1263,6 @@ const AdminProducts = () => {
     }
   };
 
-  // ── Delete ──
   const handleDelete = async () => {
     if (!activeProduct) return;
     setDeleting(true);
@@ -1300,30 +1291,19 @@ const AdminProducts = () => {
     <div className="flex min-h-screen bg-[#F0F7F2] font-[system-ui,sans-serif]">
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      {/* ══ EXPORT MODAL ══ */}
       {showExportModal && (
-        <ExportModal
-          onClose={() => setShowExportModal(false)}
-          products={filteredProducts}
-          categories={categories}
-        />
+        <ExportModal onClose={() => setShowExportModal(false)} products={filteredProducts} categories={categories} />
       )}
 
-      {/* ══ IMPORT MODAL ══ */}
       {showImportModal && (
-        <ImportModal
-          onClose={() => setShowImportModal(false)}
-          categories={categories}
-          onImportSuccess={fetchProducts}
-          existingProducts={products}
-        />
+        <ImportModal onClose={() => setShowImportModal(false)} categories={categories} onImportSuccess={fetchProducts} existingProducts={products} />
       )}
 
-      {/* ══ ADD PRODUCT MODAL ══ */}
+      {/* ADD PRODUCT MODAL */}
       {showAddModal && (
         <Overlay onClose={() => setShowAddModal(false)}>
           <ModalHeader title="Add New Product" subtitle="Fill in the details to list a new product" onClose={() => setShowAddModal(false)} />
-          <form onSubmit={submitAdd} className="px-6 pt-5 pb-6">
+          <form onSubmit={submitAdd} className="px-4 pt-5 pb-6 sm:px-6">
             <ImageUploadZone id="addImgUpload" onchange={handleAddImages} previews={addPreviews} onRemove={removeAddImage} />
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="col-span-2">
@@ -1374,11 +1354,11 @@ const AdminProducts = () => {
         </Overlay>
       )}
 
-      {/* ══ VIEW PRODUCT MODAL ══ */}
+      {/* VIEW PRODUCT MODAL */}
       {showViewModal && activeProduct && (
         <Overlay wide onClose={() => setShowViewModal(false)}>
           <ModalHeader title={activeProduct.product_name ?? activeProduct.name} subtitle={resolveCat(activeProduct.category, activeProduct.category_name)} onClose={() => setShowViewModal(false)} />
-          <div className="grid grid-cols-2 gap-5 px-6 pt-5 pb-6">
+          <div className="grid grid-cols-1 gap-5 px-4 pt-5 pb-6 sm:grid-cols-2 sm:px-6">
             <div>
               <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-200 aspect-square flex items-center justify-center mb-2.5 relative">
                 {viewMainSrc ? <img src={viewMainSrc} alt="main" className="object-contain w-full h-full" /> : <span className="text-6xl text-slate-300">📄</span>}
@@ -1455,16 +1435,16 @@ const AdminProducts = () => {
         </Overlay>
       )}
 
-      {/* ══ EDIT PRODUCT MODAL ══ */}
+      {/* EDIT PRODUCT MODAL */}
       {showEditModal && activeProduct && (
         <Overlay onClose={() => setShowEditModal(false)}>
           <ModalHeader title="Edit Product" subtitle={`Editing: ${activeProduct.product_name ?? activeProduct.name}`} onClose={() => setShowEditModal(false)} />
-          <form onSubmit={submitEdit} className="px-6 pt-5 pb-6">
+          <form onSubmit={submitEdit} className="px-4 pt-5 pb-6 sm:px-6">
             {(activeProduct.images ?? []).length > 0 && (
               <div className="mb-4">
                 <label className={labelCls}>Current Images</label>
                 <p className="text-[11px] text-slate-400 mt-0 mb-2">Click to mark for removal</p>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
                   {(activeProduct.images ?? []).map((img, i) => {
                     const src = `${BASE}/storage/${img.image_path}`;
                     const removed = removedImageIds.includes(img.image_id);
@@ -1544,7 +1524,7 @@ const AdminProducts = () => {
         </Overlay>
       )}
 
-      {/* ══ DELETE CONFIRM MODAL ══ */}
+      {/* DELETE CONFIRM MODAL */}
       {showDeleteModal && activeProduct && (
         <Overlay onClose={() => setShowDeleteModal(false)}>
           <div className="px-6 py-8 text-center">
@@ -1567,188 +1547,248 @@ const AdminProducts = () => {
         </Overlay>
       )}
 
-      {/* ══ MAIN CONTENT ══ */}
-      <main className="flex-1 min-w-0 px-5 py-6 overflow-x-hidden">
+      {/* MAIN CONTENT */}
+      <main className="flex-1 w-0 min-w-0 px-3 py-4 overflow-x-hidden sm:px-5 sm:py-6">
 
         {/* Top bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:gap-3 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={() => setSidebarOpen(true)}
-              className="md:hidden bg-transparent border-none text-[22px] cursor-pointer text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
+              className="md:hidden bg-transparent border-none text-[22px] cursor-pointer text-gray-700 px-1.5 py-1 rounded-md hover:bg-gray-100 transition-colors">
               ☰
             </button>
-            <h1 className="text-[22px] font-bold text-gray-900 m-0">List of Products</h1>
+            <h1 className="text-[18px] sm:text-[22px] font-bold text-gray-900 m-0">List of Products</h1>
           </div>
-          <div className="flex gap-2.5">
-            {/* ── UPDATED Export button — now opens modal ── */}
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1.5 px-[18px] py-[9px] border border-gray-300 rounded-lg bg-white text-gray-700 text-[13px] font-medium cursor-pointer hover:bg-gray-50 transition-colors"
-            >
+          {/* Action buttons — stack on mobile */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-gray-300 rounded-lg bg-white text-gray-700 text-[12px] sm:text-[13px] font-medium cursor-pointer hover:bg-gray-50 transition-colors">
               ↑ Export
             </button>
             <button onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-1.5 px-[18px] py-[9px] border border-emerald-300 rounded-lg bg-emerald-50 text-emerald-700 text-[13px] font-semibold cursor-pointer hover:bg-emerald-100 transition-colors">
+              className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-emerald-300 rounded-lg bg-emerald-50 text-emerald-700 text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-emerald-100 transition-colors">
               ↓ Import
             </button>
             <button onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-[18px] py-[9px] border-none rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors">
-              + Add Product
+              className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border-none rounded-lg bg-blue-600 text-white text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors">
+              + Add
             </button>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 mb-4 sm:gap-4 sm:mb-6">
           {[
-            { label: "Total Products", value: productStats.total,    bg: "bg-blue-50",    accent: "text-blue-600",    border: "border-blue-100",    icon: "📦", iconBg: "bg-blue-100" },
-            { label: "In Stock",       value: productStats.inStock,  bg: "bg-emerald-50", accent: "text-emerald-600", border: "border-emerald-100", icon: "✅", iconBg: "bg-emerald-100" },
-            { label: "Pre-Order",      value: productStats.preOrder, bg: "bg-amber-50",   accent: "text-amber-600",   border: "border-amber-100",   icon: "🕒", iconBg: "bg-amber-100" },
+            { label: "Total",     value: productStats.total,    bg: "bg-blue-50",    accent: "text-blue-600",    border: "border-blue-100",    icon: "📦", iconBg: "bg-blue-100" },
+            { label: "In Stock",  value: productStats.inStock,  bg: "bg-emerald-50", accent: "text-emerald-600", border: "border-emerald-100", icon: "✅", iconBg: "bg-emerald-100" },
+            { label: "Pre-Order", value: productStats.preOrder, bg: "bg-amber-50",   accent: "text-amber-600",   border: "border-amber-100",   icon: "🕒", iconBg: "bg-amber-100" },
           ].map(stat => (
-            <div key={stat.label} className={`bg-white rounded-2xl px-6 py-5 flex items-center justify-between shadow-sm border ${stat.border} hover:shadow-md transition-shadow`}>
+            <div key={stat.label} className={`bg-white rounded-xl sm:rounded-2xl px-3 sm:px-6 py-3 sm:py-5 flex items-center justify-between shadow-sm border ${stat.border} hover:shadow-md transition-shadow`}>
               <div>
-                <div className={`text-4xl font-extrabold ${stat.accent} leading-none mb-1`}>{stat.value}</div>
-                <div className="text-[13px] font-medium text-gray-500 mt-1">{stat.label}</div>
+                <div className={`text-2xl sm:text-4xl font-extrabold ${stat.accent} leading-none mb-0.5 sm:mb-1`}>{stat.value}</div>
+                <div className="text-[10px] sm:text-[13px] font-medium text-gray-500">{stat.label}</div>
               </div>
-              <div className={`w-14 h-14 rounded-2xl ${stat.iconBg} flex items-center justify-center text-2xl flex-shrink-0`}>{stat.icon}</div>
+              <div className={`w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl ${stat.iconBg} flex items-center justify-center text-lg sm:text-2xl flex-shrink-0`}>{stat.icon}</div>
             </div>
           ))}
         </div>
 
         {/* Table card */}
         <div className="overflow-hidden bg-white shadow-sm rounded-2xl">
-          {/* Filters */}
-          <div className="px-[18px] py-3.5 border-b border-gray-100 flex gap-2 items-center w-full flex-nowrap">
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-[7px] bg-gray-50 flex-1 min-w-0">
-              <span className="text-gray-400">🔍</span>
-              <input type="text" placeholder="Search for Product" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                className="w-full text-xs text-gray-700 bg-transparent border-none outline-none" />
-            </div>
-            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3.5 py-2 bg-gray-50 text-sm text-gray-700 cursor-pointer outline-none shrink-0">
-              <option value="All">All Categories</option>
-              {categories.map(cat => {
-                const label = cat.name ?? cat.category_name ?? cat.title ?? "";
-                return <option key={cat.id ?? cat.category_id} value={label}>{label}</option>;
-              })}
-            </select>
-            <select value={sortOrder} onChange={e => setSortOrder(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3.5 py-2 bg-gray-50 text-sm text-gray-700 cursor-pointer outline-none shrink-0">
-              <option value="A-Z">Sort A–Z</option>
-              <option value="Z-A">Sort Z–A</option>
-            </select>
-            <button onClick={() => { setSearchTerm(""); setSelectedCategory("All"); setSortOrder("A-Z"); }}
-              className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3.5 py-2 bg-white text-sm text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors shrink-0">
-              ✕ Clear
-            </button>
-          </div>
 
-          <div className="overflow-x-auto">
-            {productsLoading ? (
-              <div className="py-16 text-sm text-center text-slate-400">
-                <div className="mb-3 text-4xl">⟳</div>Loading products…
+          {/* Filters — mobile collapsible, desktop inline */}
+          <div className="px-3 sm:px-[18px] py-3 sm:py-3.5 border-b border-gray-100">
+            {/* Search always visible */}
+            <div className="flex items-center gap-2 mb-2 sm:mb-0">
+              <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-[7px] bg-gray-50 flex-1 min-w-0">
+                <span className="text-gray-400 text-[13px]">🔍</span>
+                <input type="text" placeholder="Search products…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full text-xs text-gray-700 bg-transparent border-none outline-none" />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm("")} className="text-slate-400 border-none bg-transparent cursor-pointer text-xs px-0.5">✕</button>
+                )}
               </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="py-16 text-sm text-center text-slate-400">
-                <div className="mb-3 text-4xl">📦</div>No products found
-              </div>
-            ) : (
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="w-10 p-3 pl-4">
-                      <input type="checkbox" checked={selectedProducts.length === products.length && products.length > 0}
-                        onChange={toggleSelectAll} className="cursor-pointer w-[15px] h-[15px]" />
-                    </th>
-                    {["Product", "Category", "Color", "Size", "Unit", "Status"].map(h => (
-                      <th key={h} className="p-3 font-semibold text-left text-gray-700 whitespace-nowrap">{h}</th>
-                    ))}
-                    {["Price"].map(h => (
-                      <th key={h} className="p-3 font-semibold text-right text-gray-700 whitespace-nowrap">{h}</th>
-                    ))}
-                    <th className="p-3 font-semibold text-center text-gray-700 whitespace-nowrap">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated.map((product, index) => {
-                    const name     = product.product_name ?? product.name ?? "—";
-                    const category = resolveCat(product.category, product.category_name);
-                    const color    = product.color ?? "";
-                    const size     = product.size ?? "—";
-                    const unit     = product.unit ?? "—";
-                    const price    = parseFloat(product.price ?? 0);
-                    const status   = getStatus(product.status);
-                    const thumb    = product.images?.[0]?.image_path ? `${BASE}/storage/${product.images[0].image_path}` : null;
-                    const isSelected = selectedProducts.includes(product.product_id);
-
-                    return (
-                      <tr key={product.product_id ?? index}
-                        className={`border-b border-gray-100 transition-colors hover:bg-blue-50/40 ${isSelected ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                        <td className="p-3 pl-4">
-                          <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(product.product_id)}
-                            className="cursor-pointer w-[15px] h-[15px]" />
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-[38px] h-[38px] rounded-lg bg-gray-100 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden border border-gray-200">
-                              {thumb ? <img src={thumb} alt={name} className="object-cover w-full h-full" /> : "📄"}
-                            </div>
-                            <div>
-                              <div className="font-semibold text-gray-900 whitespace-nowrap">{name}</div>
-                              {product.isSale == 1 && (
-                                <span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-semibold">SALE</span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3 text-gray-500">{category}</td>
-                        <td className="p-3">
-                          {color ? (
-                            <div className="flex items-center gap-1.5">
-                              <ColorDot color={color} size="w-3.5 h-3.5" />
-                              <span className="text-[12px] text-gray-600">{color}</span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-300 text-[12px]">—</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-gray-500">{size}</td>
-                        <td className="p-3 text-gray-500">{unit}</td>
-                        <td className="p-3">
-                          <span className={`${getStatusClass(status)} px-2.5 py-1 rounded-full text-[11px] font-semibold inline-block whitespace-nowrap`}>
-                            {status}
-                          </span>
-                        </td>
-                        <td className="p-3 font-medium text-right text-gray-700">₱{price.toFixed(2)}</td>
-                        <td className="p-3">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button onClick={() => openView(product)}
-                              className="px-2.5 py-[5px] rounded-md border border-blue-200 bg-blue-50 text-blue-600 text-[11px] font-semibold cursor-pointer whitespace-nowrap hover:opacity-80 transition-opacity">
-                              👁 View
-                            </button>
-                            <button onClick={() => openEdit(product)}
-                              className="px-2.5 py-[5px] rounded-md border border-gray-300 bg-white text-gray-700 text-[11px] font-semibold cursor-pointer hover:opacity-80 transition-opacity">
-                              ✏️ Edit
-                            </button>
-                            <button onClick={() => openDelete(product)}
-                              className="px-2.5 py-[5px] rounded-md border border-red-200 bg-red-50 text-red-600 text-[13px] cursor-pointer leading-none hover:opacity-80 transition-opacity">
-                              🗑
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
+              {/* Filter toggle for mobile */}
+              <button onClick={() => setShowFilters(v => !v)}
+                className="sm:hidden flex items-center gap-1 border border-gray-200 rounded-lg px-3 py-[7px] bg-gray-50 text-xs text-gray-700 cursor-pointer whitespace-nowrap hover:bg-gray-100 transition-colors">
+                ⚙ Filter
+                {(selectedCategory !== "All" || sortOrder !== "A-Z") && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block ml-0.5"></span>
+                )}
+              </button>
+              {/* Desktop filters inline */}
+              <div className="flex-shrink-0 hidden gap-2 sm:flex">
+                <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3.5 py-2 bg-gray-50 text-sm text-gray-700 cursor-pointer outline-none">
+                  <option value="All">All Categories</option>
+                  {categories.map(cat => {
+                    const label = cat.name ?? cat.category_name ?? cat.title ?? "";
+                    return <option key={cat.id ?? cat.category_id} value={label}>{label}</option>;
                   })}
-                </tbody>
-              </table>
+                </select>
+                <select value={sortOrder} onChange={e => setSortOrder(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3.5 py-2 bg-gray-50 text-sm text-gray-700 cursor-pointer outline-none">
+                  <option value="A-Z">A–Z</option>
+                  <option value="Z-A">Z–A</option>
+                </select>
+                <button onClick={() => { setSearchTerm(""); setSelectedCategory("All"); setSortOrder("A-Z"); }}
+                  className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3.5 py-2 bg-white text-sm text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors shrink-0">
+                  ✕ Clear
+                </button>
+              </div>
+            </div>
+            {/* Mobile filter dropdown */}
+            {showFilters && (
+              <div className="flex flex-col gap-2 pt-2 mt-2 border-t border-gray-100 sm:hidden">
+                <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
+                  className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-200 rounded-lg outline-none cursor-pointer bg-gray-50">
+                  <option value="All">All Categories</option>
+                  {categories.map(cat => {
+                    const label = cat.name ?? cat.category_name ?? cat.title ?? "";
+                    return <option key={cat.id ?? cat.category_id} value={label}>{label}</option>;
+                  })}
+                </select>
+                <div className="flex gap-2">
+                  <select value={sortOrder} onChange={e => setSortOrder(e.target.value)}
+                    className="flex-1 px-3 py-2 text-sm text-gray-700 border border-gray-200 rounded-lg outline-none cursor-pointer bg-gray-50">
+                    <option value="A-Z">Sort A–Z</option>
+                    <option value="Z-A">Sort Z–A</option>
+                  </select>
+                  <button onClick={() => { setSearchTerm(""); setSelectedCategory("All"); setSortOrder("A-Z"); setShowFilters(false); }}
+                    className="px-4 py-2 text-sm text-gray-700 transition-colors bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                    ✕ Clear
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
+          {productsLoading ? (
+            <div className="py-16 text-sm text-center text-slate-400">
+              <div className="mb-3 text-4xl">⟳</div>Loading products…
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="py-16 text-sm text-center text-slate-400">
+              <div className="mb-3 text-4xl">📦</div>No products found
+            </div>
+          ) : (
+            <>
+              {/* Mobile card list — NO horizontal scroll */}
+              <div className="block px-3 py-3 space-y-2 sm:hidden">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                  <input type="checkbox" checked={selectedProducts.length === products.length && products.length > 0}
+                    onChange={toggleSelectAll} className="w-4 h-4 cursor-pointer" />
+                  <span className="text-[11px] text-gray-500">Select all ({filteredProducts.length})</span>
+                </div>
+                {paginated.map((product) => (
+                  <ProductCard
+                    key={product.product_id}
+                    product={product}
+                    isSelected={selectedProducts.includes(product.product_id)}
+                    onSelect={toggleSelect}
+                    onView={() => openView(product)}
+                    onEdit={() => openEdit(product)}
+                    onDelete={() => openDelete(product)}
+                    BASE={BASE}
+                    resolveCat={resolveCat}
+                    getStatus={getStatus}
+                    getStatusClass={getStatusClass}
+                  />
+                ))}
+              </div>
+
+              {/* Desktop table — hidden on mobile */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="w-10 p-3 pl-4">
+                        <input type="checkbox" checked={selectedProducts.length === products.length && products.length > 0}
+                          onChange={toggleSelectAll} className="cursor-pointer w-[15px] h-[15px]" />
+                      </th>
+                      {["Product", "Category", "Color", "Size", "Unit", "Status"].map(h => (
+                        <th key={h} className="p-3 font-semibold text-left text-gray-700 whitespace-nowrap">{h}</th>
+                      ))}
+                      <th className="p-3 font-semibold text-right text-gray-700 whitespace-nowrap">Price</th>
+                      <th className="p-3 font-semibold text-center text-gray-700 whitespace-nowrap">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginated.map((product, index) => {
+                      const name     = product.product_name ?? product.name ?? "—";
+                      const category = resolveCat(product.category, product.category_name);
+                      const color    = product.color ?? "";
+                      const size     = product.size ?? "—";
+                      const unit     = product.unit ?? "—";
+                      const price    = parseFloat(product.price ?? 0);
+                      const status   = getStatus(product.status);
+                      const thumb    = product.images?.[0]?.image_path ? `${BASE}/storage/${product.images[0].image_path}` : null;
+                      const isSelected = selectedProducts.includes(product.product_id);
+                      return (
+                        <tr key={product.product_id ?? index}
+                          className={`border-b border-gray-100 transition-colors hover:bg-blue-50/40 ${isSelected ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                          <td className="p-3 pl-4">
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(product.product_id)}
+                              className="cursor-pointer w-[15px] h-[15px]" />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-[38px] h-[38px] rounded-lg bg-gray-100 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden border border-gray-200">
+                                {thumb ? <img src={thumb} alt={name} className="object-cover w-full h-full" /> : "📄"}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-gray-900 whitespace-nowrap">{name}</div>
+                                {product.isSale == 1 && (
+                                  <span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-semibold">SALE</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-gray-500">{category}</td>
+                          <td className="p-3">
+                            {color ? (
+                              <div className="flex items-center gap-1.5">
+                                <ColorDot color={color} size="w-3.5 h-3.5" />
+                                <span className="text-[12px] text-gray-600">{color}</span>
+                              </div>
+                            ) : <span className="text-slate-300 text-[12px]">—</span>}
+                          </td>
+                          <td className="p-3 text-gray-500">{size}</td>
+                          <td className="p-3 text-gray-500">{unit}</td>
+                          <td className="p-3">
+                            <span className={`${getStatusClass(status)} px-2.5 py-1 rounded-full text-[11px] font-semibold inline-block whitespace-nowrap`}>{status}</span>
+                          </td>
+                          <td className="p-3 font-medium text-right text-gray-700">₱{price.toFixed(2)}</td>
+                          <td className="p-3">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button onClick={() => openView(product)}
+                                className="px-2.5 py-[5px] rounded-md border border-blue-200 bg-blue-50 text-blue-600 text-[11px] font-semibold cursor-pointer whitespace-nowrap hover:opacity-80 transition-opacity">
+                                👁 View
+                              </button>
+                              <button onClick={() => openEdit(product)}
+                                className="px-2.5 py-[5px] rounded-md border border-gray-300 bg-white text-gray-700 text-[11px] font-semibold cursor-pointer hover:opacity-80 transition-opacity">
+                                ✏️ Edit
+                              </button>
+                              <button onClick={() => openDelete(product)}
+                                className="px-2.5 py-[5px] rounded-md border border-red-200 bg-red-50 text-red-600 text-[13px] cursor-pointer leading-none hover:opacity-80 transition-opacity">
+                                🗑
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
           {/* Pagination */}
           {!productsLoading && filteredProducts.length > 0 && (
-            <div className="px-5 py-3.5 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+            <div className="px-3 sm:px-5 py-3 sm:py-3.5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-400">
               <span>
-                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length} products
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length}
               </span>
               <div className="flex items-center gap-1.5">
                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}

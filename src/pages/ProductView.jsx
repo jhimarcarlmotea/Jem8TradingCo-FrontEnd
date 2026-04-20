@@ -482,26 +482,9 @@ const stockStatus = isPreOrder
         @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
-      {/* ── BREADCRUMB ── */}
-      <div className="bg-[#f8faf9] border-b border-[#e8f0eb] mt-[75px]">
-        <div className="container mx-auto px-4 flex items-center gap-2 py-3 text-xs text-[#6b7c70] flex-wrap">
-          <Link to="/" className="text-[#4d7b65] no-underline hover:underline">Home</Link>
-          <span className="text-gray-300">›</span>
-          <Link to="/products" className="text-[#4d7b65] no-underline hover:underline">Products</Link>
-          <span className="text-gray-300">›</span>
-          {catLabel && (
-            <>
-              <Link to="/products" className="text-[#4d7b65] no-underline hover:underline">{catLabel}</Link>
-              <span className="text-gray-300">›</span>
-            </>
-          )}
-          <span>{name}</span>
-        </div>
-      </div>
-
       {/* ── MAIN ── */}
-      <section className="py-12 pb-16">
-        <div className="container grid items-start grid-cols-1 px-4 mx-auto md:grid-cols-2 gap-14">
+<section className="py-12 pb-16 mt-[75px]">
+          <div className="container grid items-start grid-cols-1 px-4 mx-auto md:grid-cols-2 gap-14">
 
           {/* Image column */}
           <div>
@@ -555,11 +538,7 @@ const stockStatus = isPreOrder
 
           {/* Info column */}
           <div className="flex flex-col gap-4">
-            {catLabel && (
-              <span className="text-[11px] font-bold tracking-[2px] text-[#4d7b65] uppercase">
-                {catLabel.toUpperCase()}
-              </span>
-            )}
+
             <h1 className="text-[clamp(22px,3vw,32px)] font-bold text-[#1a2e22] leading-tight m-0">
               {name}
             </h1>
