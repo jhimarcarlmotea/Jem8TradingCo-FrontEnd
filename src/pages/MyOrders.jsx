@@ -57,25 +57,57 @@ function normaliseOrder(o, account) {
   const items = (checkout?.items ?? []).map((item) => {
     const product = item.product ?? {};
 
-    return {
-      id: item.product_id,
+    // Resolve image URL from several possible shapes returned by backend
+    const resolveImage = () => {
+      // 1) explicit product primary field
+      if (product?.primary_image_url) return product.primary_image_url;
+      if (product?.image_url) return product.image_url;
+      if (product?.image) return product.image;
 
-      // IMPORTANT FIX
-      name: item.product_name,
-      quantity: item.quantity,
-      price: item.price,
-      total: item.total ?? item.price * item.quantity,
+      // 2) images array (try several key names)
+      const imgs = product?.images || product?.images_list || product?.media || [];
+      if (Array.isArray(imgs) && imgs.length) {
+        const primary = imgs.find((i) => i.is_primary || i.primary || i.isPrimary) || imgs[0];
+        if (primary) {
+          return (
+            primary.image_url || primary.url || primary.path || primary.image_path || primary.src || primary.file || null
+          );
+        }
+      }
+
+      // 3) fallback to item-level fields (some APIs include image on the item)
+      if (item?.image) return item.image;
+      if (item?.image_path) return `http://127.0.0.1:8000/storage/${item.image_path}`;
+
+      return null;
+    };
+
+    const imgCandidate = resolveImage();
+    const imageUrl = imgCandidate
+      ? String(imgCandidate).startsWith("http")
+        ? imgCandidate
+        : imgCandidate.startsWith("/")
+        ? imgCandidate
+        : `http://127.0.0.1:8000/${String(imgCandidate).replace(/^\/+/, '')}`
+      : null;
+
+    const qty = Number(item.quantity ?? item.qty ?? item.qty_selected ?? 1) || 1;
+    const rawPrice = Number(item.price ?? item.unit_price ?? item.raw_price ?? product?.price ?? 0) || 0;
+    const priceStr = `₱${rawPrice.toLocaleString()}`;
+
+    return {
+      id: item.product_id ?? item.product_id ?? item.id,
+      name: item.product_name ?? product?.product_name ?? product?.name ?? item.name ?? "Product",
+      qty,
+      quantity: qty,
+      rawPrice,
+      price: priceStr,
+      total: Number(item.total ?? rawPrice * qty),
 
       // optional full product (if backend adds later)
       product,
 
-      image:
-        product?.primary_image_url ??
-        (product?.images?.find((img) => img.is_primary)
-          ? `http://127.0.0.1:8000/storage/${
-              product.images.find((img) => img.is_primary).image_path
-            }`
-          : null),
+      image: imageUrl,
 
       raw: item,
     };
