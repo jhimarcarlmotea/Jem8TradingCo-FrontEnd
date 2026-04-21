@@ -111,7 +111,27 @@ export default function AdminReviews() {
     setLoading(true);
     try {
       const { data } = await api.get("/reviews");
-      setReviews(data.data ?? []);
+      const list = data.data ?? data ?? [];
+      // Debug: log first review shape to help diagnose missing name issues
+      try { console.debug('adminReviews: first review sample:', list && list.length ? list[0] : null); } catch (e) {}
+
+      // Hydrate reviews with `user` object when only `user_id` is present
+      const hydrated = await Promise.all(
+        (Array.isArray(list) ? list : []).map(async (r) => {
+          if (r.user) return r;
+          const uid = r.user_id ?? r.userId ?? r.userID ?? r.user?.id;
+          if (!uid && uid !== 0) return r;
+          try {
+            const acc = await api.get(`/findaccount/${uid}`);
+            const u = acc.data?.data ?? acc.data?.user ?? acc.data;
+            return { ...r, user: u };
+          } catch (err) {
+            return r;
+          }
+        })
+      );
+
+      setReviews(hydrated);
     } catch (err) {
       toast(err.response?.data?.message ?? "Failed to load reviews.", "error");
     } finally {
@@ -300,7 +320,58 @@ export default function AdminReviews() {
               const isPublished =
                 review.status?.toLowerCase() === "approved" ||
                 review.status?.toLowerCase() === "published";
-              const userName   = review.user?.name  ?? review.name  ?? "Unknown";
+              const userName = (() => {
+                const safeStr = (v) => {
+                  if (!v && v !== 0) return null;
+                  try { v = String(v).trim(); } catch (e) { return null; }
+                  if (!v) return null;
+                  if (v.toLowerCase() === 'null' || v.toLowerCase() === 'undefined') return null;
+                  return v;
+                };
+
+                // 1) review.user can be an object or a string
+                const u = review.user;
+                if (typeof u === 'string') {
+                  const s = safeStr(u);
+                  if (s) return s;
+                }
+                if (u && typeof u === 'object') {
+                  const cand = u.name || u.full_name || u.display_name || u.username || u.user_name || u.first_name || u.last_name || (u.data && (u.data.name || u.data.full_name));
+                  const joined = (u.first_name || u.fname) && (u.last_name || u.lname) ? `${u.first_name || u.fname} ${u.last_name || u.lname}` : null;
+                  const s = safeStr(cand) || safeStr(joined);
+                  if (s) return s;
+                }
+
+                // 2) common review-level fields
+                const reviewLevel = [
+                  review.name,
+                  review.full_name,
+                  review.author_name,
+                  review.customer_name,
+                  review.reviewer_name,
+                  review.display_name,
+                  review.first_name && review.last_name ? `${review.first_name} ${review.last_name}` : null,
+                ].map(safeStr).find(Boolean);
+                if (reviewLevel) return reviewLevel;
+
+                // 3) nested alternatives (account, customer, author)
+                const nested = (
+                  review.account || review.customer || review.author || review.user_data || review.userInfo || {}
+                );
+                if (nested && typeof nested === 'object') {
+                  const cand = nested.name || nested.full_name || nested.display_name || (nested.first_name && nested.last_name ? `${nested.first_name} ${nested.last_name}` : null);
+                  const s = safeStr(cand);
+                  if (s) return s;
+                }
+
+                // 4) fall back to email local part
+                if (review.email) {
+                  const s = safeStr(review.email);
+                  if (s) return (s.split('@')[0] || s);
+                }
+
+                return "Unknown";
+              })();
               const userEmail  = review.user?.email ?? review.email ?? "";
               const productName =
                 typeof review.product === "object"
@@ -316,7 +387,7 @@ export default function AdminReviews() {
                   <div className="flex items-start justify-between flex-wrap gap-2.5 mb-2.5">
                     <div className="flex items-start gap-3">
                       <div className="flex items-center justify-center w-10 h-10 text-sm font-bold text-white rounded-full shrink-0 bg-gradient-to-br from-blue-500 to-purple-600">
-                        {userName[0]?.toUpperCase()}
+                        {((userName && userName[0]) ? userName[0].toUpperCase() : 'U')}
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-gray-900">{userName}</div>
