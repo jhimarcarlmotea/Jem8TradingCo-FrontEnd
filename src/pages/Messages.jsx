@@ -317,6 +317,12 @@ export default function Messages() {
       )
     );
     setInput("");
+    // Clear uncontrolled textarea DOM and reset typing/debounce refs so input visibly clears
+    try { if (textRef.current) textRef.current.value = ''; } catch (e) {}
+    inputTextRef.current = '';
+    if (inputDebounceRef.current) { clearTimeout(inputDebounceRef.current); inputDebounceRef.current = null; }
+    isTypingRef.current = false;
+    if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null; }
 
     try {
       const currentIsAdmin = isAdminUser(currentUser);
