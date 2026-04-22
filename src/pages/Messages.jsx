@@ -191,6 +191,7 @@ export default function Messages() {
   const [currentUser, setCurrentUser]   = useState(null);
   const [product, setProduct] = useState(null);
   const bottomRef                       = useRef(null);
+  const messagesContainerRef = useRef(null);
   const pollRef = useRef(null);
     const fileInputRef = useRef(null);
   const textRef = useRef(null);
@@ -278,9 +279,22 @@ export default function Messages() {
     setPendingPreview(null);
   };
 
-  // Auto-scroll to bottom when messages change
+  // Reliable auto-scroll to bottom when messages change
+  const scrollToBottom = (smooth = true) => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    try {
+      const top = el.scrollHeight - el.clientHeight;
+      el.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+    } catch (e) {
+      try { el.scrollTop = el.scrollHeight; } catch (err) {}
+    }
+  };
+
   useEffect(() => {
-    try { bottomRef.current?.scrollIntoView({ behavior: "smooth", block: 'end' }); } catch (e) {}
+    // allow layout (and image loads) to settle before scrolling
+    const t = setTimeout(() => scrollToBottom(true), 50);
+    return () => clearTimeout(t);
   }, [activeThread, thread?.messages?.length]);
 
   // If unauthenticated, hide messages and prompt to login
@@ -1010,7 +1024,7 @@ export default function Messages() {
             </div>
 
             {/* Messages area */}
-            <div className="flex-1 overflow-y-auto px-[24px] py-[20px] flex flex-col gap-[14px]">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-[24px] py-[20px] flex flex-col gap-[14px]">
               {messagesToRender.map((msg, msgIdx) => {
                 const currentUserId = getUserId(currentUser);
                 const currentIsAdmin = isAdminUser(currentUser);
