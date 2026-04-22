@@ -244,6 +244,41 @@ const TABS = [
   { key: "delivered",  label: "Delivered" },
 ];
 
+const PAYMENT_TAGS = {
+  gcash:        { label: "E-Wallet", color: "#0078FF" },
+  deposit:      { label: "Deposit",  color: "#0ea5e9" },
+  bank_transfer:{ label: "Bank",     color: "#6366f1" },
+  cod:          { label: "COD",      color: "#f59e0b" },
+  check:        { label: "Check",    color: "#64748b" },
+};
+
+function hexToRgba(hex, alpha = 1) {
+  const h = hex.replace('#', '');
+  const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderPaymentTag(method) {
+  if (!method) return null;
+  const key = String(method).trim().toLowerCase().replace(/\s+/g, '_');
+  const meta = PAYMENT_TAGS[key] || PAYMENT_TAGS[method] || null;
+  const label = meta?.label ?? String(method).replace(/_/g, ' ');
+  const color = meta?.color ?? '#d1d5db';
+  const style = {
+    background: hexToRgba(color, 0.12),
+    borderColor: hexToRgba(color, 0.28),
+    color: color,
+  };
+  return (
+    <span className="text-xs font-semibold px-3 py-1 rounded-full border inline-block" style={style}>
+      {label}
+    </span>
+  );
+}
+
 /* ─── Order Detail Panel ──────────────────────────────────── */
 function OrderDetail({ order, onReceiptClick }) {
   const navigate   = useNavigate();
@@ -327,7 +362,7 @@ function OrderDetail({ order, onReceiptClick }) {
         <div>
           <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">💳 Payment Method</div>
           <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700">
-            <strong className="capitalize">{order.paymentMethod}</strong>
+            {renderPaymentTag(order.paymentMethod)}
             {order.paymentDetails && (
               <div className="mt-1 text-[13px] text-slate-500 space-y-0.5">
                 {order.paymentDetails.account_name  && <div>Name: {order.paymentDetails.account_name}</div>}
@@ -682,9 +717,9 @@ export default function MyOrders() {
                       </div>
 
                       <div className="flex justify-between items-center pt-2.5 border-t border-[#f3f8f5]">
-                        <span className="text-xs text-[#6b7c70] bg-[#f3f8f5] px-2.5 py-1 rounded-full capitalize">
-                          {order.paymentMethod}
-                        </span>
+                        <div>
+                          {renderPaymentTag(order.paymentMethod)}
+                        </div>
                         <span className="text-base font-bold text-[#4d7b65]">
                           ₱{order.total.toLocaleString()}
                         </span>
