@@ -154,17 +154,21 @@ function normaliseOrder(o, account) {
       checkout?.special_instructions ?? delivery?.notes ?? "",
 
     delivery: {
-      firstName: account?.first_name ?? "",
-      lastName: account?.last_name ?? "",
-      phone: account?.phone_number ?? "",
-      email: account?.email ?? "",
+    firstName:   account?.first_name   ?? "",
+    lastName:    account?.last_name    ?? "",
+    phone:       account?.phone_number ?? "",
+    email:       account?.email        ?? "",
 
-      address: addr?.street ?? "",
-      barangay: addr?.barangay ?? "",
-      city: addr?.city ?? "",
-      province: addr?.province ?? "",
-      zip: addr?.zip ?? "",
-    },
+   
+    companyName: account?.company_name ?? null,
+    tinNumber:   account?.tin_number   ?? null,
+
+    address:     addr?.street    ?? "",
+    barangay:    addr?.barangay  ?? "",
+    city:        addr?.city      ?? "",
+    province:    addr?.province  ?? "",
+    zip:         addr?.zip       ?? "",
+  },
 
     items,
   };
@@ -338,25 +342,34 @@ function OrderDetail({ order, onReceiptClick }) {
         </div>
 
         {/* ── Delivery Address ── */}
-        <div>
-          <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">📦 Delivery Address</div>
-          <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
-            <strong>{order.delivery.firstName} {order.delivery.lastName}</strong><br />
-            {order.delivery.phone} · {order.delivery.email}
-            {(order.delivery.address || order.delivery.city) && (
-              <>
-                <br />
-                {[
-                  order.delivery.address,
-                  order.delivery.barangay,
-                  order.delivery.city,
-                  order.delivery.province,
-                  order.delivery.zip,
-                ].filter(Boolean).join(", ")}
-              </>
-            )}
-          </div>
+      <div>
+        <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">📦 Delivery Address</div>
+        <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
+          <strong>{order.delivery.firstName} {order.delivery.lastName}</strong><br />
+          {order.delivery.phone} · {order.delivery.email}
+
+          {/* ✅ ADD THESE — company name and TIN */}
+          {order.delivery.companyName && (
+            <div className="mt-1 text-xs text-blue-600 font-medium">🏢 {order.delivery.companyName}</div>
+          )}
+          {order.delivery.tinNumber && (
+            <div className="text-xs text-slate-400">TIN: {order.delivery.tinNumber}</div>
+          )}
+
+          {(order.delivery.address || order.delivery.city) && (
+            <>
+              <br />
+              {[
+                order.delivery.address,
+                order.delivery.barangay,
+                order.delivery.city,
+                order.delivery.province,
+                order.delivery.zip,
+              ].filter(Boolean).join(", ")}
+            </>
+          )}
         </div>
+      </div>
 
         {/* ── Payment Method ── */}
         <div>
