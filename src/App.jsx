@@ -100,6 +100,59 @@ export default function App() {
     }
   }, []);
 
+  // Poll server settings periodically to sync appearance across sessions/devices
+  useEffect(() => {
+    let mounted = true;
+
+    const applyAppearance = (appearance) => {
+      try {
+        if (appearance.primaryColor) {
+          document.documentElement.style.setProperty('--brand-green', appearance.primaryColor);
+          document.documentElement.style.setProperty('--brand-green-dark', appearance.primaryColor);
+        }
+
+        const applyDark = (isDark) => {
+          try {
+            if (isDark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+          } catch (e) {}
+        };
+
+        if (appearance.theme === 'dark') applyDark(true);
+        else if (appearance.theme === 'light') applyDark(false);
+      } catch (e) {}
+    };
+
+    const fetchAppearance = async () => {
+      try {
+        const res = await fetch('/api/admin/settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const payload = await res.json();
+        const appearance = payload?.data?.appearance ?? payload?.appearance ?? null;
+        if (!appearance) return;
+
+        const storedRaw = localStorage.getItem('appearance');
+        const stored = storedRaw ? JSON.parse(storedRaw) : null;
+
+        // If different, update and apply
+        if (JSON.stringify(stored) !== JSON.stringify(appearance)) {
+          localStorage.setItem('appearance', JSON.stringify(appearance));
+          applyAppearance(appearance);
+        }
+      } catch (e) {
+        // ignore network errors
+      }
+    };
+
+    // Initial fetch + periodic polling
+    fetchAppearance();
+    const id = setInterval(fetchAppearance, 20000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, []);
+
   return (
     <CartProvider>
       
