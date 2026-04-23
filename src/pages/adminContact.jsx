@@ -42,7 +42,7 @@ function ReplyModal({ contact, onClose, onReplied }) {
 
   return (
     <div className="fixed inset-0 bg-black/35 flex items-center justify-center z-[999]">
-      <div className="bg-white rounded-2xl px-7 pt-7 pb-6 w-[min(520px,90vw)] shadow-2xl">
+      <div data-overlay className="bg-white rounded-2xl px-7 pt-7 pb-6 w-[min(520px,90vw)] shadow-2xl">
         <h2 className="m-0 mb-1 text-base font-bold text-gray-900">
           Reply to {contact.first_name} {contact.last_name}
         </h2>

@@ -159,7 +159,7 @@ function RestoreProgressModal({ fileName, stage }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl px-8 pt-8 pb-7 w-full max-w-[400px] shadow-2xl flex flex-col items-center text-center">
+      <div data-overlay className="bg-white rounded-2xl px-8 pt-8 pb-7 w-full max-w-[400px] shadow-2xl flex flex-col items-center text-center">
         <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 text-3xl">
           {stage === 'done' ? '✅' : '⏳'}
         </div>
@@ -221,7 +221,7 @@ function RestoreConfirmModal({ file, onCancel, onConfirm }) {
       className="fixed inset-0 bg-black/45 z-[200] flex items-center justify-center p-4"
       onClick={onCancel}
     >
-      <div
+      <div data-overlay
         className="bg-white rounded-2xl px-7 pt-8 pb-6 w-full max-w-[420px] shadow-2xl flex flex-col items-center text-center"
         onClick={(e) => e.stopPropagation()}
       >
@@ -760,7 +760,7 @@ export default function AdminBackup() {
           className="fixed inset-0 bg-black/45 z-[200] flex items-center justify-center p-4"
           onClick={() => setDeleteTarget(null)}
         >
-          <div
+          <div data-overlay
             className="bg-white rounded-2xl px-7 pt-8 pb-6 w-full max-w-[380px] shadow-2xl flex flex-col items-center text-center"
             onClick={(e) => e.stopPropagation()}
           >

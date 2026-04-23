@@ -211,6 +211,7 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
 
       {/* Mobile sidebar */}
       <aside
+        data-overlay
         className={`md:hidden fixed top-0 left-0 w-[260px] h-screen bg-white border-r border-gray-200 z-50 transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
@@ -221,6 +222,7 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
 
       {/* Desktop sidebar */}
       <aside
+        data-overlay
         className="hidden md:flex w-[242px] min-w-[242px] bg-white border-r border-gray-200 flex-col sticky top-0 h-screen"
         aria-label="Admin navigation"
       >

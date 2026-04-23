@@ -139,7 +139,7 @@ function CompleteProfileModal({ form, onChange, onSubmit, completing }) {
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
     >
-      <div
+      <div data-overlay
         className="complete-modal-in bg-white rounded-[20px] w-full max-w-[440px] overflow-hidden"
         style={{ boxShadow: "0 40px 100px rgba(0,0,0,0.25)" }}
       >
@@ -227,7 +227,7 @@ function BlockNavModal({ onStay }) {
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
     >
-      <div
+      <div data-overlay
         className="complete-modal-in bg-white rounded-[20px] w-full max-w-[420px] overflow-hidden"
         style={{ boxShadow: "0 40px 100px rgba(0,0,0,0.25)" }}
       >
@@ -274,7 +274,7 @@ function AddressModal({ onClose, onSave, editingAddress }) {
       style={{ background: "rgba(10,10,10,0.55)", backdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
-      <div
+      <div data-overlay
         className="modal-slide-up bg-white rounded-[18px] w-full max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden"
         style={{ boxShadow: "0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06)" }}
         onClick={(e) => e.stopPropagation()}

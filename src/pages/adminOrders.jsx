@@ -157,7 +157,7 @@ function StatusModal({ delivery, onClose, onUpdated }) {
 
   return (
     <div className="fixed inset-0 bg-black/35 flex items-center justify-center z-[999]">
-      <div className="bg-white rounded-2xl p-7 w-[min(420px,90vw)] shadow-2xl">
+      <div data-overlay className="bg-white rounded-2xl p-7 w-[min(420px,90vw)] shadow-2xl">
         <h2 className="mb-1 text-base font-bold text-gray-900">Update Delivery Status</h2>
         <p className="mb-1 text-xs text-gray-500">Order #{checkout?.checkout_id}</p>
         {checkout && (

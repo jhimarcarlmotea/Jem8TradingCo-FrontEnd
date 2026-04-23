@@ -207,6 +207,45 @@ html.dark .modal-body {
   color: var(--brand-dark) !important;
 }
 
+/* Make modal windows opaque while keeping the page backdrop transparent/dimmed */
+html.dark .modal,
+html.dark .modal-content,
+html.dark .modal-body,
+html.dark .dialog,
+html.dark .popup,
+html.dark .panel.modal,
+html.dark [role="dialog"] {
+  background-color: rgba(7,18,26,0.98) !important; /* almost fully opaque */
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7) !important;
+}
+
+/* Keep overlay/backdrop dim and click-through behaviour as before */
+html.dark .modal-backdrop,
+html.dark .overlay,
+html.dark .backdrop {
+  background-color: rgba(0,0,0,0.55) !important;
+}
+
+/* Ensure overlay inner panels (direct children of full-screen overlays) are opaque in dark mode.
+   This targets components that render a full-screen fixed overlay with a centered panel (e.g. `fixed inset-0 ...` + inner `bg-white`). */
+html.dark .fixed.inset-0 > div,
+html.dark .overlay > div,
+html.dark .fixed.inset-0 .bg-white,
+html.dark .bg-white[data-overlay],
+html.dark .bg-white[data-modal] {
+  background-color: rgba(7,18,26,0.98) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7) !important;
+  color: var(--brand-dark) !important;
+}
+
 /* Remove decorative/light background images and pseudo-elements that cause white patches */
 html.dark .hero::before,
 html.dark .hero::after,

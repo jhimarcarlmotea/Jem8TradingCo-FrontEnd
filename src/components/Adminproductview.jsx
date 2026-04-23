@@ -158,8 +158,8 @@ const AdminProductView = () => {
 
       {/* ─── DELETE MODAL ─── */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center z-[1100] p-4">
-          <div className="bg-white w-full max-w-[400px] rounded-2xl p-7 shadow-2xl text-center">
+          <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center z-[1100] p-4">
+            <div data-overlay className="bg-white w-full max-w-[400px] rounded-2xl p-7 shadow-2xl text-center">
             <div className="flex items-center justify-center mx-auto mb-4 text-2xl bg-red-100 rounded-full w-13 h-13">🗑️</div>
             <h3 className="mb-2 text-base font-bold text-slate-900">Delete Product?</h3>
             <p className="text-[13px] text-slate-500 leading-relaxed mb-6">

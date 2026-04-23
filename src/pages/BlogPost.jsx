@@ -291,7 +291,7 @@ export default function BlogPost() {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
             onClick={closeViewer}
           >
-            <div className="relative max-w-[90vw] max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <div data-overlay className="relative max-w-[90vw] max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
               <button onClick={closeViewer} className="absolute top-3 right-3 text-white bg-black/40 rounded-full w-9 h-9 flex items-center justify-center text-xl">×</button>
 
               <button onClick={prevImage} className="absolute left-3 text-white text-3xl px-3 py-2 select-none">‹</button>
