@@ -42,6 +42,7 @@ function Overlay({ children, onClose, narrow }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        data-overlay
         className={`bg-white w-full rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-h-[94vh] overflow-y-auto ${narrow ? "max-w-[420px]" : "max-w-[520px]"}`}
       >
         {children}

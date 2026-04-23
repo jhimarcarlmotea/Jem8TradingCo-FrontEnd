@@ -188,6 +188,7 @@ function ReceiptModal({ imageUrl, receiptNumber, onClose }) {
       onClick={onClose}
     >
       <div
+        data-overlay
         className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >

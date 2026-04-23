@@ -425,6 +425,7 @@ function CompleteProfileModal({ onGo, onDismiss }) {
       <div
         role="dialog"
         aria-modal="true"
+        data-overlay
         className="bg-white rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >

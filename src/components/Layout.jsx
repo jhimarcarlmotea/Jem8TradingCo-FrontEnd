@@ -397,7 +397,7 @@ export function Header() {
                 </button>
 
                 {dropdownOpen && (
-                  <div className="absolute right-0 top-[calc(100%+8px)] w-[170px] bg-white border border-gray-200 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden z-[1100]">
+                  <div data-overlay className="absolute right-0 top-[calc(100%+8px)] w-[170px] bg-white border border-gray-200 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden z-[1100]">
                     <div className="absolute -top-[6px] right-[10px] w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45" />
                     <button
                       onClick={handleViewProfile}
@@ -444,6 +444,7 @@ export function Header() {
 
       {/* Slide-in panel */}
       <div
+        data-overlay
         className={`fixed top-0 right-0 bottom-0 w-[78%] max-w-[320px] bg-white z-[9999] overflow-y-auto flex flex-col px-5 pt-6 pb-8 shadow-[-4px_0_32px_rgba(0,0,0,0.12)] transition-transform duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
           mobileOpen ? "translate-x-0" : "translate-x-full"
         }`}

@@ -425,16 +425,10 @@ export default function AdminActivityLog() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <>
-      <style>{`
-        @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalIn   { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-      `}</style>
+    <div className="flex min-h-screen bg-[#EAF2ED] font-sans">
+      <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <div className="flex min-h-screen bg-[#F0F7F2] font-sans text-slate-900">
-        <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-        <main className="flex-1 min-w-0 px-7 py-7 pb-12 overflow-x-hidden max-md:px-4 max-md:py-5">
+      <main className="flex-1 px-6 py-7 overflow-x-hidden min-w-0">
 
           {/* Top bar */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3.5">
@@ -509,7 +503,6 @@ export default function AdminActivityLog() {
             </div>
           )}
         </main>
-      </div>
 
       {/* Delete single modal */}
       {deleteId && (
@@ -544,6 +537,6 @@ export default function AdminActivityLog() {
           onConfirm={handleDeleteAll}
         />
       )}
-    </>
+    </div>
   );
 }

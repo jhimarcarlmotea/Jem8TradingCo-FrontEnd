@@ -65,7 +65,7 @@ function Toast({ toasts }) {
 function ConfirmModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/35 flex items-center justify-center z-[1000]">
-      <div className="bg-white rounded-2xl p-7 max-w-sm w-[90%] shadow-2xl">
+      <div data-overlay className="bg-white rounded-2xl p-7 max-w-sm w-[90%] shadow-2xl">
         <div className="text-xl mb-2.5">🗑️</div>
         <p className="mb-5 text-sm leading-relaxed text-gray-700">{message}</p>
         <div className="flex justify-end gap-2">

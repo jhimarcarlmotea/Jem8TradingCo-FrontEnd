@@ -47,6 +47,7 @@ const Overlay = ({ children, onClose, wide, extraWide }) => (
   >
     <div
       onClick={e => e.stopPropagation()}
+      data-overlay
       className={`bg-white w-full ${extraWide ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-[560px]"} rounded-2xl shadow-2xl max-h-[94vh] overflow-y-auto`}
     >
       {children}
