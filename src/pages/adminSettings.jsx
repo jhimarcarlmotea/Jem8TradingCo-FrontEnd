@@ -5,10 +5,19 @@ import '../style/adminSettings.css';
 const API = 'http://localhost:8000/api'; // change to your base URL
 
 const getAuthHeaders = () => {
-  const token = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('jem8_token='))
-    ?.split('=')[1];
+  // Try cookie named jem8_token first (if project uses a cookie-based token)
+  let token = null;
+  try {
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('jem8_token='));
+    if (cookie) token = decodeURIComponent(cookie.split('=')[1] || "");
+  } catch (e) {
+    token = null;
+  }
+
+  // Fallback to localStorage token (used by the API axios instance)
+  if (!token && typeof window !== 'undefined') {
+    try { token = localStorage.getItem('token') || null; } catch (e) { token = null; }
+  }
 
   return {
     'Content-Type': 'application/json',
@@ -122,6 +131,11 @@ const AdminPanelSettings = () => {
 
       if (res.ok) {
         setSaveMsg('✅ Settings saved successfully!');
+        try { if (typeof window !== 'undefined') {
+          // persist appearance immediately so other pages pick it up
+          localStorage.setItem('appearance', JSON.stringify(appearance));
+          console.info('appearance persisted', appearance);
+        }} catch (e) {}
       } else {
         setSaveMsg(`❌ ${json.message || 'Failed to save settings.'}`);
       }
@@ -211,6 +225,48 @@ const AdminPanelSettings = () => {
   const handleColorChange = (e) => {
     setAppearance(prev => ({ ...prev, primaryColor: e.target.value, colorHex: e.target.value }));
   };
+
+  // Apply appearance settings to the document (CSS variable + theme class)
+  useEffect(() => {
+    try {
+      if (appearance && appearance.primaryColor) {
+        document.documentElement.style.setProperty('--brand-green', appearance.primaryColor);
+        // also update derived variable if desired
+        document.documentElement.style.setProperty('--brand-green-dark', appearance.primaryColor);
+      }
+
+      const applyDark = (isDark) => {
+        try {
+          if (isDark) document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+        } catch (e) {}
+      };
+
+      if (appearance.theme === 'dark') {
+        applyDark(true);
+      } else if (appearance.theme === 'light') {
+        applyDark(false);
+      } else {
+        // auto: follow system preference
+        const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+        applyDark(mq ? mq.matches : false);
+        const handler = (ev) => applyDark(ev.matches);
+        if (mq && mq.addEventListener) mq.addEventListener('change', handler);
+        else if (mq && mq.addListener) mq.addListener(handler);
+        // cleanup listener on unmount or when theme changes
+        return () => {
+          try {
+            if (mq && mq.removeEventListener) mq.removeEventListener('change', handler);
+            else if (mq && mq.removeListener) mq.removeListener(handler);
+          } catch (e) {}
+        };
+      }
+    } catch (e) {
+      // ignore
+    }
+    // Persist appearance for global initialization
+    try { if (typeof window !== 'undefined') localStorage.setItem('appearance', JSON.stringify(appearance)); } catch (e) {}
+  }, [appearance.theme, appearance.primaryColor]);
 
   const handleClearAll = () => {
     setSettings({ siteName: '', siteURL: '', adminEmail: '', contactNumber: '', companyAddress: '', timezone: 'Asia/Manila', language: 'en-PH' });

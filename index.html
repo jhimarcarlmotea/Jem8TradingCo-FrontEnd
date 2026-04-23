@@ -5,6 +5,35 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>jem8tradingco-frontend</title>
+    <style>
+      /* Critical inline dark-mode styles to prevent FOUC while CSS/JS loads */
+      html.dark body { background-color: #000000 !important; color: #dbe7ef !important; }
+      html.dark #root { background-color: #000000 !important; }
+      html.dark .loading, html.dark .loader, html.dark .spinner { color: #dbe7ef !important; }
+    </style>
+    <!-- Apply saved appearance immediately to avoid FOUC -->
+    <script>
+      (function(){
+        try {
+          var s = null;
+          try { s = localStorage.getItem('appearance'); } catch(e) { s = null; }
+          if (!s) return;
+          var a = JSON.parse(s || '{}');
+          if (a && a.primaryColor) {
+            try { document.documentElement.style.setProperty('--brand-green', a.primaryColor); document.documentElement.style.setProperty('--brand-green-dark', a.primaryColor); } catch(e) {}
+          }
+          var applyDark = function(isDark){ try { if(isDark) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); } catch(e){} };
+          if (a && a.theme === 'dark') applyDark(true);
+          else if (a && a.theme === 'light') applyDark(false);
+          else {
+            try {
+              var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+              applyDark(mq ? mq.matches : false);
+            } catch(e) {}
+          }
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

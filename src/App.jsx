@@ -1,4 +1,5 @@
-import { Routes, Route, Outlet} from 'react-router-dom'
+import { Routes, Route, Outlet, useLocation} from 'react-router-dom'
+import { useEffect } from 'react';
 import { Header, Footer } from './components/Layout'
 import { CartProvider } from "./context/CartContext";
 import { ToastContainer } from "react-toastify";
@@ -60,6 +61,45 @@ function AdminLayout() {
 }
 
 export default function App() {
+  // Apply saved appearance settings (global initializer)
+  useEffect(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('appearance') : null;
+      const appearance = stored ? JSON.parse(stored) : null;
+      if (!appearance) return;
+
+      if (appearance.primaryColor) {
+        document.documentElement.style.setProperty('--brand-green', appearance.primaryColor);
+        document.documentElement.style.setProperty('--brand-green-dark', appearance.primaryColor);
+      }
+
+      const applyDark = (isDark) => {
+        try {
+          if (isDark) document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+        } catch (e) {}
+      };
+
+      if (appearance.theme === 'dark') applyDark(true);
+      else if (appearance.theme === 'light') applyDark(false);
+      else {
+        const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+        applyDark(mq ? mq.matches : false);
+        const handler = (ev) => applyDark(ev.matches);
+        if (mq && mq.addEventListener) mq.addEventListener('change', handler);
+        else if (mq && mq.addListener) mq.addListener(handler);
+        return () => {
+          try {
+            if (mq && mq.removeEventListener) mq.removeEventListener('change', handler);
+            else if (mq && mq.removeListener) mq.removeListener(handler);
+          } catch (e) {}
+        };
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
   return (
     <CartProvider>
       

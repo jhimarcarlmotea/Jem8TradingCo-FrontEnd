@@ -419,6 +419,109 @@ select.as-input {
   flex-wrap: wrap;
 }
 
+/* Dark mode overrides when `html` has class `dark` */
+html.dark .as-layout,
+html.dark .as-body {
+  background-color: #0b1220;
+}
+
+html.dark .as-page {
+  color: #d1d9df;
+}
+
+html.dark .as-card {
+  background: #0f1724;
+  border-color: #1f2937;
+}
+
+html.dark .as-page-header__title,
+html.dark .as-card__title,
+html.dark .as-log-box__title {
+  color: #e6eef7;
+}
+
+html.dark .as-card__desc,
+html.dark .as-page-header__sub,
+html.dark .as-label,
+html.dark .as-theme-card__label,
+html.dark .as-section-label {
+  color: #9aa4b2;
+}
+
+html.dark .as-input {
+  background: #071021;
+  color: #e6eef7;
+  border-color: #1f2937;
+}
+
+html.dark .as-input:focus {
+  box-shadow: 0 0 0 3px rgba(77,123,101,0.08);
+  background: #071021;
+}
+
+html.dark .as-btn--primary {
+  background-color: #155dfc;
+  color: #fff;
+}
+
+html.dark .as-btn--outline {
+  background: transparent;
+  border-color: #334155;
+  color: #e6eef7;
+}
+
+html.dark .as-log-box {
+  background: #081220;
+  border-color: #1f2937;
+}
+
+html.dark .as-color-dot { border-color: rgba(255,255,255,0.06); }
+
+/* Sidebar (AdminNav) dark-mode overrides */
+html.dark aside[aria-label="Admin navigation"] {
+  background-color: #07121a !important;
+  border-color: #12202a !important;
+  color: #e6eef7;
+}
+
+html.dark aside[aria-label="Admin navigation"] .border-b,
+html.dark aside[aria-label="Admin navigation"] .border-t,
+html.dark aside[aria-label="Admin navigation"] .h-px {
+  border-color: #12202a !important;
+}
+
+html.dark aside[aria-label="Admin navigation"] img { filter: brightness(1) drop-shadow(0 1px 0 rgba(0,0,0,0.4)); }
+
+html.dark aside[aria-label="Admin navigation"] .text-gray-900,
+html.dark aside[aria-label="Admin navigation"] .text-gray-700 {
+  color: #e6eef7 !important;
+}
+
+html.dark aside[aria-label="Admin navigation"] .text-gray-400,
+html.dark aside[aria-label="Admin navigation"] p.px-3 {
+  color: #9aa4b2 !important;
+}
+
+html.dark aside[aria-label="Admin navigation"] .bg-white { background-color: transparent !important; }
+
+html.dark aside[aria-label="Admin navigation"] .bg-gray-50 {
+  background: rgba(255,255,255,0.02) !important;
+  border-color: #12202a !important;
+}
+
+html.dark aside[aria-label="Admin navigation"] .text-gray-600,
+html.dark aside[aria-label="Admin navigation"] .hover\:text-gray-900 {
+  color: #cbd5e1 !important;
+}
+
+html.dark aside[aria-label="Admin navigation"] .hover\:bg-gray-100:hover {
+  background: rgba(255,255,255,0.02) !important;
+}
+
+html.dark aside[aria-label="Admin navigation"] .w-9.h-9.rounded-full {
+  box-shadow: none !important;
+}
+
 /* ── Accessibility ── */
 .as-sr-only {
   position: absolute;

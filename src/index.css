@@ -52,7 +52,7 @@ html {
 body {
   font-family: var(--font-body);
   color: var(--brand-dark);
-  background: #fff;
+  background: var(--bg, #fff);
   overflow-x: hidden;
 }
 
@@ -107,6 +107,248 @@ a {
   border-bottom: 1px solid var(--brand-border);
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
 }
+
+/* Dark theme variables and broad overrides */
+html.dark {
+  --brand-green:        #3b82f6; /* will be overridden by appearance.primaryColor if set */
+  --brand-green-dark:   #2563eb;
+  --brand-green-light:  #07121a;
+  --brand-dark:         #e6eef7;
+  --brand-gray:         #9aa4b2;
+  --brand-light-gray:   #07121a;
+  --brand-border:       rgba(255,255,255,0.06);
+  --shadow-card:        0 2px 16px rgba(0, 0, 0, 0.6);
+  --bg:                 #000000;
+  --container-bg:       #000000;
+}
+
+html.dark body {
+  background: var(--bg) !important;
+  color: var(--brand-dark);
+}
+
+html.dark .header,
+html.dark .site-header,
+html.dark .site-footer,
+html.dark .hero {
+  background: transparent;
+}
+
+/* Link and button color adjustments */
+html.dark .header__nav-link:hover,
+html.dark .header__nav-link.active {
+  color: var(--brand-green);
+}
+
+html.dark .btn-primary {
+  background: var(--brand-green);
+  border-color: var(--brand-green);
+}
+
+/* Generic card backgrounds */
+html.dark .card,
+html.dark .as-card,
+html.dark .site-footer__subscribe-form,
+html.dark .hero {
+  background: #07121a !important;
+}
+
+/* Broader overrides for elements that often use hard-coded light styles */
+html.dark .bg-white { background-color: #07121a !important; color: var(--brand-dark) !important; }
+html.dark .bg-gray-50 { background-color: #07121a !important; }
+html.dark .border-gray-200 { border-color: rgba(255,255,255,0.06) !important; }
+html.dark .border { border-color: rgba(255,255,255,0.06) !important; }
+html.dark .text-gray-900, html.dark .text-gray-700 { color: var(--brand-dark) !important; }
+html.dark .text-gray-400, html.dark .text-gray-500 { color: #9aa4b2 !important; }
+html.dark .table, html.dark table { background: transparent !important; color: var(--brand-dark) !important; }
+html.dark .table thead th { color: #9aa4b2 !important; border-bottom-color: rgba(255,255,255,0.04) !important; }
+html.dark .table tbody tr { border-bottom-color: rgba(255,255,255,0.02) !important; }
+html.dark .container { background: transparent !important; }
+html.dark .as-page { background: transparent !important; }
+
+/* Force panels, wrappers and the main content area to dark */
+html.dark .site-header,
+html.dark .header,
+html.dark .site-footer,
+html.dark .hero,
+html.dark .as-body,
+html.dark main,
+html.dark .container,
+html.dark .page,
+html.dark .content {
+  background: transparent !important;
+}
+
+/* Cards and panels should use a dark card color */
+html.dark .as-card,
+html.dark .card,
+html.dark .panel,
+html.dark .panel-body,
+html.dark .card-body {
+  background: #07121a !important;
+  border-color: rgba(255,255,255,0.04) !important;
+  color: var(--brand-dark) !important;
+}
+
+/* Tables, lists, and rows */
+html.dark table,
+html.dark .table,
+html.dark .table tbody tr,
+html.dark .list-row {
+  background: transparent !important;
+  color: var(--brand-dark) !important;
+}
+
+/* Modal/backdrop */
+html.dark .modal,
+html.dark .modal-content,
+html.dark .modal-body {
+  background: #07121a !important;
+  color: var(--brand-dark) !important;
+}
+
+/* Remove decorative/light background images and pseudo-elements that cause white patches */
+html.dark .hero::before,
+html.dark .hero::after,
+html.dark .hero .overlay,
+html.dark .hero .bg-pattern,
+html.dark .hero .bg-image,
+html.dark .container::before,
+html.dark .container::after,
+html.dark .section::before,
+html.dark .section::after,
+html.dark [class*="bg-"]::before,
+html.dark [class*="bg-"]::after {
+  background-image: none !important;
+  background: transparent !important;
+  opacity: 1 !important;
+}
+
+/* Force removal of inline white backgrounds on common hero/intro elements */
+html.dark .hero,
+html.dark .intro,
+html.dark .banner,
+html.dark .slide,
+html.dark .carousel,
+html.dark .card--large,
+html.dark .promo {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* As a last resort, neutralize background-images globally when dark */
+html.dark * {
+  background-image: none !important;
+}
+
+/* Aggressive fallback: force transparent backgrounds and readable text for all elements
+   when dark mode is active. This ensures no element keeps a white background. */
+html.dark * {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--brand-dark) !important;
+}
+
+/* Re-apply black backdrop to main structural elements to ensure visible canvas */
+html.dark body,
+html.dark #root,
+html.dark main,
+html.dark .as-body,
+html.dark .container,
+html.dark .page,
+html.dark .content {
+  background-color: #000000 !important;
+}
+
+/* Loading spinner / placeholder contrast */
+html.dark .loading,
+html.dark .loading *,
+html.dark .spinner,
+html.dark .loader {
+  color: #dbe7ef !important;
+}
+
+/* Final global enforcement: force true black backgrounds and readable text
+   This uses very high-specificity selectors and !important to override
+   inline or component styles that still apply light backgrounds. */
+html.dark, html.dark body, html.dark #root, html.dark main, html.dark .container, html.dark .as-page, html.dark .as-body, html.dark .page, html.dark .content {
+  background-color: #000000 !important;
+  color: var(--brand-dark) !important;
+}
+
+/* Improve text contrast in dark mode */
+html.dark body,
+html.dark p,
+html.dark span,
+html.dark li,
+html.dark label,
+html.dark input,
+html.dark textarea {
+  color: #dbe7ef !important; /* light neutral for body text */
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6,
+html.dark .section-title,
+html.dark .as-page-header__title,
+html.dark .as-card__title {
+  color: #ffffff !important; /* bright headings */
+  text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+}
+
+html.dark a,
+html.dark a:hover,
+html.dark .header__nav-link,
+html.dark .as-btn--primary,
+html.dark .btn-primary {
+  color: #ffffff !important;
+}
+
+/* Buttons: dark background, white text */
+html.dark .as-btn--primary, html.dark .btn-primary {
+  background-color: var(--brand-green) !important;
+  border-color: var(--brand-green) !important;
+  color: #ffffff !important;
+}
+
+/* Make subtle text like meta, captions readable */
+html.dark .muted, html.dark .text-muted, html.dark .as-label, html.dark .note {
+  color: #9aa4b2 !important;
+}
+
+/* Neutralize common light utility classes that may be applied by components */
+html.dark .bg-white, html.dark .bg-gray-50, html.dark .bg-gray-100, html.dark .bg-gray-200 {
+  background-color: transparent !important;
+  color: var(--brand-dark) !important;
+}
+
+/* Make sure cards, panels, tables, and modals are dark */
+html.dark .card, html.dark .panel, html.dark .panel-body, html.dark .card-body, html.dark .as-card, html.dark .table, html.dark table {
+  background-color: #07121a !important;
+  color: var(--brand-dark) !important;
+  border-color: rgba(255,255,255,0.04) !important;
+}
+
+/* Overlays/backdrops */
+html.dark .modal-backdrop, html.dark .overlay, html.dark ::backdrop {
+  background-color: rgba(0,0,0,0.75) !important;
+}
+
+/* Buttons and badges fallback colors */
+html.dark .btn, html.dark button, html.dark .badge {
+  color: var(--brand-dark) !important;
+}
+
+/* Ensure notification banners, messages and chips are visible */
+html.dark .notification, html.dark .alert { background: rgba(255,255,255,0.02) !important; color: var(--brand-dark) !important; border-color: rgba(255,255,255,0.04) !important; }
+
+/* Buttons default adjustments */
+html.dark .btn-outline { color: #e6eef7 !important; border-color: rgba(255,255,255,0.06) !important; }
+html.dark .as-btn--outline { color: #e6eef7 !important; border-color: rgba(255,255,255,0.06) !important; }
 
 .header__inner {
   display: flex;
