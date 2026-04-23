@@ -70,16 +70,15 @@ const SORT_OPTIONS = [
 ];
 
 function ProductCell({ checkout }) {
-  const product  = checkout?.cart?.product ?? null;
-  const cart     = checkout?.cart ?? null;
-  const imageUrl = product?.primary_image_url
-    ?? (product?.images?.find((img) => img.is_primary)?.image_path
-        ? `http://127.0.0.1:8000/storage/${product.images.find((img) => img.is_primary).image_path}`
-        : null);
+  const items = checkout?.items ?? [];
+  const firstItem = items[0] ?? null;
+  const product = firstItem?.product ?? null;
+  const imageUrl = product?.image ?? null;
 
   if (!product) return <span className="text-gray-400">—</span>;
 
   const isPreOrder = product.status === "pre_order";
+  const totalItems = items.length;
 
   return (
     <div className="flex items-center gap-2.5 min-w-[180px] max-w-[260px]">
@@ -103,8 +102,11 @@ function ProductCell({ checkout }) {
           {product.product_name}
         </div>
         <div className="text-gray-400 text-[11px] mt-0.5">
-          Qty: {cart?.quantity ?? 1} · ₱{fmt(product.price)}
+          Qty: {firstItem?.quantity ?? 1} · ₱{fmt(firstItem?.price ?? product.price)}
         </div>
+        {totalItems > 1 && (
+          <div className="text-[10px] text-blue-500 mt-0.5">+{totalItems - 1} more item{totalItems - 1 > 1 ? "s" : ""}</div>
+        )}
         <span className={`inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border
           ${isPreOrder
             ? "text-amber-700 bg-amber-50 border-amber-200"
@@ -219,39 +221,7 @@ export default function AdminOrders() {
     try {
       const params = statusFilter !== "All" ? { status: statusFilter } : {};
       const res = await api.get("/deliveries", { params });
-      const rawDeliveries = res.data.deliveries ?? [];
-      console.log(res)
-      const missingUserIds = [
-      ...new Set(
-        rawDeliveries
-          .filter((d) => !d.checkout?.account && !d.checkout?.user && d.checkout?.user_id)
-          .map((d) => d.checkout.user_id)
-      ),
-    ];
-
-      const userMap = {};
-      await Promise.all(
-        missingUserIds.map(async (id) => {
-          try {
-            const userRes = await api.get(`/showUser/${id}`);
-            userMap[id] = userRes.data.data.account ?? userRes.data.data.user ?? userRes.data.data;
-          } catch {
-            userMap[id] = null;
-          }
-        })
-      );
-
-      const enriched = rawDeliveries.map((d) => {
-        if (!d.checkout?.user && d.checkout?.user_id) {
-          return {
-            ...d,
-            checkout: { ...d.checkout, user: userMap[d.checkout.user_id] ?? null },
-          };
-        }
-        return d;
-      });
-
-      setDeliveries(enriched);
+      setDeliveries(res.data.deliveries ?? []);
       setCurrentPage(1);
     } catch (e) {
       setError(e.response?.data?.message || "Failed to load orders.");
@@ -288,7 +258,7 @@ export default function AdminOrders() {
 
   const filtered = useMemo(() => {
     const searched = deliveries.filter((d) => {
-      const user = d.checkout?.account ?? d.checkout?.user;
+      const user = d.checkout?.user;
       const name = `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.toLowerCase();
       const checkoutId = String(d.checkout?.checkout_id ?? d.checkout_id ?? "").toLowerCase();
       const productName = (d.checkout?.cart?.product?.product_name ?? "").toLowerCase();
@@ -478,14 +448,14 @@ export default function AdminOrders() {
                             {user ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() : "—"}
                           </td>
                           <td className="px-3.5 py-3.5 text-gray-500 leading-relaxed">
-                              <div>{user?.email ?? "—"}</div>
-                              <div>{user?.phone_number ?? ""}</div>
-                              {user?.company_name && (
-                                  <div className="text-[11px] text-blue-600 font-medium">🏢 {user.company_name}</div>
-                              )}
-                              {user?.tin_number && (
-                                  <div className="text-[11px] text-gray-400">TIN: {user.tin_number}</div>
-                              )}
+                            <div>{user?.email ?? "—"}</div>
+                            <div>{user?.phone_number ?? ""}</div>
+                            {user?.company_name && (
+                              <div className="text-[11px] text-blue-600 font-medium">🏢 {user.company_name}</div>
+                            )}
+                            {user?.tin_number && (
+                              <div className="text-[11px] text-gray-400">TIN: {user.tin_number}</div>
+                            )}
                           </td>
                           <td className="px-3.5 py-3.5 text-gray-700 whitespace-nowrap capitalize">
                             {checkout?.payment_method ?? "—"}

@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import AdminNav from "../components/AdminNav";
 import api from "../api/axios";
-
+import { useNavigate } from "react-router-dom";
 // ── Fetch ───────────────────────────────────────────────────────────────────────
 async function fetchDashboard() {
   const { data } = await api.get("/dashboard");
   return data;
 }
-
+  async function markNotificationRead(id) {
+  await api.patch(`/notifications/${id}/read`);
+}
 // ── Formatters ──────────────────────────────────────────────────────────────────
 const peso = (v) =>
   "₱" +
@@ -556,7 +558,8 @@ export default function AdminDashboard() {
   const [data, setData]             = useState(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
-
+  const [readIds, setReadIds] = useState(new Set());
+  const navigate = useNavigate();
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -1300,126 +1303,157 @@ export default function AdminDashboard() {
           <div className="dashboard-right-col">
 
             {/* Notifications */}
-            <Card>
-              <CardTitle
-                action={
-                  notifs.unread > 0 && (
-                    <span
-                      style={{
-                        fontSize: 9,
-                        background: "#FEE2E2",
-                        color: "#DC2626",
-                        fontWeight: 600,
-                        padding: "2px 7px",
-                        borderRadius: 20,
-                      }}
-                    >
-                      {notifs.unread} new
-                    </span>
-                  )
-                }
-              >
-                Notifications
-              </CardTitle>
+<Card>
+  <CardTitle
+    action={
+      (() => {
+        const unreadCount = (notifs.recent ?? []).filter(
+          (n) => !n.is_read && !readIds.has(n.notification_id)
+        ).length;
+        return unreadCount > 0 ? (
+          <span
+            style={{
+              fontSize: 9,
+              background: "#FEE2E2",
+              color: "#DC2626",
+              fontWeight: 600,
+              padding: "2px 7px",
+              borderRadius: 20,
+            }}
+          >
+            {unreadCount} new
+          </span>
+        ) : null;
+      })()
+    }
+  >
+    Notifications
+  </CardTitle>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {loading ? (
-                  [1, 2, 3].map((i) => (
-                    <Skeleton key={i} style={{ height: 60, width: "100%", marginBottom: 3 }} />
-                  ))
-                ) : (notifs.recent ?? []).length === 0 ? (
-                  <p style={{ fontSize: 11, color: "#94A3B8", margin: "8px 0" }}>
-                    No notifications yet.
-                  </p>
-                ) : (
-                  (notifs.recent ?? []).map((n, i) => {
-                    const s =
-                      notifIconMap[n.type] ?? {
-                        icon: "🔔",
-                        bg: "#F1F5F9",
-                        dot: "#94A3B8",
-                      };
-                    return (
-                      <div
-                        key={n.notification_id ?? i}
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "flex-start",
-                          padding: "8px",
-                          borderRadius: 10,
-                          background: !n.is_read ? s.bg : "transparent",
-                          transition: "background 0.15s",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 32, height: 32,
-                            borderRadius: 8, flexShrink: 0,
-                            background: !n.is_read ? s.bg : "#F1F5F9",
-                            border: `1.5px solid ${!n.is_read ? s.dot + "33" : "#E2E8F0"}`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 15,
-                            marginTop: 1,
-                          }}
-                        >
-                          {s.icon}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                              gap: 4,
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: "#0F172A",
-                                lineHeight: 1.3,
-                              }}
-                            >
-                              {n.title}
-                            </div>
-                            {!n.is_read && (
-                              <span
-                                style={{
-                                  width: 6, height: 6,
-                                  borderRadius: "50%",
-                                  background: s.dot,
-                                  flexShrink: 0,
-                                  marginTop: 4,
-                                }}
-                              />
-                            )}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 10,
-                              color: "#64748B",
-                              marginTop: 2,
-                              lineHeight: 1.4,
-                              wordBreak: "break-word",
-                              whiteSpace: "normal",
-                            }}
-                          >
-                            {n.message}
-                          </div>
-                          <div style={{ fontSize: 9, color: "#CBD5E1", marginTop: 3 }}>
-                            {timeAgo(n.created_at)}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
+  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    {loading ? (
+      [1, 2, 3].map((i) => (
+        <Skeleton key={i} style={{ height: 60, width: "100%", marginBottom: 3 }} />
+      ))
+    ) : (notifs.recent ?? []).length === 0 ? (
+      <p style={{ fontSize: 11, color: "#94A3B8", margin: "8px 0" }}>
+        No notifications yet.
+      </p>
+    ) : (
+      (notifs.recent ?? []).map((n, i) => {
+        const s =
+          notifIconMap[n.type] ?? {
+            icon: "🔔",
+            bg: "#F1F5F9",
+            dot: "#94A3B8",
+          };
+        const isUnread = !n.is_read && !readIds.has(n.notification_id);
+
+        const handleNotifClick = async () => {
+  // Mark as read locally immediately
+  if (isUnread) {
+    setReadIds((prev) => new Set([...prev, n.notification_id]));
+    try {
+      await markNotificationRead(n.notification_id);
+    } catch (e) {
+      console.error("Failed to mark notification as read", e);
+    }
+  }
+
+ const routes = {
+  order:   "/adminOrders",
+  user:    "/adminAccountmanagement",
+  product: "/adminProducts",
+  contact: "/adminContact",
+};
+
+const path = routes[n.type];
+if (path) navigate(path); 
+};
+
+        return (
+          <div
+            key={n.notification_id ?? i}
+            onClick={handleNotifClick}
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "flex-start",
+              padding: "8px",
+              borderRadius: 10,
+              background: isUnread ? s.bg : "transparent",
+              transition: "background 0.15s",
+              cursor: "pointer",
+            }}
+          >
+            <div
+              style={{
+                width: 32, height: 32,
+                borderRadius: 8, flexShrink: 0,
+                background: isUnread ? s.bg : "#F1F5F9",
+                border: `1.5px solid ${isUnread ? s.dot + "33" : "#E2E8F0"}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 15,
+                marginTop: 1,
+              }}
+            >
+              {s.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 4,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#0F172A",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {n.title}
+                </div>
+                {isUnread && (
+                  <span
+                    style={{
+                      width: 6, height: 6,
+                      borderRadius: "50%",
+                      background: s.dot,
+                      flexShrink: 0,
+                      marginTop: 4,
+                    }}
+                  />
                 )}
               </div>
-            </Card>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "#64748B",
+                  marginTop: 2,
+                  lineHeight: 1.4,
+                  wordBreak: "break-word",
+                  whiteSpace: "normal",
+                }}
+              >
+                {n.message}
+              </div>
+              <div style={{ fontSize: 9, color: "#CBD5E1", marginTop: 3 }}>
+                {timeAgo(n.created_at)}
+              </div>
+            </div>
+          </div>
+        );
+      })
+    )}
+  </div>
+</Card>
 
             {/* Latest Customers */}
             <Card>
