@@ -282,82 +282,77 @@ setItems(finalItems);
     handleRemoveReceipt();
   };
 
-  const handlePlaceOrder = async () => {
-    setPlacing(true);
-    setPlaceError(null);
+const handlePlaceOrder = async () => {
+  setPlacing(true);
+  setPlaceError(null);
 
-
-    let resolvedAddress;
-    if (addrMode === "saved" && selectedAddr) {
-      resolvedAddress = {
-        street:   selectedAddr.street      || "",
-        barangay: selectedAddr.barangay    || "",
-        city:     selectedAddr.city        || "",
-        province: selectedAddr.province    || "",
-        zip:      selectedAddr.postal_code || "",
-        country:  selectedAddr.country     || "Philippines",
-      };
-    } else {
-      resolvedAddress = {
-        street:   delivery.address  || "",
-        barangay: delivery.barangay || "",
-        city:     delivery.city     || "",
-        province: delivery.province || "",
-        zip:      delivery.zip      || "",
-        country:  "Philippines",
-      };
-    }
-
-    const paymentDetails = {
-      ...payFields,
-      first_name: user?.first_name || "", last_name: user?.last_name || "",
-      email: user?.email || "", phone: user?.phone_number || "",
-      billing_address: resolvedAddress,
+  let resolvedAddress;
+  if (addrMode === "saved" && selectedAddr) {
+    resolvedAddress = {
+      street:   selectedAddr.street      || "",
+      barangay: selectedAddr.barangay    || "",
+      city:     selectedAddr.city        || "",
+      province: selectedAddr.province    || "",
+      zip:      selectedAddr.postal_code || "",
+      country:  selectedAddr.country     || "Philippines",
     };
+  } else {
+    resolvedAddress = {
+      street:   delivery.address  || "",
+      barangay: delivery.barangay || "",
+      city:     delivery.city     || "",
+      province: delivery.province || "",
+      zip:      delivery.zip      || "",
+      country:  "Philippines",
+    };
+  }
 
-    const cartIds = items.map((i) => i.id).filter(Boolean);
+  const paymentDetails = {
+    ...payFields,
+    first_name: user?.first_name || "",
+    last_name:  user?.last_name  || "",
+    email:      user?.email      || "",
+    phone:      user?.phone_number || "",
+    billing_address: resolvedAddress,
+  };
 
-    if (cartIds.length === 0) {
-      setPlaceError("No valid cart items found. Please go back to your cart.");
-      setPlacing(false);
-      return;
-    }
+  const cartIds = items.map((i) => i.id).filter(Boolean);
+  if (cartIds.length === 0) {
+    setPlaceError("No valid cart items found. Please go back to your cart.");
+    setPlacing(false);
+    return;
+  }
 
-    // ── Build FormData to support file upload ─────────────────────────────
-    const formData = new FormData();
+  const formData = new FormData();
+  cartIds.forEach((id) => formData.append("cart_ids[]", id));
+  formData.append("payment_method", payMethod);
+  formData.append("shipping_fee",   shippingFee);
+  if (specialNote) formData.append("special_instructions", specialNote);
 
-    // Append cart_ids as array
-    cartIds.forEach((id) => formData.append("cart_ids[]", id));
-
-    formData.append("payment_method",  payMethod);
-    formData.append("shipping_fee",    shippingFee);
-    if (specialNote) formData.append("special_instructions", specialNote);
-
-    // Append payment_details fields individually
-    Object.entries(paymentDetails).forEach(([key, val]) => {
-      if (val !== null && val !== undefined && val !== "") {
+  // Serialize billing_address as JSON string (nested objects don't survive FormData)
+  Object.entries(paymentDetails).forEach(([key, val]) => {
+    if (val !== null && val !== undefined && val !== "") {
+      if (key === "billing_address" && typeof val === "object") {
+        formData.append(`payment_details[${key}]`, JSON.stringify(val));
+      } else {
         formData.append(`payment_details[${key}]`, val);
       }
+    }
+  });
+
+  if (receiptFile) formData.append("receipt_image", receiptFile);
+
+  try {
+    const res = await axios.post(`${BASE}/checkout`, formData, {
+      withCredentials: true,
+      headers: { "Content-Type": "multipart/form-data" },
     });
-
-    // Append receipt image if provided
-    if (receiptFile) {
-      formData.append("receipt_image", receiptFile);
-    }
-
-    console.log("Checkout cart IDs:", cartIds);
-
-    try {
-      const res = await axios.post(`${BASE}/checkout`, formData, {
-        withCredentials: true,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      navigate(`/orders?new=${res.data.checkout_id}`);
-    } catch (err) {
-      setPlaceError(err.response?.data?.message || "Failed to place order. Please try again.");
-      setPlacing(false);
-    }
-  };
+    navigate(`/orders?new=${res.data.checkout_id}`);
+  } catch (err) {
+    setPlaceError(err.response?.data?.message || "Failed to place order. Please try again.");
+    setPlacing(false);
+  }
+};
 
   // ── Empty / loading states ────────────────────────────────────────────────
   const EmptyShell = ({ icon, title, desc, action }) => (

@@ -44,39 +44,67 @@ function formatStatusText(status) {
     .replace(/(^|\s)\S/g, (t) => t.toUpperCase());
 }
 
+function safeJsonParse(value, fallback = {}) {
+  if (!value) return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
 function normaliseOrder(o, account) {
   const { checkout, delivery } = o;
 
-
   const status = (delivery?.status ?? "processing").toLowerCase();
-  const addr   = checkout?.delivery_address ?? {};
 
-  /* ===============================
-     ✅ MULTIPLE ITEMS FIX
-  =============================== */
+  /* ── Address: flat columns ── */
+  const deliveryStreet   = checkout?.delivery_street   ?? "";
+  const deliveryBarangay = checkout?.delivery_barangay ?? "";
+  const deliveryCity     = checkout?.delivery_city     ?? "";
+  const deliveryProvince = checkout?.delivery_province ?? "";
+  const deliveryZip      = checkout?.delivery_zip      ?? "";
+  const deliveryCountry  = checkout?.delivery_country  ?? "";
+
+  const formattedAddress = [
+    deliveryStreet,
+    deliveryBarangay,
+    deliveryCity,
+    deliveryProvince,
+    deliveryZip,
+    deliveryCountry,
+  ].filter(Boolean).join(", ");
+
+  /* ── Items ── */
   const items = (checkout?.items ?? []).map((item) => {
     const product = item.product ?? {};
 
-    // Resolve image URL from several possible shapes returned by backend
     const resolveImage = () => {
-      // 1) explicit product primary field
       if (product?.primary_image_url) return product.primary_image_url;
-      if (product?.image_url) return product.image_url;
-      if (product?.image) return product.image;
+      if (product?.image_url)         return product.image_url;
+      if (product?.image)             return product.image;
 
-      // 2) images array (try several key names)
       const imgs = product?.images || product?.images_list || product?.media || [];
       if (Array.isArray(imgs) && imgs.length) {
-        const primary = imgs.find((i) => i.is_primary || i.primary || i.isPrimary) || imgs[0];
+        const primary =
+          imgs.find((i) => i.is_primary || i.primary || i.isPrimary) || imgs[0];
         if (primary) {
           return (
-            primary.image_url || primary.url || primary.path || primary.image_path || primary.src || primary.file || null
+            primary.image_url  ||
+            primary.url        ||
+            primary.path       ||
+            primary.image_path ||
+            primary.src        ||
+            primary.file       ||
+            null
           );
         }
       }
 
-      // 3) fallback to item-level fields (some APIs include image on the item)
-      if (item?.image) return item.image;
+      if (item?.image)      return item.image;
       if (item?.image_path) return `http://127.0.0.1:8000/storage/${item.image_path}`;
 
       return null;
@@ -88,87 +116,79 @@ function normaliseOrder(o, account) {
         ? imgCandidate
         : imgCandidate.startsWith("/")
         ? imgCandidate
-        : `http://127.0.0.1:8000/${String(imgCandidate).replace(/^\/+/, '')}`
+        : `http://127.0.0.1:8000/${String(imgCandidate).replace(/^\/+/, "")}`
       : null;
 
-    const qty = Number(item.quantity ?? item.qty ?? item.qty_selected ?? 1) || 1;
+    const qty      = Number(item.quantity ?? item.qty ?? item.qty_selected ?? 1) || 1;
     const rawPrice = Number(item.price ?? item.unit_price ?? item.raw_price ?? product?.price ?? 0) || 0;
-    const priceStr = `₱${rawPrice.toLocaleString()}`;
 
     return {
-      id: item.product_id ?? item.product_id ?? item.id,
-      name: item.product_name ?? product?.product_name ?? product?.name ?? item.name ?? "Product",
+      id: item.product_id ?? item.id,
+      name:
+        item.product_name     ??
+        product?.product_name ??
+        product?.name         ??
+        item.name             ??
+        "Product",
       qty,
       quantity: qty,
       rawPrice,
-      price: priceStr,
-      total: Number(item.total ?? rawPrice * qty),
-
-      // optional full product (if backend adds later)
+      price:  `₱${rawPrice.toLocaleString()}`,
+      total:  Number(item.total ?? rawPrice * qty),
       product,
-
-      image: imageUrl,
-
-      raw: item,
+      image:  imageUrl,
+      raw:    item,
     };
   });
 
-  /* ===============================
-     ✅ RECEIPT FIX (IMPORTANT)
-  =============================== */
+  /* ── Receipt ── */
   const receipt = checkout?.receipt
     ? {
-        id: checkout.receipt.receipt_id ?? null,
-        number: checkout.receipt.receipt_number ?? null,
-        image: checkout.receipt.receipt_image_url ?? null,
+        id:     checkout.receipt.receipt_id        ?? null,
+        number: checkout.receipt.receipt_number    ?? null,
+        image:  checkout.receipt.receipt_image_url ?? null,
       }
     : null;
-
 
   return {
     id: delivery?.delivery_id ?? checkout?.checkout_id,
 
     date: checkout?.created_at
       ? new Date(checkout.created_at).toLocaleDateString("en-PH", {
-          year: "numeric",
+          year:  "numeric",
           month: "long",
-          day: "numeric",
+          day:   "numeric",
         })
       : "—",
 
     status,
 
-    paymentMethod: checkout?.payment_method ?? "—",
+    paymentMethod:  checkout?.payment_method  ?? "—",
     paymentDetails: checkout?.payment_details ?? null,
 
     receipt,
 
-    subtotal:
-      Number(checkout?.paid_amount ?? 0) -
-      Number(checkout?.shipping_fee ?? 0),
-
+    subtotal:    Number(checkout?.paid_amount  ?? 0) - Number(checkout?.shipping_fee ?? 0),
     shippingFee: Number(checkout?.shipping_fee ?? 0),
-    total: Number(checkout?.paid_amount ?? 0),
+    total:       Number(checkout?.paid_amount  ?? 0),
 
-    specialNote:
-      checkout?.special_instructions ?? delivery?.notes ?? "",
+    specialNote: checkout?.special_instructions ?? delivery?.notes ?? "",
 
     delivery: {
-    firstName:   account?.first_name   ?? "",
-    lastName:    account?.last_name    ?? "",
-    phone:       account?.phone_number ?? "",
-    email:       account?.email        ?? "",
-
-   
-    companyName: account?.company_name ?? null,
-    tinNumber:   account?.tin_number   ?? null,
-
-    address:     addr?.street    ?? "",
-    barangay:    addr?.barangay  ?? "",
-    city:        addr?.city      ?? "",
-    province:    addr?.province  ?? "",
-    zip:         addr?.zip       ?? "",
-  },
+      firstName:   account?.first_name   ?? "",
+      lastName:    account?.last_name    ?? "",
+      phone:       account?.phone_number ?? "",
+      email:       account?.email        ?? "",
+      companyName: account?.company_name ?? null,
+      tinNumber:   account?.tin_number   ?? null,
+      address:          deliveryStreet,
+      barangay:         deliveryBarangay,
+      city:             deliveryCity,
+      province:         deliveryProvince,
+      zip:              deliveryZip,
+      country:          deliveryCountry,
+      formattedAddress,
+    },
 
     items,
   };
@@ -189,7 +209,7 @@ function ReceiptModal({ imageUrl, receiptNumber, onClose }) {
     >
       <div
         data-overlay
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+        className="w-full max-w-lg overflow-hidden bg-white shadow-2xl rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8f0eb]">
@@ -250,35 +270,41 @@ const TABS = [
 ];
 
 const PAYMENT_TAGS = {
-  gcash:        { label: "E-Wallet", color: "#0078FF" },
-  deposit:      { label: "Deposit",  color: "#0ea5e9" },
-  bank_transfer:{ label: "Bank",     color: "#6366f1" },
-  cod:          { label: "COD",      color: "#f59e0b" },
-  check:        { label: "Check",    color: "#64748b" },
+  gcash:         { label: "E-Wallet", color: "#0078FF" },
+  deposit:       { label: "Deposit",  color: "#0ea5e9" },
+  bank_transfer: { label: "Bank",     color: "#6366f1" },
+  cod:           { label: "COD",      color: "#f59e0b" },
+  check:         { label: "Check",    color: "#64748b" },
 };
 
 function hexToRgba(hex, alpha = 1) {
-  const h = hex.replace('#', '');
-  const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  const h       = hex.replace("#", "");
+  const bigint  = parseInt(
+    h.length === 3 ? h.split("").map((c) => c + c).join("") : h,
+    16
+  );
   const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
+  const g = (bigint >>  8) & 255;
+  const b =  bigint        & 255;
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
 function renderPaymentTag(method) {
   if (!method) return null;
-  const key = String(method).trim().toLowerCase().replace(/\s+/g, '_');
-  const meta = PAYMENT_TAGS[key] || PAYMENT_TAGS[method] || null;
-  const label = meta?.label ?? String(method).replace(/_/g, ' ');
-  const color = meta?.color ?? '#d1d5db';
+  const key   = String(method).trim().toLowerCase().replace(/\s+/g, "_");
+  const meta  = PAYMENT_TAGS[key] || PAYMENT_TAGS[method] || null;
+  const label = meta?.label ?? String(method).replace(/_/g, " ");
+  const color = meta?.color ?? "#d1d5db";
   const style = {
-    background: hexToRgba(color, 0.12),
+    background:  hexToRgba(color, 0.12),
     borderColor: hexToRgba(color, 0.28),
-    color: color,
+    color,
   };
   return (
-    <span className="text-xs font-semibold px-3 py-1 rounded-full border inline-block" style={style}>
+    <span
+      className="inline-block px-3 py-1 text-xs font-semibold border rounded-full"
+      style={style}
+    >
       {label}
     </span>
   );
@@ -286,13 +312,23 @@ function renderPaymentTag(method) {
 
 /* ─── Order Detail Panel ──────────────────────────────────── */
 function OrderDetail({ order, onReceiptClick }) {
-  const navigate   = useNavigate();
-  const colors     = STATUS_COLORS[order.status] ?? STATUS_COLORS.processing;
-  const trackerIdx = getTrackerIndex(order.status);
+  const navigate      = useNavigate();
+  const colors        = STATUS_COLORS[order.status] ?? STATUS_COLORS.processing;
+  const trackerIdx    = getTrackerIndex(order.status);
   const receiptImage  = order.receipt?.image  ?? null;
-
-  console.log(receiptImage)
   const receiptNumber = order.receipt?.number ?? null;
+
+  /* Build a readable address string from all parts */
+  const addressParts = [
+    order.delivery.address,
+    order.delivery.barangay,
+    order.delivery.city,
+    order.delivery.province,
+    order.delivery.zip,
+    order.delivery.country,
+  ].filter(Boolean);
+
+  const hasAddress = addressParts.length > 0;
 
   return (
     <div className="bg-white rounded-2xl border border-[#e8f0eb] overflow-hidden">
@@ -301,7 +337,7 @@ function OrderDetail({ order, onReceiptClick }) {
       <div className="flex justify-between items-start p-6 border-b border-[#e8f0eb] flex-wrap gap-3">
         <div>
           <h2 className="text-[22px] font-bold text-[#1a2e22] m-0">#{order.id}</h2>
-          <div className="text-xs text-slate-400 mt-1">Placed on {order.date}</div>
+          <div className="mt-1 text-xs text-slate-400">Placed on {order.date}</div>
         </div>
         <span
           className="text-xs font-bold px-3.5 py-1.5 rounded-full border"
@@ -311,7 +347,7 @@ function OrderDetail({ order, onReceiptClick }) {
         </span>
       </div>
 
-      <div className="p-6 flex flex-col gap-5">
+      <div className="flex flex-col gap-5 p-6">
 
         {/* ── Tracker ── */}
         <div className="flex items-center p-4 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] overflow-x-auto gap-2">
@@ -319,68 +355,95 @@ function OrderDetail({ order, onReceiptClick }) {
             const isDone    = i < trackerIdx;
             const isCurrent = i === trackerIdx;
             return (
-              <div key={label} className="flex items-center gap-2 flex-shrink-0">
+              <div key={label} className="flex items-center flex-shrink-0 gap-2">
                 <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all
-                    ${isDone    ? "bg-green-600 text-white"
-                    : isCurrent ? "bg-[#4d7b65] text-white"
-                    :             "bg-[#e8f0eb] text-slate-400"}`}>
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all
+                      ${isDone    ? "bg-green-600 text-white"
+                      : isCurrent ? "bg-[#4d7b65] text-white"
+                      :             "bg-[#e8f0eb] text-slate-400"}`}
+                  >
                     {isDone ? "✓" : i + 1}
                   </div>
-                  <span className={`text-xs font-semibold transition-colors hidden sm:block
-                    ${isDone    ? "text-green-600"
-                    : isCurrent ? "text-[#4d7b65] font-bold"
-                    :             "text-slate-400"}`}>
+                  <span
+                    className={`text-xs font-semibold transition-colors hidden sm:block
+                      ${isDone    ? "text-green-600"
+                      : isCurrent ? "text-[#4d7b65] font-bold"
+                      :             "text-slate-400"}`}
+                  >
                     {label}
                   </span>
                 </div>
                 {i < TRACKER_LABELS.length - 1 && (
-                  <div className={`min-w-[24px] h-0.5 mx-1.5 flex-shrink-0 transition-colors ${isDone ? "bg-green-600" : "bg-[#e8f0eb]"}`} />
+                  <div
+                    className={`min-w-[24px] h-0.5 mx-1.5 flex-shrink-0 transition-colors ${isDone ? "bg-green-600" : "bg-[#e8f0eb]"}`}
+                  />
                 )}
               </div>
             );
           })}
         </div>
+{/* ── Delivery Address ── */}
+<div>
+  <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">
+    📦 Delivery Address
+  </div>
+  <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
+    <strong>
+      {order.delivery.firstName} {order.delivery.lastName}
+    </strong>
+    <br />
+    {order.delivery.phone && <>{order.delivery.phone} · </>}
+    {order.delivery.email}
 
-        {/* ── Delivery Address ── */}
-      <div>
-        <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">📦 Delivery Address</div>
-        <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
-          <strong>{order.delivery.firstName} {order.delivery.lastName}</strong><br />
-          {order.delivery.phone} · {order.delivery.email}
-
-          {/* ✅ ADD THESE — company name and TIN */}
-          {order.delivery.companyName && (
-            <div className="mt-1 text-xs text-blue-600 font-medium">🏢 {order.delivery.companyName}</div>
-          )}
-          {order.delivery.tinNumber && (
-            <div className="text-xs text-slate-400">TIN: {order.delivery.tinNumber}</div>
-          )}
-
-          {(order.delivery.address || order.delivery.city) && (
-            <>
-              <br />
-              {[
-                order.delivery.address,
-                order.delivery.barangay,
-                order.delivery.city,
-                order.delivery.province,
-                order.delivery.zip,
-              ].filter(Boolean).join(", ")}
-            </>
-          )}
-        </div>
+    {order.delivery.companyName && (
+      <div className="mt-1 text-xs font-medium text-blue-600">
+        🏢 {order.delivery.companyName}
       </div>
+    )}
+    {order.delivery.tinNumber && (
+      <div className="text-xs text-slate-400">TIN: {order.delivery.tinNumber}</div>
+    )}
+
+    <br />
+    {/* Use formatted address if available, otherwise build from components */}
+    {order.delivery.formattedAddress ? (
+      order.delivery.formattedAddress
+    ) : (
+      <>
+        {order.delivery.address && <>{order.delivery.address}<br /></>}
+        {order.delivery.barangay && <>{order.delivery.barangay}<br /></>}
+        {order.delivery.city && <>{order.delivery.city}<br /></>}
+        {order.delivery.province && <>{order.delivery.province}<br /></>}
+        {order.delivery.zip && <>{order.delivery.zip}<br /></>}
+        {order.delivery.country}
+      </>
+    )}
+    
+    {!order.delivery.address && !order.delivery.barangay && !order.delivery.city && 
+     !order.delivery.province && !order.delivery.formattedAddress && (
+      <div className="mt-1 text-xs italic text-slate-400">
+        No delivery address on record.
+      </div>
+    )}
+  </div>
+</div>
 
         {/* ── Payment Method ── */}
         <div>
-          <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">💳 Payment Method</div>
+          <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">
+            💳 Payment Method
+          </div>
           <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700">
             {renderPaymentTag(order.paymentMethod)}
             {order.paymentDetails && (
               <div className="mt-1 text-[13px] text-slate-500 space-y-0.5">
-                {order.paymentDetails.account_name  && <div>Name: {order.paymentDetails.account_name}</div>}
-                {order.paymentDetails.mobile_number && <div>Number: {order.paymentDetails.mobile_number}</div>}
+                {order.paymentDetails.account_name  && (
+                  <div>Name: {order.paymentDetails.account_name}</div>
+                )}
+                {order.paymentDetails.mobile_number && (
+                  <div>Number: {order.paymentDetails.mobile_number}</div>
+                )}
               </div>
             )}
           </div>
@@ -389,14 +452,16 @@ function OrderDetail({ order, onReceiptClick }) {
         {/* ── Receipt ── */}
         {receiptImage && (
           <div>
-            <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">🧾 Payment Receipt</div>
+            <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">
+              🧾 Payment Receipt
+            </div>
             <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]">
               {receiptNumber && (
-                <div className="text-xs text-slate-400 mb-3 font-mono">{receiptNumber}</div>
+                <div className="mb-3 font-mono text-xs text-slate-400">{receiptNumber}</div>
               )}
               <button
                 onClick={() => onReceiptClick({ image: receiptImage, number: receiptNumber })}
-                className="block w-full cursor-pointer border-none p-0 bg-transparent"
+                className="block w-full p-0 bg-transparent border-none cursor-pointer"
                 title="Click to enlarge"
               >
                 <img
@@ -416,7 +481,9 @@ function OrderDetail({ order, onReceiptClick }) {
         {/* ── Items Ordered ── */}
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider">🛒 Items Ordered</span>
+            <span className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider">
+              🛒 Items Ordered
+            </span>
             <span className="ml-auto text-[11px] text-slate-400">
               {order.items.length} item{order.items.length !== 1 ? "s" : ""}
             </span>
@@ -428,7 +495,10 @@ function OrderDetail({ order, onReceiptClick }) {
           ) : (
             <div className="bg-[#f8faf9] rounded-xl border border-[#e8f0eb] overflow-hidden divide-y divide-[#e8f0eb]">
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 p-4 hover:bg-[#f0f7f3] transition-colors">
+                <div
+                  key={item.id}
+                  className="flex items-center gap-4 p-4 hover:bg-[#f0f7f3] transition-colors"
+                >
                   <img
                     src={item.image}
                     alt={item.name}
@@ -442,9 +512,11 @@ function OrderDetail({ order, onReceiptClick }) {
                     >
                       {item.name}
                     </Link>
-                    <div className="text-xs text-slate-400 mt-0.5">Qty: {item.qty} × {item.price}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      Qty: {item.qty} × {item.price}
+                    </div>
                     <div className="mt-1.5">
-                      {item.status === "pre_order" ? (
+                      {item.raw?.status === "pre_order" ? (
                         <span className="inline-block text-[10px] font-semibold text-[#92400e] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-full">
                           ⏳ Pre-Order
                         </span>
@@ -485,7 +557,9 @@ function OrderDetail({ order, onReceiptClick }) {
         {/* ── Special Instructions ── */}
         {order.specialNote && (
           <div>
-            <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">📝 Special Instructions</div>
+            <div className="text-[11px] font-bold text-[#6b7c70] uppercase tracking-wider mb-2">
+              📝 Special Instructions
+            </div>
             <div className="px-4 py-3.5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb] text-sm text-slate-700 leading-relaxed">
               {order.specialNote}
             </div>
@@ -493,24 +567,24 @@ function OrderDetail({ order, onReceiptClick }) {
         )}
 
         {/* ── Actions ── */}
-        <div className="flex gap-3 flex-wrap">
-         <button
-        onClick={() =>
-          navigate("/checkout", {
-            state: {
-              reorderItems: order.items.map((item) => ({
-                productId: item.id,
-                name: item.name,
-                quantity: item.quantity,
-                image: item.image,
-              })),
-            },
-          })
-        }
-        className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold cursor-pointer border-none hover:bg-[#3d6552] transition-colors"
-      >
-        Order Again →
-      </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() =>
+              navigate("/checkout", {
+                state: {
+                  reorderItems: order.items.map((item) => ({
+                    productId: item.id,
+                    name:      item.name,
+                    quantity:  item.quantity,
+                    image:     item.image,
+                  })),
+                },
+              })
+            }
+            className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold cursor-pointer border-none hover:bg-[#3d6552] transition-colors"
+          >
+            Order Again →
+          </button>
           <Link
             to="/contact"
             className="inline-block px-6 py-2.5 bg-white text-[#4d7b65] border-[1.5px] border-[#c0ddd0] rounded-xl text-sm font-bold no-underline hover:bg-[#f0f7f3] transition-colors"
@@ -526,43 +600,53 @@ function OrderDetail({ order, onReceiptClick }) {
 
 /* ─── Main Component ──────────────────────────────────────── */
 export default function MyOrders() {
-  const [searchParams] = useSearchParams();
-  const newOrderId = searchParams.get("new");
+  const [searchParams]  = useSearchParams();
+  const newOrderId      = searchParams.get("new");
 
-  const [orders,       setOrders]       = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState(null);
-  const [selected,     setSelected]     = useState(newOrderId || null);
-  const [activeTab,    setActiveTab]    = useState("all");
-  const [receiptModal, setReceiptModal] = useState(null);
+  const [orders,        setOrders]       = useState([]);
+  const [loading,       setLoading]      = useState(true);
+  const [error,         setError]        = useState(null);
+  const [selected,      setSelected]     = useState(newOrderId || null);
+  const [activeTab,     setActiveTab]    = useState("all");
+  const [receiptModal,  setReceiptModal] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+useEffect(() => {
+  let cancelled = false;
+  setLoading(true);
+  setError(null);
 
-    api.get("/my-deliveries")
-      .then(({ data }) => {
-        if (cancelled) return;
-        console.log(data)
-        const account    = data.account ?? {};
-        const rawOrders  = Array.isArray(data.orders) ? data.orders : (data.data ?? []);
-        const normalised = rawOrders.map((o) => normaliseOrder(o, account));
-        setOrders(normalised);
-        if (newOrderId && normalised.some((o) => String(o.id) === String(newOrderId))) {
-          setSelected(String(newOrderId));
-        } else if (normalised.length > 0) {
-          setSelected(String(normalised[0].id));
-        }
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setError(err.response?.data?.message ?? err.message ?? "Unknown error");
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+  api.get("/my-deliveries")
+    .then(({ data }) => {
+      if (cancelled) return;
+      
+      // Debug: I-print ang raw delivery_address
+      console.log('First order delivery_address:', data.orders?.[0]?.checkout?.delivery_address);
+      
+      const account    = data.account ?? {};
+      const rawOrders  = Array.isArray(data.orders) ? data.orders : (data.data ?? []);
+      const normalised = rawOrders.map((o) => normaliseOrder(o, account));
+      
+      // Debug: I-print ang extracted address
+      if (normalised[0]) {
+        console.log('Extracted address:', normalised[0].delivery);
+      }
+      
+      setOrders(normalised);
 
-    return () => { cancelled = true; };
-  }, [newOrderId]);
+      if (newOrderId && normalised.some((o) => String(o.id) === String(newOrderId))) {
+        setSelected(String(newOrderId));
+      } else if (normalised.length > 0) {
+        setSelected(String(normalised[0].id));
+      }
+    })
+    .catch((err) => {
+      if (!cancelled)
+        setError(err.response?.data?.message ?? err.message ?? "Unknown error");
+    })
+    .finally(() => { if (!cancelled) setLoading(false); });
+
+  return () => { cancelled = true; };
+}, [newOrderId]);
 
   if (loading) return (
     <Shell>
@@ -575,7 +659,7 @@ export default function MyOrders() {
     <Shell>
       <div className="w-16 h-16 rounded-2xl bg-[#fff7ed] flex items-center justify-center text-3xl mx-auto mb-4">⚠️</div>
       <h2 className="text-xl font-bold text-[#1a2e22] mb-2">Could not load orders</h2>
-      <p className="text-sm text-slate-500 mb-5">{error}</p>
+      <p className="mb-5 text-sm text-slate-500">{error}</p>
       <button
         onClick={() => window.location.reload()}
         className="px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold cursor-pointer border-none"
@@ -591,11 +675,14 @@ export default function MyOrders() {
         <>
           <div className="w-20 h-20 rounded-3xl bg-[#f0fdf4] flex items-center justify-center text-4xl mx-auto mb-5 border border-[#86efac]">🎉</div>
           <h2 className="text-xl font-bold text-[#1a2e22] mb-2">Order Placed Successfully!</h2>
-          <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">
+          <p className="max-w-sm mx-auto mb-5 text-sm text-slate-500">
             Your order <strong>{newOrderId}</strong> has been received and is being processed.
             We'll contact you shortly to confirm your payment.
           </p>
-          <Link to="/products" className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline">
+          <Link
+            to="/products"
+            className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline"
+          >
             Continue Shopping →
           </Link>
         </>
@@ -603,8 +690,13 @@ export default function MyOrders() {
         <>
           <div className="w-20 h-20 rounded-3xl bg-[#f3f8f5] flex items-center justify-center text-4xl mx-auto mb-5 border border-[#c0ddd0]">📦</div>
           <h2 className="text-xl font-bold text-[#1a2e22] mb-2">No orders yet</h2>
-          <p className="text-sm text-slate-500 mb-5">Your order history will appear here once you place your first order.</p>
-          <Link to="/products" className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline">
+          <p className="mb-5 text-sm text-slate-500">
+            Your order history will appear here once you place your first order.
+          </p>
+          <Link
+            to="/products"
+            className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline"
+          >
             Start Shopping →
           </Link>
         </>
@@ -644,8 +736,13 @@ export default function MyOrders() {
         <div className="bg-[#f0fdf4] border-b border-[#bbf7d0]">
           <div className="container mx-auto px-4 py-3 flex items-center gap-3 text-sm text-[#166534] flex-wrap">
             <span>🎉</span>
-            <span><strong>Order #{newOrderId}</strong> placed successfully! We'll contact you to confirm your payment.</span>
-            <Link to="/products" className="ml-auto text-[#4d7b65] font-bold no-underline hover:underline text-xs">
+            <span>
+              <strong>Order #{newOrderId}</strong> placed successfully! We'll contact you to confirm your payment.
+            </span>
+            <Link
+              to="/products"
+              className="ml-auto text-[#4d7b65] font-bold no-underline hover:underline text-xs"
+            >
               Continue Shopping →
             </Link>
           </div>
@@ -665,7 +762,7 @@ export default function MyOrders() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+            <div className="flex gap-1 pb-1 mb-4 overflow-x-auto">
               {TABS.map((tab) => (
                 <button
                   key={tab.key}
@@ -700,7 +797,7 @@ export default function MyOrders() {
                           : "border-[#e8f0eb] hover:border-[#4d7b65] hover:shadow-[0_4px_14px_rgba(77,123,101,0.10)]"
                         }`}
                     >
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-start justify-between mb-3">
                         <div>
                           <div className="text-sm font-bold text-[#1a2e22]">#{order.id}</div>
                           <div className="text-xs text-slate-400 mt-0.5">{order.date}</div>
@@ -731,9 +828,7 @@ export default function MyOrders() {
                       </div>
 
                       <div className="flex justify-between items-center pt-2.5 border-t border-[#f3f8f5]">
-                        <div>
-                          {renderPaymentTag(order.paymentMethod)}
-                        </div>
+                        <div>{renderPaymentTag(order.paymentMethod)}</div>
                         <span className="text-base font-bold text-[#4d7b65]">
                           ₱{order.total.toLocaleString()}
                         </span>
@@ -750,7 +845,7 @@ export default function MyOrders() {
             {!selectedOrder ? (
               <div className="h-full min-h-[300px] flex flex-col items-center justify-center gap-4 bg-white rounded-2xl border-2 border-dashed border-[#e8f0eb]">
                 <div className="w-16 h-16 rounded-2xl bg-[#f3f8f5] flex items-center justify-center text-3xl">📋</div>
-                <p className="text-sm text-slate-400 font-medium">Select an order to view details</p>
+                <p className="text-sm font-medium text-slate-400">Select an order to view details</p>
               </div>
             ) : (
               <OrderDetail order={selectedOrder} onReceiptClick={setReceiptModal} />
