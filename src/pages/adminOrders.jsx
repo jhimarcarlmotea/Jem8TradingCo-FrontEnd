@@ -243,6 +243,39 @@ function renderPaymentTag(method) {
   );
 }
 
+// Resolve a readable address string from various API shapes
+function resolveCheckoutAddress(checkout) {
+  if (!checkout) return "";
+
+  // Prefer explicit formatted field if present
+  if (checkout.delivery_address_formatted && String(checkout.delivery_address_formatted).trim())
+    return String(checkout.delivery_address_formatted).trim();
+
+  // If nested object exists
+  const da = checkout.delivery_address;
+  if (da) {
+    if (typeof da === "string" && da.trim()) return da.trim();
+    if (typeof da === "object") {
+      if (da.formatted && String(da.formatted).trim()) return String(da.formatted).trim();
+      const parts = [da.street, da.barangay, da.city, da.province, da.zip, da.country].filter(Boolean);
+      if (parts.length) return parts.join(", ");
+    }
+  }
+
+  // Fall back to flat fields on checkout
+  const parts2 = [
+    checkout.delivery_street,
+    checkout.delivery_barangay,
+    checkout.delivery_city,
+    checkout.delivery_province,
+    checkout.delivery_zip,
+    checkout.delivery_country,
+  ].filter(Boolean);
+  if (parts2.length) return parts2.join(", ");
+
+  return "";
+}
+
 function ViewOrderModal({ delivery, onClose }) {
   const checkout = delivery.checkout;
   const user = checkout?.user;
@@ -250,7 +283,7 @@ function ViewOrderModal({ delivery, onClose }) {
   const status = (delivery.status ?? "processing").toLowerCase();
   const colors = STATUS_COLORS[status] ?? STATUS_COLORS.processing;
   const trackerIdx = STATUS_TO_TRACKER[status] ?? 0;
-  const addr = checkout?.delivery_address ?? {};
+  const fullAddress = resolveCheckoutAddress(checkout);
   const subtotal = Number(checkout?.paid_amount ?? 0) - Number(checkout?.shipping_fee ?? 0);
   const receipt = checkout?.receipt;
 
@@ -306,11 +339,9 @@ function ViewOrderModal({ delivery, onClose }) {
               {user?.email} · {user?.phone_number}
               {user?.company_name && <div className="mt-1 text-xs font-medium text-blue-600">🏢 {user.company_name}</div>}
               {user?.tin_number && <div className="text-xs text-gray-400">TIN: {user.tin_number}</div>}
-              {(addr.street || addr.city) && (
-                <div className="mt-1 text-xs text-gray-500">
-                  {[addr.street, addr.barangay, addr.city, addr.province, addr.zip].filter(Boolean).join(", ")}
-                </div>
-              )}
+              {fullAddress ? (
+                <div className="mt-1 text-xs text-gray-500">{fullAddress}</div>
+              ) : null}
             </div>
           </div>
           <div>
@@ -423,14 +454,14 @@ function exportOrderToPDF(delivery) {
   const checkout = delivery.checkout;
   const user = checkout?.user ?? {};
   const items = checkout?.items ?? [];
-  const addr = checkout?.delivery_address ?? {};
+  const fullAddr = resolveCheckoutAddress(checkout);
   const orderId = checkout?.checkout_id ?? delivery.delivery_id;
   const paid = Number(checkout?.paid_amount ?? 0);
   const shipping = Number(checkout?.shipping_fee ?? 0);
   const grandTotal = paid; // paid_amount is the total
   const vatBase = grandTotal / 1.12;
   const vat = grandTotal - vatBase;
-  const fullAddr = [addr.street, addr.barangay, addr.city, addr.province, addr.zip].filter(Boolean).join(", ");
+  // fullAddr handled by resolveCheckoutAddress to support multiple API shapes
   const dateStr = checkout?.created_at
     ? new Date(checkout.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
     : new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
@@ -918,11 +949,10 @@ async function exportOrderToExcel(delivery) {
   const checkout = delivery.checkout;
   const user = checkout?.user ?? {};
   const items = checkout?.items ?? [];
-  const addr = checkout?.delivery_address ?? {};
   const orderId = checkout?.checkout_id ?? delivery.delivery_id;
   const paid = Number(checkout?.paid_amount ?? 0);
   const grandTotal = paid;
-  const fullAddr = [addr.street, addr.barangay, addr.city, addr.province, addr.zip].filter(Boolean).join(", ");
+  const fullAddr = resolveCheckoutAddress(checkout);
   const paymentMethod = (checkout?.payment_method ?? "COD").replace(/_/g, " ").toUpperCase();
  
   // ── Load template ──

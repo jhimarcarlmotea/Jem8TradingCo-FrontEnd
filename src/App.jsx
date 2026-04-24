@@ -125,8 +125,18 @@ export default function App() {
 
     const fetchAppearance = async () => {
       try {
-        const res = await fetch('/api/admin/settings', { credentials: 'include' });
+        const storedEtag = localStorage.getItem('appearance-etag') || null;
+        const headers = {};
+        if (storedEtag) headers['If-None-Match'] = storedEtag;
+
+        const res = await fetch('/api/admin/settings', { credentials: 'include', headers });
+
+        // Server indicates nothing changed
+        if (res.status === 304) return;
+
         if (!res.ok) return;
+
+        const etag = res.headers.get('ETag') || res.headers.get('etag') || null;
         const payload = await res.json();
         const appearance = payload?.data?.appearance ?? payload?.appearance ?? null;
         if (!appearance) return;
@@ -139,6 +149,8 @@ export default function App() {
           localStorage.setItem('appearance', JSON.stringify(appearance));
           applyAppearance(appearance);
         }
+
+        if (etag) localStorage.setItem('appearance-etag', etag);
       } catch (e) {
         // ignore network errors
       }
