@@ -277,7 +277,115 @@ function HeroCategoryBadge({ accent, label, visible }) {
     </div>
   );
 }
+    function Pagination({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
 
+  const getPages = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+    pages.push(1);
+    if (currentPage > 3) pages.push("...");
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      pages.push(i);
+    }
+    if (currentPage < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+    return pages;
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-[6px] mt-[16px] pb-[8px]">
+      {/* First page */}
+      <button
+        onClick={() => onPageChange(1)}
+        disabled={currentPage === 1}
+        className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center text-[13px] font-medium border transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{
+          background: currentPage === 1 ? "#f1f5f9" : "white",
+          borderColor: "#e2e8f0",
+          color: "#64748b",
+        }}
+        title="First page"
+      >
+        «
+      </button>
+
+      {/* Prev page */}
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center text-[13px] font-medium border transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{
+          background: "white",
+          borderColor: "#e2e8f0",
+          color: "#64748b",
+        }}
+        title="Previous page"
+      >
+        ‹
+      </button>
+
+      {/* Page numbers */}
+      {getPages().map((page, idx) =>
+        page === "..." ? (
+          <span
+            key={`ellipsis-${idx}`}
+            className="w-[36px] h-[36px] flex items-center justify-center text-[13px] text-[#94a3b8]"
+          >
+            …
+          </span>
+        ) : (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center text-[13px] font-semibold border transition-all duration-150"
+            style={{
+              background: currentPage === page ? "#4d7b65" : "white",
+              borderColor: currentPage === page ? "#4d7b65" : "#e2e8f0",
+              color: currentPage === page ? "white" : "#374151",
+              boxShadow: currentPage === page ? "0 2px 8px rgba(77,123,101,0.35)" : "none",
+            }}
+          >
+            {page}
+          </button>
+        )
+      )}
+
+      {/* Next page */}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center text-[13px] font-medium border transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{
+          background: "white",
+          borderColor: "#e2e8f0",
+          color: "#64748b",
+        }}
+        title="Next page"
+      >
+        ›
+      </button>
+
+      {/* Last page */}
+      <button
+        onClick={() => onPageChange(totalPages)}
+        disabled={currentPage === totalPages}
+        className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center text-[13px] font-medium border transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{
+          background: currentPage === totalPages ? "#f1f5f9" : "white",
+          borderColor: "#e2e8f0",
+          color: "#64748b",
+        }}
+        title="Last page"
+      >
+        »
+      </button>
+    </div>
+  );
+}
 /* ── Page ── */
 export default function Products() {
   const [products, setProducts]             = useState([]);
@@ -290,6 +398,8 @@ export default function Products() {
   const [sortBy, setSortBy]                 = useState("default");
   const [toasts, setToasts]                 = useState([]);
   const [badgeVisible, setBadgeVisible]     = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const [heroStats, setHeroStats]           = useState({
     productCount:  0,
     categoryCount: 0,
@@ -325,14 +435,15 @@ export default function Products() {
   };
 
   const switchCategory = (catId, catName) => {
-    setBadgeVisible(false);
-    setTimeout(() => {
-      setActiveCategory(catId);
-      setActiveCatName(catName);
-      setSearchQuery("");
-      setBadgeVisible(true);
-    }, 220);
-  };
+  setBadgeVisible(false);
+  setTimeout(() => {
+    setActiveCategory(catId);
+    setActiveCatName(catName);
+    setSearchQuery("");
+    setCurrentPage(1);
+    setBadgeVisible(true);
+  }, 220);
+};
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -375,7 +486,9 @@ export default function Products() {
     };
     fetchAll();
   }, []);
-
+    useEffect(() => {
+  setCurrentPage(1);
+}, [searchQuery, sortBy]);
   useEffect(() => {
     const param = searchParams.get("category");
     if (!param || categories.length === 0) return;
@@ -409,7 +522,11 @@ export default function Products() {
 
     return list;
   }, [products, activeCategory, searchQuery, sortBy]);
-
+      const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+const paginated = filtered.slice(
+  (currentPage - 1) * ITEMS_PER_PAGE,
+  currentPage * ITEMS_PER_PAGE
+);
   const HERO_STATS = [
     { icon: "📦", num: heroStats.productCount,  label: "Products Listed" },
     { icon: "🏷️", num: heroStats.categoryCount, label: "Categories"      },
@@ -761,7 +878,7 @@ export default function Products() {
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
                 : filtered.length > 0
-                  ? filtered.map((p, i) => (
+                  ? paginated.map((p, i) => (
                       <ProductCard key={(p.id ?? p.product_id) ?? i} product={p} onToast={showToast} />
                     ))
                   : (
@@ -784,7 +901,20 @@ export default function Products() {
               }
             </div>
           )}
-        </div>
+            {/* Pagination */}
+      {!loading && filtered.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+             onPageChange={(page) => {
+            setCurrentPage(page);
+            setTimeout(() => {
+              window.scrollTo(0, 0);
+            }, 0);
+          }}
+        />
+      )}
+              </div>
       </section>
 
       {/* ── FEATURED WELLNESS BANNER ── */}
