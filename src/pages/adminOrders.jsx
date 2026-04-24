@@ -1077,6 +1077,73 @@ async function exportOrderToExcel(delivery) {
   delete wb.Sheets[oldName];
  
   XLSX.writeFile(wb, `Quotation_Order_${orderId}.xlsx`, { bookType: 'xlsx', cellStyles: true });
+
+  // Ensure disclaimer and long text cells wrap: detect cells containing known disclaimer fragments
+  try {
+    const keys = Object.keys(ws);
+    for (const k of keys) {
+      const cell = ws[k];
+      if (!cell || typeof cell.v !== 'string') continue;
+      const v = cell.v;
+      if (v.includes('Cancellations will be considered') || v.includes('JEM8 CIRCLE TRADING CO.')) {
+        // enforce wrap and top alignment
+        cell.s = cell.s || {};
+        cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { wrapText: true, vertical: 'top' });
+        // set row height for this row
+        const match = k.match(/(\d+)$/);
+        if (match) {
+          const rowIdx = Number(match[1]);
+          ws['!rows'] = ws['!rows'] || [];
+          ws['!rows'][rowIdx - 1] = Object.assign({}, ws['!rows'][rowIdx - 1] || {}, { hpt: 30 });
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Also if the template uses merged cells for the disclaimer, ensure merged columns have sufficient width
+  try {
+    const ensureWidth = (cIdx, minW) => {
+      ws['!cols'] = ws['!cols'] || [];
+      ws['!cols'][cIdx] = Object.assign({}, ws['!cols'][cIdx] || {}, { wch: Math.max((ws['!cols'][cIdx] && ws['!cols'][cIdx].wch) || 0, minW) });
+    };
+
+    const colLetterToIndex = (col) => {
+      let idx = 0;
+      for (let i = 0; i < col.length; i++) {
+        idx = idx * 26 + (col.charCodeAt(i) - 64);
+      }
+      return idx - 1; // zero-based
+    };
+
+    const merges = ws['!merges'] || [];
+    for (const m of merges) {
+      // m.s.c..m.e.c , m.s.r..m.e.r (zero-based)
+      // check top-left cell ref
+      const startCol = m.s.c;
+      const endCol = m.e.c;
+      const startRow = m.s.r + 1;
+      const endRow = m.e.r + 1;
+      // examine top-left cell text to see if it contains disclaimer fragment
+      const tlRef = `${String.fromCharCode(65 + startCol)}${startRow}`;
+      const tl = ws[tlRef];
+      if (tl && typeof tl.v === 'string' && (tl.v.includes('Cancellations will be considered') || tl.v.includes('JEM8 CIRCLE TRADING CO.'))) {
+        // set widths across the merged columns to reasonable defaults
+        const span = endCol - startCol + 1;
+        const totalW = 90; // desired total width in characters
+        const perCol = Math.max(12, Math.floor(totalW / span));
+        for (let c = startCol; c <= endCol; c++) ensureWidth(c, perCol);
+        // also set the row height for the merged rows
+        for (let r = startRow; r <= endRow; r++) {
+          ws['!rows'] = ws['!rows'] || [];
+          ws['!rows'][r - 1] = Object.assign({}, ws['!rows'][r - 1] || {}, { hpt: 30 });
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 
