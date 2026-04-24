@@ -970,8 +970,8 @@ const ImportModal = ({ onClose, categories, onImportSuccess, existingProducts })
 // ────────────────────────────────────────────────────────────
 // Mobile Product Card (replaces table row on mobile)
 // ────────────────────────────────────────────────────────────
-const ProductCard = ({ product, isSelected, onSelect, onView, onEdit, onDelete, BASE, resolveCat, getStatus, getStatusClass }) => {
-  const name     = product.product_name ?? product.name ?? "—";
+const ProductCard = ({ product, deleteMode, isSelected, onSelect, onView, onEdit, onDelete, BASE, resolveCat, getStatus, getStatusClass }) => {
+    const name     = product.product_name ?? product.name ?? "—";
   const category = resolveCat(product.category, product.category_name);
   const color    = product.color ?? "";
   const size     = product.size ?? "—";
@@ -983,8 +983,10 @@ const ProductCard = ({ product, isSelected, onSelect, onView, onEdit, onDelete, 
   return (
     <div className={`bg-white rounded-xl border p-3 transition-colors ${isSelected ? "border-blue-400 bg-blue-50/40" : "border-gray-200"}`}>
       <div className="flex items-start gap-3">
-        <input type="checkbox" checked={isSelected} onChange={() => onSelect(product.product_id)}
-          className="cursor-pointer w-4 h-4 mt-0.5 shrink-0" />
+{deleteMode && (
+  <input type="checkbox" checked={isSelected} onChange={() => onSelect(product.product_id)}
+    className="cursor-pointer w-4 h-4 mt-0.5 shrink-0" />
+)}
         <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden text-xl bg-gray-100 border border-gray-200 rounded-lg">
           {thumb ? <img src={thumb} alt={name} className="object-cover w-full h-full" /> : "📄"}
         </div>
@@ -1035,8 +1037,9 @@ const AdminProducts = () => {
   const [searchTerm, setSearchTerm]             = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortOrder, setSortOrder]               = useState("A-Z");
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  const [sidebarOpen, setSidebarOpen]           = useState(false);
+const [selectedProducts, setSelectedProducts] = useState([]);
+const [deleteMode, setDeleteMode] = useState(false);
+const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage]           = useState(1);
   const [showFilters, setShowFilters]           = useState(false);
 
@@ -1279,6 +1282,25 @@ const AdminProducts = () => {
       setDeleting(false);
     }
   };
+  const handleBulkDelete = async () => {
+  if (!selectedProducts.length) return;
+  if (!window.confirm(`Delete ${selectedProducts.length} product(s)? This cannot be undone.`)) return;
+  setDeleting(true);
+  try {
+    await Promise.all(
+      selectedProducts.map(id =>
+        axios.delete(`${BASE}/api/admin/products/${id}`, { withCredentials: true })
+      )
+    );
+    setSelectedProducts([]);
+    setDeleteMode(false);
+    fetchProducts();
+  } catch (err) {
+    alert("Failed to delete some products: " + err.message);
+  } finally {
+    setDeleting(false);
+  }
+};
 
   const viewImages  = activeProduct?.images ?? [];
   const viewMainSrc = viewImages[activeImgIdx]?.image_path
@@ -1561,20 +1583,37 @@ const AdminProducts = () => {
             <h1 className="text-[18px] sm:text-[22px] font-bold text-gray-900 m-0">List of Products</h1>
           </div>
           {/* Action buttons — stack on mobile */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-gray-300 rounded-lg bg-white text-gray-700 text-[12px] sm:text-[13px] font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-              ↑ Export
-            </button>
-            <button onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-emerald-300 rounded-lg bg-emerald-50 text-emerald-700 text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-emerald-100 transition-colors">
-              ↓ Import
-            </button>
-            <button onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border-none rounded-lg bg-blue-600 text-white text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors">
-              + Add
-            </button>
-          </div>
+<div className="flex flex-wrap items-center gap-2">
+  {!deleteMode && (
+    <button onClick={() => setShowExportModal(true)}
+      className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-gray-300 rounded-lg bg-white text-gray-700 text-[12px] sm:text-[13px] font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+      ↑ Export
+    </button>
+  )}
+  {!deleteMode && (
+    <button onClick={() => setShowImportModal(true)}
+      className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-emerald-300 rounded-lg bg-emerald-50 text-emerald-700 text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-emerald-100 transition-colors">
+      ↓ Import
+    </button>
+  )}
+  {!deleteMode && (
+    <button onClick={() => setShowAddModal(true)}
+      className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border-none rounded-lg bg-blue-600 text-white text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors">
+      + Add
+    </button>
+  )}
+  {!deleteMode ? (
+    <button onClick={() => setDeleteMode(true)}
+      className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-red-200 rounded-lg bg-red-50 text-red-600 text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-red-100 transition-colors">
+      🗑 Delete
+    </button>
+  ) : (
+    <button onClick={() => { setDeleteMode(false); setSelectedProducts([]); }}
+      className="flex items-center gap-1.5 px-3 sm:px-[18px] py-2 sm:py-[9px] border border-slate-200 rounded-lg bg-white text-gray-700 text-[12px] sm:text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors">
+      ✕ Cancel
+    </button>
+  )}
+</div>
         </div>
 
         {/* Stats */}
@@ -1593,7 +1632,20 @@ const AdminProducts = () => {
             </div>
           ))}
         </div>
-
+ {/* ↓ STEP 4 — paste mo dito */}
+    {deleteMode && (
+      <div className="flex items-center justify-between gap-3 px-4 py-3 mb-4 border border-red-200 bg-red-50 rounded-xl">
+        <span className="text-[13px] text-red-700 font-semibold">
+          {selectedProducts.length} product(s) selected
+        </span>
+        <button
+          onClick={handleBulkDelete}
+          disabled={selectedProducts.length === 0 || deleting}
+          className="px-4 py-2 rounded-lg bg-red-600 text-white text-[13px] font-bold cursor-pointer hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+          {deleting ? "Deleting…" : `Delete ${selectedProducts.length} Selected`}
+        </button>
+      </div>
+    )}
         {/* Table card */}
         <div className="overflow-hidden bg-white shadow-sm rounded-2xl">
 
@@ -1676,15 +1728,26 @@ const AdminProducts = () => {
             <>
               {/* Mobile card list — NO horizontal scroll */}
               <div className="block px-3 py-3 space-y-2 sm:hidden">
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                  <input type="checkbox" checked={selectedProducts.length === products.length && products.length > 0}
-                    onChange={toggleSelectAll} className="w-4 h-4 cursor-pointer" />
-                  <span className="text-[11px] text-gray-500">Select all ({filteredProducts.length})</span>
-                </div>
+{deleteMode && (
+  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+    <input type="checkbox"
+      checked={paginated.length > 0 && paginated.every(p => selectedProducts.includes(p.product_id))}
+      onChange={() => {
+        const pageIds = paginated.map(p => p.product_id);
+        const allSelected = pageIds.every(id => selectedProducts.includes(id));
+        setSelectedProducts(prev =>
+          allSelected ? prev.filter(id => !pageIds.includes(id)) : [...new Set([...prev, ...pageIds])]
+        );
+      }}
+      className="w-4 h-4 cursor-pointer" />
+    <span className="text-[11px] text-gray-500">Select all on this page</span>
+  </div>
+)}
                 {paginated.map((product) => (
                   <ProductCard
                     key={product.product_id}
                     product={product}
+                      deleteMode={deleteMode} 
                     isSelected={selectedProducts.includes(product.product_id)}
                     onSelect={toggleSelect}
                     onView={() => openView(product)}
@@ -1703,10 +1766,20 @@ const AdminProducts = () => {
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="w-10 p-3 pl-4">
-                        <input type="checkbox" checked={selectedProducts.length === products.length && products.length > 0}
-                          onChange={toggleSelectAll} className="cursor-pointer w-[15px] h-[15px]" />
-                      </th>
+{deleteMode && (
+  <th className="w-10 p-3 pl-4">
+    <input type="checkbox"
+      checked={paginated.length > 0 && paginated.every(p => selectedProducts.includes(p.product_id))}
+      onChange={() => {
+        const pageIds = paginated.map(p => p.product_id);
+        const allSelected = pageIds.every(id => selectedProducts.includes(id));
+        setSelectedProducts(prev =>
+          allSelected ? prev.filter(id => !pageIds.includes(id)) : [...new Set([...prev, ...pageIds])]
+        );
+      }}
+      className="cursor-pointer w-[15px] h-[15px]" />
+  </th>
+)}
                       {["Product", "Category", "Color", "Size", "Unit", "Status"].map(h => (
                         <th key={h} className="p-3 font-semibold text-left text-gray-700 whitespace-nowrap">{h}</th>
                       ))}
@@ -1728,10 +1801,12 @@ const AdminProducts = () => {
                       return (
                         <tr key={product.product_id ?? index}
                           className={`border-b border-gray-100 transition-colors hover:bg-blue-50/40 ${isSelected ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                          <td className="p-3 pl-4">
-                            <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(product.product_id)}
-                              className="cursor-pointer w-[15px] h-[15px]" />
-                          </td>
+{deleteMode && (
+  <td className="p-3 pl-4">
+    <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(product.product_id)}
+      className="cursor-pointer w-[15px] h-[15px]" />
+  </td>
+)}
                           <td className="p-3">
                             <div className="flex items-center gap-2.5">
                               <div className="w-[38px] h-[38px] rounded-lg bg-gray-100 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden border border-gray-200">

@@ -722,14 +722,6 @@ useEffect(() => {
         />
       )}
 
-      {/* Breadcrumb */}
-      <div className="bg-[#f8faf9] border-b border-[#e8f0eb] mt-[75px]">
-        <div className="container mx-auto px-4 flex items-center gap-2 py-3 text-xs text-[#6b7c70] flex-wrap">
-          <Link to="/" className="text-[#4d7b65] no-underline hover:underline">Home</Link>
-          <span className="text-gray-300">›</span>
-          <span>My Orders</span>
-        </div>
-      </div>
 
       {/* New order banner */}
       {newOrderId && (
@@ -749,8 +741,8 @@ useEffect(() => {
         </div>
       )}
 
-      <section className="py-10 pb-20">
-        <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-8 items-start">
+<section className="py-10 pb-20 mt-[70px]">
+          <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-8 items-start">
 
           {/* ── ORDER LIST ── */}
           <div>

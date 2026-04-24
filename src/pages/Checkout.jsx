@@ -21,7 +21,7 @@ const PAYMENT_METHODS = [
     desc: "Pay via GCash e-wallet",
     fields: [
       { name: "mobile_number", label: "GCash Mobile Number", placeholder: "09XXXXXXXXX", type: "tel" },
-      { name: "account_name", label: "GCash Account Name",   placeholder: "Full Name on GCash" },
+      { name: "account_name", label: "GCash Account Name", placeholder: "Full Name on GCash" },
     ],
     note: "You will receive a GCash payment request after placing your order. Please complete payment within 1 hour.",
     requiresReceipt: true,
@@ -34,8 +34,8 @@ const PAYMENT_METHODS = [
     tagColor: "#0ea5e9",
     desc: "Pay via bank or cash deposit",
     fields: [
-      { name: "bank_name",        label: "Bank Name",        placeholder: "e.g. BPI, BDO, Metrobank" },
-      { name: "account_name",     label: "Account Name",     placeholder: "Your account name" },
+      { name: "bank_name", label: "Bank Name", placeholder: "e.g. BPI, BDO, Metrobank" },
+      { name: "account_name", label: "Account Name", placeholder: "Your account name" },
       { name: "reference_number", label: "Reference / Slip Number", placeholder: "Deposit slip or transaction reference" },
     ],
     note: "Deposit to: BPI Savings — JEM 8 Circle Trading Co. — Account No. 1234-5678-90. Upload your deposit slip or send proof of payment to our email.",
@@ -49,9 +49,9 @@ const PAYMENT_METHODS = [
     tagColor: "#6366f1",
     desc: "BPI, BDO, Metrobank, UnionBank, Landbank, PNB",
     fields: [
-      { name: "bank_name",        label: "Bank Name",        placeholder: "e.g. BPI, BDO, Metrobank" },
-      { name: "account_name",     label: "Account Name",     placeholder: "Your account name" },
-      { name: "account_number",   label: "Account Number",   placeholder: "Your account number" },
+      { name: "bank_name", label: "Bank Name", placeholder: "e.g. BPI, BDO, Metrobank" },
+      { name: "account_name", label: "Account Name", placeholder: "Your account name" },
+      { name: "account_number", label: "Account Number", placeholder: "Your account number" },
       { name: "reference_number", label: "Reference Number", placeholder: "Transaction reference (after transfer)" },
     ],
     note: "Transfer to: BPI Savings — JEM 8 Circle Trading Co. — Account No. 1234-5678-90. Send proof of payment to our email.",
@@ -76,9 +76,9 @@ const PAYMENT_METHODS = [
     tagColor: "#64748b",
     desc: "Pay by post-dated or manager's check",
     fields: [
-      { name: "bank_name",    label: "Issuing Bank",     placeholder: "e.g. BDO, BPI" },
-      { name: "check_number", label: "Check Number",     placeholder: "Check number" },
-      { name: "check_date",   label: "Check Date",       type: "date" },
+      { name: "bank_name", label: "Issuing Bank", placeholder: "e.g. BDO, BPI" },
+      { name: "check_number", label: "Check Number", placeholder: "Check number" },
+      { name: "check_date", label: "Check Date", type: "date" },
       { name: "check_amount", label: "Check Amount (₱)", placeholder: "Amount in pesos", type: "number" },
     ],
     note: "Make check payable to: JEM 8 Circle Trading Co. Deliver check to our Makati office or hand to our sales representative.",
@@ -86,100 +86,195 @@ const PAYMENT_METHODS = [
   },
 ];
 
+// ── Validation rules per payment method field ─────────────────────────────────
+const PAYMENT_VALIDATORS = {
+  gcash: {
+    mobile_number: (val) => {
+      if (!val || val.trim() === "") return "GCash mobile number is required.";
+      const digits = val.replace(/\D/g, "");
+      if (digits.length !== 11) return "GCash mobile number must be exactly 11 digits.";
+      if (!digits.startsWith("09")) return "GCash mobile number must start with 09.";
+      return null;
+    },
+    account_name: (val) => {
+      if (!val || val.trim() === "") return "GCash account name is required.";
+      if (val.trim().length < 2) return "Please enter a valid account name.";
+      return null;
+    },
+  },
+  deposit: {
+    bank_name: (val) => {
+      if (!val || val.trim() === "") return "Bank name is required.";
+      if (val.trim().length < 2) return "Please enter a valid bank name.";
+      return null;
+    },
+    account_name: (val) => {
+      if (!val || val.trim() === "") return "Account name is required.";
+      if (val.trim().length < 2) return "Please enter a valid account name.";
+      return null;
+    },
+    reference_number: (val) => {
+      if (!val || val.trim() === "") return "Reference or slip number is required.";
+      if (val.trim().length < 3) return "Please enter a valid reference number (at least 3 characters).";
+      return null;
+    },
+  },
+  bank_transfer: {
+    bank_name: (val) => {
+      if (!val || val.trim() === "") return "Bank name is required.";
+      if (val.trim().length < 2) return "Please enter a valid bank name.";
+      return null;
+    },
+    account_name: (val) => {
+      if (!val || val.trim() === "") return "Account name is required.";
+      if (val.trim().length < 2) return "Please enter a valid account name.";
+      return null;
+    },
+    account_number: (val) => {
+      if (!val || val.trim() === "") return "Account number is required.";
+      const digits = val.replace(/\D/g, "");
+      if (digits.length < 8) return "Account number must be at least 8 digits.";
+      if (digits.length > 16) return "Account number must not exceed 16 digits.";
+      return null;
+    },
+    reference_number: (val) => {
+      if (!val || val.trim() === "") return "Reference number is required.";
+      if (val.trim().length < 3) return "Please enter a valid reference number (at least 3 characters).";
+      return null;
+    },
+  },
+  cod: {},
+  check: {
+    bank_name: (val) => {
+      if (!val || val.trim() === "") return "Issuing bank is required.";
+      if (val.trim().length < 2) return "Please enter a valid bank name.";
+      return null;
+    },
+    check_number: (val) => {
+      if (!val || val.trim() === "") return "Check number is required.";
+      if (!/^\d{6,10}$/.test(val.trim())) return "Check number must be 6–10 digits.";
+      return null;
+    },
+    check_date: (val) => {
+      if (!val || val.trim() === "") return "Check date is required.";
+      const selected = new Date(val);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (isNaN(selected.getTime())) return "Please enter a valid date.";
+      if (selected < today) return "Check date cannot be in the past.";
+      return null;
+    },
+    check_amount: (val) => {
+      if (!val || val === "") return "Check amount is required.";
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) return "Check amount must be a positive number.";
+      if (num < 1) return "Minimum check amount is ₱1.";
+      return null;
+    },
+  },
+};
+
+// ── Run all validators for a given payment method ─────────────────────────────
+const validatePaymentFields = (methodId, payFields) => {
+  const rules = PAYMENT_VALIDATORS[methodId] || {};
+  const errors = {};
+  for (const [fieldName, validator] of Object.entries(rules)) {
+    const error = validator(payFields[fieldName] || "");
+    if (error) errors[fieldName] = error;
+  }
+  return errors;
+};
+
 const STEPS = ["Delivery", "Payment", "Review"];
 
 const inputCls = "w-full px-3.5 py-2.5 border-[1.5px] border-[#d1e8da] rounded-xl text-sm text-[#1a2e22] bg-[#fafcfb] outline-none transition-colors focus:border-[#4d7b65] focus:bg-white placeholder-[#9ca3af] font-[inherit]";
+const inputErrCls = "w-full px-3.5 py-2.5 border-[1.5px] border-red-400 rounded-xl text-sm text-[#1a2e22] bg-[#fff8f8] outline-none transition-colors focus:border-red-500 focus:bg-white placeholder-[#9ca3af] font-[inherit]";
 const labelCls = "text-[13px] font-semibold text-slate-700";
 
 export default function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ── Selected item IDs passed from Cart ───────────────────────────────────
- const selectedItems   = location.state?.selectedItems ?? [];
-const selectedItemIds = new Set(selectedItems.map((i) => i.id));
-const reorderItems    = location.state?.reorderItems ?? [];
+  const selectedItems = location.state?.selectedItems ?? [];
+  const selectedItemIds = new Set(selectedItems.map((i) => i.id));
+  const reorderItems = location.state?.reorderItems ?? [];
 
-  const [items, setItems]             = useState([]);
+  const [items, setItems] = useState([]);
   const [loadingCart, setLoadingCart] = useState(true);
-  const [cartError, setCartError]     = useState(null);
+  const [cartError, setCartError] = useState(null);
 
   useEffect(() => {
-  const fetchCart = async () => {
-    try {
-      setLoadingCart(true);
-      setCartError(null);
+    const fetchCart = async () => {
+      try {
+        setLoadingCart(true);
+        setCartError(null);
 
-      if (reorderItems.length > 0) {
-        const responses = await Promise.all(
-          reorderItems.map((item) =>
-            axios.post(
-              `${BASE}/cart/add`,
-              { product_id: item.productId, quantity: item.quantity },
-              { withCredentials: true }
+        if (reorderItems.length > 0) {
+          const responses = await Promise.all(
+            reorderItems.map((item) =>
+              axios.post(
+                `${BASE}/cart/add`,
+                { product_id: item.productId, quantity: item.quantity },
+                { withCredentials: true }
+              )
             )
-          )
-        );
+          );
+          const newCartIds = new Set(
+            responses.map((r) => r.data?.cart?.cart_id).filter(Boolean)
+          );
+          const res = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
+          const cartItems = res.data.cartItems ?? [];
+          const formatted = cartItems
+            .filter((c) => newCartIds.has(c.cart_id))
+            .map((c) => ({
+              id: c.cart_id,
+              productId: c.product?.product_id,
+              name: c.product?.product_name || "Unknown product",
+              image:
+                c.product?.primary_image_url ||
+                (c.product?.images?.find((img) => img.is_primary)?.image_path
+                  ? `http://127.0.0.1:8000/storage/${c.product.images.find((img) => img.is_primary).image_path}`
+                  : "https://placehold.co/80x80"),
+              rawPrice: Number(c.product?.price || 0),
+              price: `₱${Number(c.product?.price || 0).toLocaleString()}`,
+              qty: c.quantity,
+              cat: c.product?.category_id || "Product",
+              status: c.product?.status ?? "in_stock",
+            }));
+          setItems(formatted);
+          setLoadingCart(false);
+          return;
+        }
 
-        // collect the newly added cart_ids from the response
-        const newCartIds = new Set(
-        responses.map((r) => r.data?.cart?.cart_id).filter(Boolean)
-      );
-
-        const res       = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
+        const res = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
         const cartItems = res.data.cartItems ?? [];
-        const formatted = cartItems
-          .filter((c) => newCartIds.has(c.cart_id))
-          .map((c) => ({
-            id:        c.cart_id,
-            productId: c.product?.product_id,
-            name:      c.product?.product_name || "Unknown product",
-            image:
-              c.product?.primary_image_url ||
-              (c.product?.images?.find((img) => img.is_primary)?.image_path
-                ? `http://127.0.0.1:8000/storage/${c.product.images.find((img) => img.is_primary).image_path}`
-                : "https://placehold.co/80x80"),
-            rawPrice: Number(c.product?.price || 0),
-            price:    `₱${Number(c.product?.price || 0).toLocaleString()}`,
-            qty:      c.quantity,
-            cat:      c.product?.category_id || "Product",
-            status:   c.product?.status ?? "in_stock",
-          }));
-
-        setItems(formatted);
-        setLoadingCart(false);
-        return;
-      }
-
-      const res       = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
-      const cartItems = res.data.cartItems ?? [];
-      const formatted = cartItems.map((c) => ({
-          id:        c.cart_id,
+        const formatted = cartItems.map((c) => ({
+          id: c.cart_id,
           productId: c.product?.product_id,
-          name:      c.product?.product_name || "Unknown product",
+          name: c.product?.product_name || "Unknown product",
           image:
             c.product?.primary_image_url ||
             (c.product?.images?.find((img) => img.is_primary)?.image_path
               ? `http://127.0.0.1:8000/storage/${c.product.images.find((img) => img.is_primary).image_path}`
               : "https://placehold.co/80x80"),
           rawPrice: Number(c.product?.price || 0),
-          price:    `₱${Number(c.product?.price || 0).toLocaleString()}`,
-          qty:      c.quantity,
-          cat:      c.product?.category_id || "Product",
-          status:   c.product?.status ?? "in_stock",
+          price: `₱${Number(c.product?.price || 0).toLocaleString()}`,
+          qty: c.quantity,
+          cat: c.product?.category_id || "Product",
+          status: c.product?.status ?? "in_stock",
         }));
 
- // Use qty from selectedItems (which reflects the updated qty from Cart)
-const finalItems = selectedItemIds.size > 0
-  ? formatted
-      .filter((i) => selectedItemIds.has(i.id))
-      .map((i) => {
-        const fromCart = selectedItems.find((s) => s.id === i.id);
-        return fromCart ? { ...i, qty: fromCart.qty } : i;
-      })
-  : formatted;
+        const finalItems =
+          selectedItemIds.size > 0
+            ? formatted
+                .filter((i) => selectedItemIds.has(i.id))
+                .map((i) => {
+                  const fromCart = selectedItems.find((s) => s.id === i.id);
+                  return fromCart ? { ...i, qty: fromCart.qty } : i;
+                })
+            : formatted;
 
-setItems(finalItems);
+        setItems(finalItems);
       } catch (err) {
         setCartError(err.response?.data?.message || "Failed to load cart.");
       } finally {
@@ -191,26 +286,28 @@ setItems(finalItems);
 
   const [user, setUser] = useState(null);
   useEffect(() => {
-    axios.get(`${BASE}/me`, { withCredentials: true })
+    axios
+      .get(`${BASE}/me`, { withCredentials: true })
       .then((res) => setUser(res.data?.data ?? res.data))
       .catch(() => {});
   }, []);
 
-  const [step, setStep]               = useState(0);
-  const [payMethod, setPayMethod]     = useState("gcash");
-  const [payFields, setPayFields]     = useState({});
+  const [step, setStep] = useState(0);
+  const [payMethod, setPayMethod] = useState("gcash");
+  const [payFields, setPayFields] = useState({});
+  const [payFieldErrors, setPayFieldErrors] = useState({});
+  const [payTouched, setPayTouched] = useState({});
   const [specialNote, setSpecialNote] = useState("");
-  const [placing, setPlacing]         = useState(false);
-  const [placeError, setPlaceError]   = useState(null);
-  const [delivery, setDelivery]       = useState({ address: "", barangay: "", city: "", province: "", zip: "" });
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState(null);
+  const [delivery, setDelivery] = useState({ address: "", barangay: "", city: "", province: "", zip: "" });
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddrId, setSelectedAddrId] = useState(null);
-  const [addrMode, setAddrMode]             = useState("detect");
+  const [addrMode, setAddrMode] = useState("detect");
 
-  // ── Receipt image state ───────────────────────────────────────────────────
-  const [receiptFile, setReceiptFile]       = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
-  const receiptInputRef                     = useRef(null);
+  const receiptInputRef = useRef(null);
 
   useEffect(() => {
     getUserAddresses()
@@ -224,36 +321,91 @@ setItems(finalItems);
   }, []);
 
   const selectSavedAddress = (addr) => setSelectedAddrId(addr.id);
-  const deselectAddress    = ()     => setSelectedAddrId(null);
+  const deselectAddress = () => setSelectedAddrId(null);
   const selectedAddr = savedAddresses.find((a) => a.id === selectedAddrId) || null;
 
-  const contactValid  = !!(user?.first_name && user?.email);
-  const deliveryValid = addrMode === "saved"
-    ? contactValid && !!selectedAddrId
-    : contactValid && delivery.address && delivery.city && delivery.province;
+  const contactValid = !!(user?.first_name && user?.email);
+  const deliveryValid =
+    addrMode === "saved"
+      ? contactValid && !!selectedAddrId
+      : contactValid && delivery.address && delivery.city && delivery.province;
 
-  const subtotal    = items.reduce((sum, i) => sum + i.rawPrice * i.qty, 0);
+  const subtotal = items.reduce((sum, i) => sum + i.rawPrice * i.qty, 0);
   const shippingFee = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
-  const total       = subtotal + shippingFee;
-  const remaining   = FREE_SHIPPING_MIN - subtotal;
+  const total = subtotal + shippingFee;
+  const remaining = FREE_SHIPPING_MIN - subtotal;
 
-  const handleDeliveryChange = (e) => setDelivery((d) => ({ ...d, [e.target.name]: e.target.value }));
+  const handleDeliveryChange = (e) =>
+    setDelivery((d) => ({ ...d, [e.target.name]: e.target.value }));
+
+  // ── Validate a single field on change ──────────────────────────────────────
   const handlePayFieldChange = (e) => {
     const name = e.target.name;
     let val = e.target.value;
+
+    // Phone / mobile: digits only, max 11
     if (/mobile|phone/i.test(name)) {
-      val = String(val).replace(/\D/g, '').slice(0, 11);
+      val = String(val).replace(/\D/g, "").slice(0, 11);
     }
-    setPayFields((f) => ({ ...f, [name]: val }));
+    // Account number: digits only, max 16
+    if (name === "account_number") {
+      val = String(val).replace(/\D/g, "").slice(0, 16);
+    }
+    // Check number: digits only, max 10
+    if (name === "check_number") {
+      val = String(val).replace(/\D/g, "").slice(0, 10);
+    }
+
+    const newFields = { ...payFields, [name]: val };
+    setPayFields(newFields);
+    setPayTouched((t) => ({ ...t, [name]: true }));
+
+    // Re-validate this field immediately
+    const validator = PAYMENT_VALIDATORS[payMethod]?.[name];
+    if (validator) {
+      const error = validator(val);
+      setPayFieldErrors((prev) => ({ ...prev, [name]: error }));
+    }
   };
+
+  // ── Mark field as touched on blur ─────────────────────────────────────────
+  const handlePayFieldBlur = (e) => {
+    const name = e.target.name;
+    setPayTouched((t) => ({ ...t, [name]: true }));
+    const validator = PAYMENT_VALIDATORS[payMethod]?.[name];
+    if (validator) {
+      const error = validator(payFields[name] || "");
+      setPayFieldErrors((prev) => ({ ...prev, [name]: error }));
+    }
+  };
+
   const activePayment = PAYMENT_METHODS.find((m) => m.id === payMethod);
 
-  // ── Receipt image handlers ────────────────────────────────────────────────
+  // ── Check if all required payment fields are valid ────────────────────────
+  const isPaymentValid = () => {
+    const errors = validatePaymentFields(payMethod, payFields);
+    return Object.keys(errors).length === 0;
+  };
+
+  // ── Touch all fields and show errors when clicking "Review Order" ─────────
+  const handleProceedToReview = () => {
+    const errors = validatePaymentFields(payMethod, payFields);
+    if (Object.keys(errors).length > 0) {
+      // Mark all fields as touched so errors show
+      const allTouched = {};
+      (PAYMENT_VALIDATORS[payMethod] ? Object.keys(PAYMENT_VALIDATORS[payMethod]) : []).forEach(
+        (f) => (allTouched[f] = true)
+      );
+      setPayTouched(allTouched);
+      setPayFieldErrors(errors);
+      return;
+    }
+    setStep(2);
+  };
+
   const handleReceiptChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type and size (max 2MB)
     const allowed = ["image/jpg", "image/jpeg", "image/png"];
     if (!allowed.includes(file.type)) {
       setPlaceError("Receipt must be a JPG or PNG image.");
@@ -263,7 +415,6 @@ setItems(finalItems);
       setPlaceError("Receipt image must be under 2MB.");
       return;
     }
-
     setReceiptFile(file);
     setReceiptPreview(URL.createObjectURL(file));
     setPlaceError(null);
@@ -275,86 +426,87 @@ setItems(finalItems);
     if (receiptInputRef.current) receiptInputRef.current.value = "";
   };
 
-  // ── Clear receipt when switching payment methods ──────────────────────────
   const handlePayMethodChange = (id) => {
     setPayMethod(id);
     setPayFields({});
+    setPayFieldErrors({});
+    setPayTouched({});
     handleRemoveReceipt();
   };
 
-const handlePlaceOrder = async () => {
-  setPlacing(true);
-  setPlaceError(null);
+  const handlePlaceOrder = async () => {
+    setPlacing(true);
+    setPlaceError(null);
 
-  let resolvedAddress;
-  if (addrMode === "saved" && selectedAddr) {
-    resolvedAddress = {
-      street:   selectedAddr.street      || "",
-      barangay: selectedAddr.barangay    || "",
-      city:     selectedAddr.city        || "",
-      province: selectedAddr.province    || "",
-      zip:      selectedAddr.postal_code || "",
-      country:  selectedAddr.country     || "Philippines",
-    };
-  } else {
-    resolvedAddress = {
-      street:   delivery.address  || "",
-      barangay: delivery.barangay || "",
-      city:     delivery.city     || "",
-      province: delivery.province || "",
-      zip:      delivery.zip      || "",
-      country:  "Philippines",
-    };
-  }
+    let resolvedAddress;
+    if (addrMode === "saved" && selectedAddr) {
+      resolvedAddress = {
+        street: selectedAddr.street || "",
+        barangay: selectedAddr.barangay || "",
+        city: selectedAddr.city || "",
+        province: selectedAddr.province || "",
+        zip: selectedAddr.postal_code || "",
+        country: selectedAddr.country || "Philippines",
+      };
+    } else {
+      resolvedAddress = {
+        street: delivery.address || "",
+        barangay: delivery.barangay || "",
+        city: delivery.city || "",
+        province: delivery.province || "",
+        zip: delivery.zip || "",
+        country: "Philippines",
+      };
+    }
 
-  const paymentDetails = {
-    ...payFields,
-    first_name: user?.first_name || "",
-    last_name:  user?.last_name  || "",
-    email:      user?.email      || "",
-    phone:      user?.phone_number || "",
-    billing_address: resolvedAddress,
+    const paymentDetails = {
+      ...payFields,
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      email: user?.email || "",
+      phone: user?.phone_number || "",
+      billing_address: resolvedAddress,
+    };
+
+    const cartIds = items.map((i) => i.id).filter(Boolean);
+    if (cartIds.length === 0) {
+      setPlaceError("No valid cart items found. Please go back to your cart.");
+      setPlacing(false);
+      return;
+    }
+
+    const formData = new FormData();
+    cartIds.forEach((id) => formData.append("cart_ids[]", id));
+    formData.append("payment_method", payMethod);
+    formData.append("shipping_fee", shippingFee);
+    if (specialNote) formData.append("special_instructions", specialNote);
+
+    Object.entries(paymentDetails).forEach(([key, val]) => {
+      if (val !== null && val !== undefined && val !== "") {
+        if (key === "billing_address" && typeof val === "object") {
+          formData.append(`payment_details[${key}]`, JSON.stringify(val));
+        } else {
+          formData.append(`payment_details[${key}]`, val);
+        }
+      }
+    });
+
+    if (receiptFile) formData.append("receipt_image", receiptFile);
+
+    try {
+      const res = await axios.post(`${BASE}/checkout`, formData, {
+        withCredentials: true,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      navigate(`/orders?new=${res.data.checkout_id}`);
+    } catch (err) {
+      setPlaceError(
+        err.response?.data?.message || "Failed to place order. Please try again."
+      );
+      setPlacing(false);
+    }
   };
 
-  const cartIds = items.map((i) => i.id).filter(Boolean);
-  if (cartIds.length === 0) {
-    setPlaceError("No valid cart items found. Please go back to your cart.");
-    setPlacing(false);
-    return;
-  }
-
-  const formData = new FormData();
-  cartIds.forEach((id) => formData.append("cart_ids[]", id));
-  formData.append("payment_method", payMethod);
-  formData.append("shipping_fee",   shippingFee);
-  if (specialNote) formData.append("special_instructions", specialNote);
-
-  // Serialize billing_address as JSON string (nested objects don't survive FormData)
-  Object.entries(paymentDetails).forEach(([key, val]) => {
-    if (val !== null && val !== undefined && val !== "") {
-      if (key === "billing_address" && typeof val === "object") {
-        formData.append(`payment_details[${key}]`, JSON.stringify(val));
-      } else {
-        formData.append(`payment_details[${key}]`, val);
-      }
-    }
-  });
-
-  if (receiptFile) formData.append("receipt_image", receiptFile);
-
-  try {
-    const res = await axios.post(`${BASE}/checkout`, formData, {
-      withCredentials: true,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    navigate(`/orders?new=${res.data.checkout_id}`);
-  } catch (err) {
-    setPlaceError(err.response?.data?.message || "Failed to place order. Please try again.");
-    setPlacing(false);
-  }
-};
-
-  // ── Empty / loading states ────────────────────────────────────────────────
   const EmptyShell = ({ icon, title, desc, action }) => (
     <div className="min-h-screen bg-white">
       <Header />
@@ -371,16 +523,37 @@ const handlePlaceOrder = async () => {
   );
 
   if (loadingCart) return <EmptyShell icon="⏳" title="Loading your cart…" />;
-  if (cartError)   return (
-    <EmptyShell icon="⚠️" title="Something went wrong" desc={cartError}
-      action={<button className="px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold cursor-pointer border-none" onClick={() => window.location.reload()}>Try Again</button>}
-    />
-  );
-  if (items.length === 0) return (
-    <EmptyShell icon="🛒" title="No items to checkout"
-      action={<Link to="/products" className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline">Browse Products →</Link>}
-    />
-  );
+  if (cartError)
+    return (
+      <EmptyShell
+        icon="⚠️"
+        title="Something went wrong"
+        desc={cartError}
+        action={
+          <button
+            className="px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold cursor-pointer border-none"
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </button>
+        }
+      />
+    );
+  if (items.length === 0)
+    return (
+      <EmptyShell
+        icon="🛒"
+        title="No items to checkout"
+        action={
+          <Link
+            to="/products"
+            className="inline-block px-6 py-2.5 bg-[#4d7b65] text-white rounded-xl text-sm font-bold no-underline"
+          >
+            Browse Products →
+          </Link>
+        }
+      />
+    );
 
   return (
     <div className="min-h-screen bg-[#f8faf9]">
@@ -389,9 +562,13 @@ const handlePlaceOrder = async () => {
       {/* ── Breadcrumb ── */}
       <div className="bg-[#f8faf9] border-b border-[#e8f0eb] mt-[75px]">
         <div className="container mx-auto px-4 flex items-center gap-2 py-3 text-xs text-[#6b7c70] flex-wrap">
-          <Link to="/" className="text-[#4d7b65] no-underline hover:underline">Home</Link>
+          <Link to="/" className="text-[#4d7b65] no-underline hover:underline">
+            Home
+          </Link>
           <span className="text-gray-300">›</span>
-          <Link to="/cart" className="text-[#4d7b65] no-underline hover:underline">Cart</Link>
+          <Link to="/cart" className="text-[#4d7b65] no-underline hover:underline">
+            Cart
+          </Link>
           <span className="text-gray-300">›</span>
           <span>Checkout</span>
         </div>
@@ -401,26 +578,46 @@ const handlePlaceOrder = async () => {
       <div className="bg-white border-b border-[#e8f0eb] py-5">
         <div className="container flex items-center justify-center gap-0 px-4 mx-auto">
           {STEPS.map((s, i) => {
-            const isDone   = i < step;
+            const isDone = i < step;
             const isActive = i <= step;
             return (
               <div key={s} className="flex items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0 transition-all
-                    ${isDone   ? "bg-green-600 text-white"
-                    : isActive ? "bg-[#4d7b65] text-white"
-                    :            "bg-[#e8f0eb] text-[#9ca3af]"}`}>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0 transition-all
+                    ${
+                      isDone
+                        ? "bg-green-600 text-white"
+                        : isActive
+                        ? "bg-[#4d7b65] text-white"
+                        : "bg-[#e8f0eb] text-[#9ca3af]"
+                    }`}
+                  >
                     {isDone ? "✓" : i + 1}
                   </div>
-                  <span className={`text-[13px] font-semibold transition-colors hidden sm:block
-                    ${isDone   ? "text-green-600"
-                    : isActive ? "text-[#4d7b65]"
-                    :            "text-[#9ca3af]"}`}>
+                  <span
+                    className={`text-[13px] font-semibold transition-colors hidden sm:block
+                    ${
+                      isDone
+                        ? "text-green-600"
+                        : isActive
+                        ? "text-[#4d7b65]"
+                        : "text-[#9ca3af]"
+                    }`}
+                  >
                     {s}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`w-10 sm:w-16 h-0.5 mx-2 transition-colors ${isDone ? "bg-green-600" : isActive ? "bg-[#4d7b65]" : "bg-[#e8f0eb]"}`} />
+                  <div
+                    className={`w-10 sm:w-16 h-0.5 mx-2 transition-colors ${
+                      isDone
+                        ? "bg-green-600"
+                        : isActive
+                        ? "bg-[#4d7b65]"
+                        : "bg-[#e8f0eb]"
+                    }`}
+                  />
                 )}
               </div>
             );
@@ -443,22 +640,33 @@ const handlePlaceOrder = async () => {
                 {/* User card */}
                 <div className="flex items-center gap-3.5 bg-[#f4f8f6] border-[1.5px] border-[#d0e8db] rounded-xl px-4 py-3.5 mb-5">
                   <div className="w-11 h-11 rounded-full bg-[#4d7b65] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                    {user ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() : "…"}
+                    {user
+                      ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase()
+                      : "…"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-[#1a1a1a] mb-0.5">
-                      {user ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() : "Loading…"}
+                      {user
+                        ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim()
+                        : "Loading…"}
                     </div>
                     <div className="text-xs text-[#666]">{user?.email || "—"}</div>
-                    {user?.phone_number && <div className="text-xs text-[#666]">{user.phone_number}</div>}
+                    {user?.phone_number && (
+                      <div className="text-xs text-[#666]">{user.phone_number}</div>
+                    )}
                     {user?.company_name && (
-                      <div className="text-xs text-[#4d7b65] font-medium mt-0.5">🏢 {user.company_name}</div>
+                      <div className="text-xs text-[#4d7b65] font-medium mt-0.5">
+                        🏢 {user.company_name}
+                      </div>
                     )}
                     {user?.tin_number && (
                       <div className="text-xs text-[#666] mt-0.5">TIN: {user.tin_number}</div>
                     )}
                   </div>
-                  <Link to="/Profilepersonal" className="text-xs text-[#4d7b65] font-medium no-underline px-2.5 py-1.5 rounded-lg border-[1.5px] border-[#c0ddd0] bg-white hover:bg-[#e8f5ef] transition-colors whitespace-nowrap">
+                  <Link
+                    to="/Profilepersonal"
+                    className="text-xs text-[#4d7b65] font-medium no-underline px-2.5 py-1.5 rounded-lg border-[1.5px] border-[#c0ddd0] bg-white hover:bg-[#e8f5ef] transition-colors whitespace-nowrap"
+                  >
                     ✏️ Edit
                   </Link>
                 </div>
@@ -470,20 +678,25 @@ const handlePlaceOrder = async () => {
                       type="button"
                       onClick={() => setAddrMode("saved")}
                       className={`flex-1 px-3.5 py-2.5 rounded-xl border-[1.5px] text-[13px] font-medium cursor-pointer transition-all font-[inherit]
-                        ${addrMode === "saved"
-                          ? "border-[#4d7b65] bg-[#4d7b65] text-white font-semibold"
-                          : "border-[#e0e9e4] bg-[#fafafa] text-[#666] hover:border-[#4d7b65] hover:text-[#4d7b65]"
+                        ${
+                          addrMode === "saved"
+                            ? "border-[#4d7b65] bg-[#4d7b65] text-white font-semibold"
+                            : "border-[#e0e9e4] bg-[#fafafa] text-[#666] hover:border-[#4d7b65] hover:text-[#4d7b65]"
                         }`}
                     >
                       📍 My Saved Addresses
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setAddrMode("new"); setSelectedAddrId(null); }}
+                      onClick={() => {
+                        setAddrMode("new");
+                        setSelectedAddrId(null);
+                      }}
                       className={`flex-1 px-3.5 py-2.5 rounded-xl border-[1.5px] text-[13px] font-medium cursor-pointer transition-all font-[inherit]
-                        ${addrMode === "new"
-                          ? "border-[#4d7b65] bg-[#4d7b65] text-white font-semibold"
-                          : "border-[#e0e9e4] bg-[#fafafa] text-[#666] hover:border-[#4d7b65] hover:text-[#4d7b65]"
+                        ${
+                          addrMode === "new"
+                            ? "border-[#4d7b65] bg-[#4d7b65] text-white font-semibold"
+                            : "border-[#e0e9e4] bg-[#fafafa] text-[#666] hover:border-[#4d7b65] hover:text-[#4d7b65]"
                         }`}
                     >
                       ✏️ Use a Different Address
@@ -494,11 +707,13 @@ const handlePlaceOrder = async () => {
                 {/* Saved addresses list */}
                 {addrMode === "saved" && savedAddresses.length > 0 && (
                   <div className="mb-1">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-[#5a7a68] mb-3">Select a delivery address</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-[#5a7a68] mb-3">
+                      Select a delivery address
+                    </div>
                     <div className="flex flex-wrap gap-2.5">
                       {savedAddresses.map((addr) => {
                         const isCompany = addr.type === "company";
-                        const isActive  = selectedAddrId === addr.id;
+                        const isActive = selectedAddrId === addr.id;
                         const lines = [
                           addr.street,
                           [addr.barangay, addr.city].filter(Boolean).join(", "),
@@ -509,33 +724,43 @@ const handlePlaceOrder = async () => {
                           <button
                             key={addr.id}
                             type="button"
-                            onClick={() => isActive ? deselectAddress() : selectSavedAddress(addr)}
+                            onClick={() =>
+                              isActive ? deselectAddress() : selectSavedAddress(addr)
+                            }
                             className={`flex-1 min-w-[180px] text-left bg-white border-[1.5px] rounded-xl px-4 py-3.5 cursor-pointer transition-all font-[inherit]
-                              ${isActive
-                                ? "border-[#4d7b65] bg-[#f0f7f3] shadow-[0_0_0_3px_rgba(77,123,101,0.13)]"
-                                : "border-[#e0e9e4] hover:border-[#4d7b65] hover:shadow-[0_2px_10px_rgba(77,123,101,0.10)]"
+                              ${
+                                isActive
+                                  ? "border-[#4d7b65] bg-[#f0f7f3] shadow-[0_0_0_3px_rgba(77,123,101,0.13)]"
+                                  : "border-[#e0e9e4] hover:border-[#4d7b65] hover:shadow-[0_2px_10px_rgba(77,123,101,0.10)]"
                               }`}
                           >
                             <div className="text-[10px] font-bold uppercase tracking-wide text-[#5a7a68] mb-1.5">
                               {isCompany ? "🏢 Company" : "👤 Personal"}
                             </div>
                             {isCompany && addr.company_name && (
-                              <div className="text-[13px] font-semibold text-[#1a1a1a] mb-0.5">{addr.company_name}</div>
+                              <div className="text-[13px] font-semibold text-[#1a1a1a] mb-0.5">
+                                {addr.company_name}
+                              </div>
                             )}
                             {lines.map((line, i) => (
-                              <div key={i} className="text-[13px] text-[#444] leading-relaxed">{line}</div>
+                              <div key={i} className="text-[13px] text-[#444] leading-relaxed">
+                                {line}
+                              </div>
                             ))}
                             {isCompany && (addr.company_number || addr.company_email) && (
                               <div className="flex flex-col gap-0.5 mt-1.5 pt-1.5 border-t border-[#eee] text-[11px] text-[#888]">
                                 {addr.company_number && <span>📞 {addr.company_number}</span>}
-                                {addr.company_email  && <span>✉ {addr.company_email}</span>}
+                                {addr.company_email && <span>✉ {addr.company_email}</span>}
                               </div>
                             )}
                             <div className="mt-2.5">
-                              {isActive
-                                ? <span className="text-xs font-bold text-[#4d7b65]">✓ Delivering here</span>
-                                : <span className="text-[11px] text-[#bbb]">Tap to select</span>
-                              }
+                              {isActive ? (
+                                <span className="text-xs font-bold text-[#4d7b65]">
+                                  ✓ Delivering here
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-[#bbb]">Tap to select</span>
+                              )}
                             </div>
                           </button>
                         );
@@ -549,23 +774,53 @@ const handlePlaceOrder = async () => {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2 flex flex-col gap-1.5">
                       <label className={labelCls}>Street Address / Building / Unit *</label>
-                      <input name="address" value={delivery.address} onChange={handleDeliveryChange} placeholder="e.g. Unit 202, Cityland Tower, HV Dela Costa St." className={inputCls} />
+                      <input
+                        name="address"
+                        value={delivery.address}
+                        onChange={handleDeliveryChange}
+                        placeholder="e.g. Unit 202, Cityland Tower, HV Dela Costa St."
+                        className={inputCls}
+                      />
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className={labelCls}>Barangay</label>
-                      <input name="barangay" value={delivery.barangay} onChange={handleDeliveryChange} placeholder="Barangay name" className={inputCls} />
+                      <input
+                        name="barangay"
+                        value={delivery.barangay}
+                        onChange={handleDeliveryChange}
+                        placeholder="Barangay name"
+                        className={inputCls}
+                      />
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className={labelCls}>City / Municipality *</label>
-                      <input name="city" value={delivery.city} onChange={handleDeliveryChange} placeholder="Makati City" className={inputCls} />
+                      <input
+                        name="city"
+                        value={delivery.city}
+                        onChange={handleDeliveryChange}
+                        placeholder="Makati City"
+                        className={inputCls}
+                      />
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className={labelCls}>Province *</label>
-                      <input name="province" value={delivery.province} onChange={handleDeliveryChange} placeholder="Metro Manila" className={inputCls} />
+                      <input
+                        name="province"
+                        value={delivery.province}
+                        onChange={handleDeliveryChange}
+                        placeholder="Metro Manila"
+                        className={inputCls}
+                      />
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className={labelCls}>ZIP Code</label>
-                      <input name="zip" value={delivery.zip} onChange={handleDeliveryChange} placeholder="1227" className={inputCls} />
+                      <input
+                        name="zip"
+                        value={delivery.zip}
+                        onChange={handleDeliveryChange}
+                        placeholder="1227"
+                        className={inputCls}
+                      />
                     </div>
                     {savedAddresses.length === 0 && (
                       <div className="sm:col-span-2 text-xs text-[#5a7a68] bg-[#f0f7f3] border border-[#c8e4d4] rounded-lg px-3.5 py-2.5">
@@ -599,14 +854,23 @@ const handlePlaceOrder = async () => {
                         key={m.id}
                         onClick={() => handlePayMethodChange(m.id)}
                         className={`flex items-center gap-3.5 px-4 py-4 border-[1.5px] rounded-2xl cursor-pointer transition-all
-                          ${isActive
-                            ? "border-[#4d7b65] bg-[#f0f7f3] shadow-[0_0_0_3px_rgba(77,123,101,0.08)]"
-                            : "border-[#e8f0eb] bg-[#fafcfb] hover:border-[#4d7b65] hover:bg-[#f3f8f5]"
+                          ${
+                            isActive
+                              ? "border-[#4d7b65] bg-[#f0f7f3] shadow-[0_0_0_3px_rgba(77,123,101,0.08)]"
+                              : "border-[#e8f0eb] bg-[#fafcfb] hover:border-[#4d7b65] hover:bg-[#f3f8f5]"
                           }`}
                       >
-                        <div className={`w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 transition-all
+                        <div
+                          className={`w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 transition-all
                           ${isActive ? "border-[#4d7b65]" : "border-[#d1e8da]"}`}
-                          style={isActive ? { background: "radial-gradient(circle at center, #4d7b65 6px, transparent 6px)" } : {}}
+                          style={
+                            isActive
+                              ? {
+                                  background:
+                                    "radial-gradient(circle at center, #4d7b65 6px, transparent 6px)",
+                                }
+                              : {}
+                          }
                         />
                         <span className="flex-shrink-0 text-2xl">{m.icon}</span>
                         <div className="flex-1 min-w-0">
@@ -615,7 +879,11 @@ const handlePlaceOrder = async () => {
                         </div>
                         <span
                           className="text-[11px] font-bold px-2.5 py-1 rounded-full border flex-shrink-0 whitespace-nowrap"
-                          style={{ background: m.tagColor + "22", color: m.tagColor, borderColor: m.tagColor + "44" }}
+                          style={{
+                            background: m.tagColor + "22",
+                            color: m.tagColor,
+                            borderColor: m.tagColor + "44",
+                          }}
                         >
                           {m.tag}
                         </span>
@@ -624,26 +892,61 @@ const handlePlaceOrder = async () => {
                   })}
                 </div>
 
-                {/* Payment fields */}
+                {/* Payment fields with validation */}
                 {activePayment.fields.length > 0 && (
                   <div className="bg-[#f8faf9] border-[1.5px] border-[#e8f0eb] rounded-xl p-5 mb-4">
-                    <h3 className="text-sm font-bold text-[#1a2e22] mb-4">{activePayment.label} Details</h3>
-                    <div className="flex flex-col gap-3">
-                      {activePayment.fields.map((f) => (
-                        <div key={f.name} className="flex flex-col gap-1.5">
-                          <label className={labelCls}>{f.label}</label>
-                          <input
-                            name={f.name}
-                            type={f.type || "text"}
-                            inputMode={/mobile|phone/i.test(f.name) ? "numeric" : undefined}
-                            maxLength={/mobile|phone/i.test(f.name) ? 11 : undefined}
-                            placeholder={f.placeholder || ""}
-                            value={payFields[f.name] || ""}
-                            onChange={handlePayFieldChange}
-                            className={inputCls}
-                          />
-                        </div>
-                      ))}
+                    <h3 className="text-sm font-bold text-[#1a2e22] mb-4">
+                      {activePayment.label} Details
+                    </h3>
+                    <div className="flex flex-col gap-4">
+                      {activePayment.fields.map((f) => {
+                        const hasError = payTouched[f.name] && payFieldErrors[f.name];
+                        const isValid = payTouched[f.name] && !payFieldErrors[f.name] && payFields[f.name];
+                        return (
+                          <div key={f.name} className="flex flex-col gap-1.5">
+                            <label className={labelCls}>{f.label}</label>
+                            <div className="relative">
+                              <input
+                                name={f.name}
+                                type={f.type || "text"}
+                                inputMode={/mobile|phone/i.test(f.name) ? "numeric" : f.name === "account_number" || f.name === "check_number" ? "numeric" : undefined}
+                                placeholder={f.placeholder || ""}
+                                value={payFields[f.name] || ""}
+                                onChange={handlePayFieldChange}
+                                onBlur={handlePayFieldBlur}
+                                className={hasError ? inputErrCls : inputCls}
+                              />
+                              {/* Inline valid/invalid icon */}
+                              {payTouched[f.name] && (
+                                <span
+                                  className="absolute text-sm -translate-y-1/2 pointer-events-none right-3 top-1/2"
+                                  style={{ color: hasError ? "#ef4444" : "#22c55e" }}
+                                >
+                                  {hasError ? "✗" : "✓"}
+                                </span>
+                              )}
+                            </div>
+                            {/* Error message */}
+                            {hasError && (
+                              <p className="text-[12px] text-red-500 mt-0.5 flex items-center gap-1">
+                                <span>⚠</span>
+                                <span>{payFieldErrors[f.name]}</span>
+                              </p>
+                            )}
+                            {/* Helper hints */}
+                            {!hasError && !isValid && (
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {f.name === "mobile_number" && "Must be 11 digits starting with 09 (e.g. 09171234567)"}
+                                {f.name === "account_number" && "8–16 digits, no spaces or dashes"}
+                                {f.name === "check_number" && "6–10 digit check number"}
+                                {f.name === "check_date" && "Select a present or future date"}
+                                {f.name === "check_amount" && "Enter the amount written on the check"}
+                                {f.name === "reference_number" && "Found on your deposit slip or transfer confirmation"}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -659,7 +962,6 @@ const handlePlaceOrder = async () => {
                       Attach a screenshot or photo of your payment confirmation to speed up verification.
                     </p>
 
-                    {/* Preview */}
                     {receiptPreview ? (
                       <div className="flex flex-col gap-3">
                         <div className="relative w-full max-w-xs rounded-xl overflow-hidden border-[1.5px] border-[#d1e8da] bg-[#f0f7f3]">
@@ -693,19 +995,21 @@ const handlePlaceOrder = async () => {
                         </button>
                       </div>
                     ) : (
-                      /* Drop zone */
                       <button
                         type="button"
                         onClick={() => receiptInputRef.current?.click()}
                         className="w-full border-[2px] border-dashed border-[#c0ddd0] rounded-xl py-7 px-4 flex flex-col items-center gap-2 bg-transparent cursor-pointer transition-all hover:border-[#4d7b65] hover:bg-[#f0f7f3] font-[inherit]"
                       >
                         <span className="text-3xl">📎</span>
-                        <span className="text-sm font-semibold text-[#4d7b65]">Click to upload receipt</span>
-                        <span className="text-[11px] text-slate-400">JPG, JPEG, or PNG · Max 2MB</span>
+                        <span className="text-sm font-semibold text-[#4d7b65]">
+                          Click to upload receipt
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          JPG, JPEG, or PNG · Max 2MB
+                        </span>
                       </button>
                     )}
 
-                    {/* Hidden file input */}
                     <input
                       ref={receiptInputRef}
                       type="file"
@@ -743,7 +1047,7 @@ const handlePlaceOrder = async () => {
                     ← Back
                   </button>
                   <button
-                    onClick={() => setStep(2)}
+                    onClick={handleProceedToReview}
                     className="px-7 py-3.5 bg-[#3d6552] text-white border-none rounded-xl text-[15px] font-bold cursor-pointer hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(77,123,101,0.25)] transition-all"
                   >
                     Review Order →
@@ -761,21 +1065,40 @@ const handlePlaceOrder = async () => {
                 <div className="border-[1.5px] border-[#e8f0eb] rounded-xl overflow-hidden mb-4">
                   <div className="flex justify-between items-center px-4 py-3 bg-[#f8faf9] border-b border-[#e8f0eb] text-[13px] font-bold text-slate-700">
                     <span>📦 Delivery Address</span>
-                    <button onClick={() => setStep(0)} className="bg-transparent border-none text-[13px] text-[#4d7b65] font-bold cursor-pointer p-0 hover:underline">Edit</button>
+                    <button
+                      onClick={() => setStep(0)}
+                      className="bg-transparent border-none text-[13px] text-[#4d7b65] font-bold cursor-pointer p-0 hover:underline"
+                    >
+                      Edit
+                    </button>
                   </div>
                   <div className="px-4 py-4 text-sm leading-relaxed text-slate-600">
-                    <strong>{user?.first_name} {user?.last_name}</strong><br />
-                    {user?.phone_number && <>{user.phone_number} · </>}{user?.email}<br />
+                    <strong>
+                      {user?.first_name} {user?.last_name}
+                    </strong>
+                    <br />
+                    {user?.phone_number && <>{user.phone_number} · </>}
+                    {user?.email}
+                    <br />
                     {user?.company_name && (
-                      <div className="text-[13px] text-[#4d7b65] font-medium mt-0.5">🏢 {user.company_name}</div>
+                      <div className="text-[13px] text-[#4d7b65] font-medium mt-0.5">
+                        🏢 {user.company_name}
+                      </div>
                     )}
                     {user?.tin_number && (
                       <div className="text-[13px] text-[#666] mt-0.5">TIN: {user.tin_number}</div>
                     )}
                     {addrMode === "saved" && selectedAddr ? (
-                      <>{selectedAddr.street}{selectedAddr.barangay ? `, ${selectedAddr.barangay}` : ""}, {selectedAddr.city}, {selectedAddr.province} {selectedAddr.postal_code}</>
+                      <>
+                        {selectedAddr.street}
+                        {selectedAddr.barangay ? `, ${selectedAddr.barangay}` : ""},{" "}
+                        {selectedAddr.city}, {selectedAddr.province} {selectedAddr.postal_code}
+                      </>
                     ) : (
-                      <>{delivery.address},{delivery.barangay && ` ${delivery.barangay},`} {delivery.city}, {delivery.province} {delivery.zip}</>
+                      <>
+                        {delivery.address},{delivery.barangay && ` ${delivery.barangay},`}{" "}
+                        {delivery.city}, {delivery.province} {delivery.zip}
+                      </>
                     )}
                   </div>
                 </div>
@@ -784,14 +1107,24 @@ const handlePlaceOrder = async () => {
                 <div className="border-[1.5px] border-[#e8f0eb] rounded-xl overflow-hidden mb-4">
                   <div className="flex justify-between items-center px-4 py-3 bg-[#f8faf9] border-b border-[#e8f0eb] text-[13px] font-bold text-slate-700">
                     <span>💳 Payment Method</span>
-                    <button onClick={() => setStep(1)} className="bg-transparent border-none text-[13px] text-[#4d7b65] font-bold cursor-pointer p-0 hover:underline">Edit</button>
+                    <button
+                      onClick={() => setStep(1)}
+                      className="bg-transparent border-none text-[13px] text-[#4d7b65] font-bold cursor-pointer p-0 hover:underline"
+                    >
+                      Edit
+                    </button>
                   </div>
                   <div className="px-4 py-4 text-sm text-slate-600">
-                    <strong>{activePayment.icon} {activePayment.label}</strong>
+                    <strong>
+                      {activePayment.icon} {activePayment.label}
+                    </strong>
                     {Object.entries(payFields).map(([k, v]) =>
-                      v ? <div key={k} className="text-[13px] text-[#6b7c70] mt-1">{k.replace(/_/g, " ")}: {v}</div> : null
+                      v ? (
+                        <div key={k} className="text-[13px] text-[#6b7c70] mt-1">
+                          {k.replace(/_/g, " ")}: {v}
+                        </div>
+                      ) : null
                     )}
-                    {/* ── Receipt preview in Review step ── */}
                     {receiptPreview && (
                       <div className="flex items-center gap-3 mt-3">
                         <img
@@ -800,7 +1133,9 @@ const handlePlaceOrder = async () => {
                           className="w-16 h-16 object-cover rounded-lg border border-[#d1e8da]"
                         />
                         <div>
-                          <div className="text-[12px] font-semibold text-[#4d7b65]">🧾 Receipt attached</div>
+                          <div className="text-[12px] font-semibold text-[#4d7b65]">
+                            🧾 Receipt attached
+                          </div>
                           <div className="text-[11px] text-slate-400">{receiptFile?.name}</div>
                         </div>
                       </div>
@@ -814,17 +1149,23 @@ const handlePlaceOrder = async () => {
                   </div>
                   <div className="px-4">
                     {items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3.5 py-3 border-b border-[#f0f4f1] last:border-b-0">
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3.5 py-3 border-b border-[#f0f4f1] last:border-b-0"
+                      >
                         <img
                           src={item.image}
                           alt={item.name}
                           className="w-14 h-14 rounded-xl object-cover bg-[#f3f8f5] flex-shrink-0"
-                          onError={(e) => { e.target.src = ph(60, 60, item.name); }}
+                          onError={(e) => {
+                            e.target.src = ph(60, 60, item.name);
+                          }}
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-[#1a2e22] truncate">{item.name}</div>
+                          <div className="text-sm font-semibold text-[#1a2e22] truncate">
+                            {item.name}
+                          </div>
                           <div className="text-xs text-slate-400 mt-0.5">Qty: {item.qty}</div>
-                         
                           {item.status === "pre_order" ? (
                             <div className="mt-1 inline-block text-[11px] font-semibold text-[#92400e] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-1 rounded-full">
                               ⏳ Pre-Order — delivery may take longer
@@ -843,15 +1184,15 @@ const handlePlaceOrder = async () => {
                   </div>
                 </div>
 
-                {/* Special note */}
                 {specialNote && (
                   <div className="border-[1.5px] border-[#e8f0eb] rounded-xl overflow-hidden mb-4">
-                    <div className="px-4 py-3 bg-[#f8faf9] border-b border-[#e8f0eb] text-[13px] font-bold text-slate-700">📝 Special Instructions</div>
+                    <div className="px-4 py-3 bg-[#f8faf9] border-b border-[#e8f0eb] text-[13px] font-bold text-slate-700">
+                      📝 Special Instructions
+                    </div>
                     <div className="px-4 py-4 text-sm text-slate-600">{specialNote}</div>
                   </div>
                 )}
 
-                {/* Error */}
                 {placeError && (
                   <div className="bg-[#fef2f2] border border-red-200 rounded-xl px-4 py-3 text-[13px] text-red-600 mb-4">
                     ⚠️ {placeError}
@@ -870,9 +1211,10 @@ const handlePlaceOrder = async () => {
                     onClick={handlePlaceOrder}
                     disabled={placing}
                     className={`flex-1 px-6 py-4 bg-[#4d7b65] text-white border-none rounded-xl text-[15px] font-bold text-center transition-all
-                      ${placing
-                        ? "opacity-70 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-[#3d6552] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(77,123,101,0.25)]"
+                      ${
+                        placing
+                          ? "opacity-70 cursor-not-allowed"
+                          : "cursor-pointer hover:bg-[#3d6552] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(77,123,101,0.25)]"
                       }`}
                   >
                     {placing ? "Placing Order..." : "Place Order & Confirm Payment →"}
@@ -917,16 +1259,21 @@ const handlePlaceOrder = async () => {
                           src={item.image}
                           alt={item.name}
                           className="w-12 h-12 rounded-lg object-cover bg-[#f3f8f5]"
-                          onError={(e) => { e.target.src = ph(48, 48, item.name); }}
+                          onError={(e) => {
+                            e.target.src = ph(48, 48, item.name);
+                          }}
                         />
                         <span className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] bg-[#4d7b65] text-white rounded-full text-[10px] font-bold flex items-center justify-center">
                           {item.qty}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-[#1a2e22] m-0 truncate">{item.name}</p>
-                        <p className="text-[11px] text-gray-400 m-0">x{item.qty} · {item.price} each</p>
-                      
+                        <p className="text-xs font-semibold text-[#1a2e22] m-0 truncate">
+                          {item.name}
+                        </p>
+                        <p className="text-[11px] text-gray-400 m-0">
+                          x{item.qty} · {item.price} each
+                        </p>
                         {item.status === "pre_order" ? (
                           <p className="text-[10px] text-[#92400e] m-0 mt-0.5">⏳ Pre-order</p>
                         ) : (
@@ -975,7 +1322,6 @@ const handlePlaceOrder = async () => {
               </div>
             </div>
           </div>
-
         </div>
       </section>
     </div>

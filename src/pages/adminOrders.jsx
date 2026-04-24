@@ -1519,7 +1519,7 @@ export default function AdminOrders() {
                           className="cursor-pointer w-3.5 h-3.5 accent-green-600"
                         />
                       </th>
-                      {["Order ID", "Product", "Client", "Contact", "Payment", "Shipping Fee", "Total Paid", "Status", "Date", "Action"].map((h) => (
+                      {["Order ID", "Product", "Client", "Contact", "Address", "Payment", "Shipping Fee", "Total Paid", "Status", "Date", "Action"].map((h) => (
                         <th
                           key={h}
                           className="px-3.5 py-3 text-left font-semibold text-gray-700 whitespace-nowrap text-[11px] uppercase tracking-wide"
@@ -1577,6 +1577,9 @@ export default function AdminOrders() {
                               <div className="text-[11px] text-gray-400">TIN: {user.tin_number}</div>
                             )}
                           </td>
+                          <td className="px-3.5 py-3.5 text-gray-500 text-xs max-w-[180px]">
+  {resolveCheckoutAddress(d.checkout) || "—"}
+</td>
                           <td className="px-3.5 py-3.5 text-gray-700 whitespace-nowrap capitalize">
                             {checkout?.payment_method ?? "—"}
                           </td>
@@ -1611,7 +1614,7 @@ export default function AdminOrders() {
                     })}
                     {paginated.length === 0 && (
                       <tr>
-                        <td colSpan={11} className="py-10 text-xs text-center text-gray-400">
+                        <td colSpan={12} className="py-10 text-xs text-center text-gray-400">
                           No orders found.
                         </td>
                       </tr>

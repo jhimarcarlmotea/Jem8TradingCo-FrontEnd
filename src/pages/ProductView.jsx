@@ -436,34 +436,33 @@ setProduct(data);
     }
   };
 
-  const handleBuyNow = async () => {
+ const handleBuyNow = async () => {
     if (cartLoading) return;
-    const isBackorder = product.status === "pre_order";
-   
     setCartLoading(true);
     setCartError(null);
-    const productToAdd = isBackorder ? { ...product, backorder: true } : product;
     try {
       await callAddToCart();
-      addToCart(productToAdd, qty);
-      if (isBackorder) {
-        setCartError("Note: This item is out of stock and will be backordered; delivery may take longer.");
-        setTimeout(() => setCartError(null), 6000);
-      }
-      navigate("/cart");
+      navigate("/checkout", {
+        state: {
+          reorderItems: [
+            {
+              productId,
+              name,
+              quantity: qty,
+              price,
+              image: images[0]?.image_path
+                ? `${BASE}/storage/${images[0].image_path}`
+                : product.primary_image_url ?? null,
+            },
+          ],
+        },
+      });
     } catch (err) {
-      if (isBackorder) {
-        addToCart(productToAdd, qty);
-        setCartError("Added as backorder — delivery may take longer.");
-        setTimeout(() => setCartError(null), 6000);
-        navigate("/cart");
-      } else {
-        const status = err.response?.status;
-        const msg    = err.response?.data?.message ?? err.response?.data?.error ?? "Failed to add to cart.";
-        setCartError(status === 401 ? "You must be logged in to add items to cart." : msg);
-        setTimeout(() => setCartError(null), 4000);
-        setCartLoading(false);
-      }
+      const status = err.response?.status;
+      const msg    = err.response?.data?.message ?? err.response?.data?.error ?? "Failed to add to cart.";
+      setCartError(status === 401 ? "You must be logged in to buy items." : msg);
+      setTimeout(() => setCartError(null), 4000);
+      setCartLoading(false);
     }
   };
 
