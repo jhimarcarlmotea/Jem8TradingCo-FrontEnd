@@ -467,12 +467,18 @@ function exportOrderToPDF(delivery) {
     : new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
   const paymentMethod = (checkout?.payment_method ?? "COD").replace(/_/g, " ").toUpperCase();
 
-  const itemRows = items.map((item, i) => {
+  // Render up to ITEM_MAX item rows. Leave empty rows after Nothing Follows
+  const ITEM_MAX = 17;
+  const itemCount = Math.min(items.length, ITEM_MAX);
+
+  const itemRowsArr = [];
+  for (let i = 0; i < itemCount; i++) {
+    const item = items[i];
     const product = item.product ?? {};
     const qty = Number(item.quantity ?? 1);
     const price = Number(item.price ?? product.price ?? 0);
     const amount = price * qty;
-    return `
+    itemRowsArr.push(`
       <tr>
         <td style="text-align:center;padding:5px 4px;">${String(i + 1).padStart(2, "0")}</td>
         <td style="padding:5px 6px;">${product.product_name ?? "Product"}</td>
@@ -481,8 +487,25 @@ function exportOrderToPDF(delivery) {
         <td style="text-align:center;padding:5px 4px;">${product.unit ?? "pc"}</td>
         <td style="text-align:right;padding:5px 6px;">${fmt(price)}</td>
         <td style="text-align:right;padding:5px 6px;">${fmt(amount)}</td>
-      </tr>`;
-  }).join("");
+      </tr>`);
+  }
+
+  // If there are fewer than ITEM_MAX items, leave blank rows so the table keeps consistent height
+  const blankCountAfterNF = ITEM_MAX - itemCount;
+  const blankRowHtml = `<tr>
+    <td style="text-align:center;padding:5px 4px;"></td>
+    <td style="padding:5px 6px;"></td>
+    <td style="text-align:center;padding:5px 4px;"></td>
+    <td style="text-align:center;padding:5px 4px;"></td>
+    <td style="text-align:center;padding:5px 4px;"></td>
+    <td style="text-align:right;padding:5px 6px;"></td>
+    <td style="text-align:right;padding:5px 6px;"></td>
+  </tr>`;
+
+  const itemRows = itemRowsArr.join("");
+  const nfRowHtml = `\n      <tr class="nothing-follows">\n        <td></td>\n        <td colspan="4">***Nothing Follows***</td>\n        <td></td>\n        <td></td>\n      </tr>`;
+  let blankRowsHtml = "";
+  for (let i = 0; i < blankCountAfterNF; i++) blankRowsHtml += blankRowHtml;
 
   const html = `<!DOCTYPE html>
 <html>
@@ -810,15 +833,15 @@ function exportOrderToPDF(delivery) {
   <div class="info-right">
     <div class="info-row">
       <div class="info-label">Date:</div>
-      <div class="info-val">${dateStr}</div>
+      <div class="info-val"></div>
     </div>
     <div class="info-row">
       <div class="info-label">Deliver:</div>
-      <div class="info-val">5 to 7 Days</div>
+      <div class="info-val"></div>
     </div>
     <div class="info-row">
       <div class="info-label">Validity:</div>
-      <div class="info-val">15 Days</div>
+      <div class="info-val"></div>
     </div>
     <div class="info-row">
       <div class="info-label">Payment &amp; Terms</div>
@@ -842,13 +865,7 @@ function exportOrderToPDF(delivery) {
       </tr>
     </thead>
     <tbody>
-      ${itemRows}
-      <tr class="nothing-follows">
-        <td></td>
-        <td colspan="4">***Nothing Follows***</td>
-        <td></td>
-        <td></td>
-      </tr>
+      ${itemRows}${blankRowsHtml}${nfRowHtml}
     </tbody>
   </table>
 </div>
@@ -895,8 +912,6 @@ function exportOrderToPDF(delivery) {
     <td class="sig-space" rowspan="3"></td>
   </tr>
   <tr>
-    <td class="sig-name">Shella Ricafrente</td>
-    <td class="sig-name">VAR</td>
     <td></td>
   </tr>
   <tr>
@@ -974,6 +989,17 @@ async function exportOrderToExcel(delivery) {
       ws[ref].t = "s"; ws[ref].v = String(value ?? "");
     }
     delete ws[ref].f;
+    // Ensure text wraps in key columns (keep column widths from template)
+    try {
+      const col = (ref.match(/^[A-Z]+/i) || [""])[0];
+      // Columns we want to enforce wrapping for: item description (B), client info/value (C), address (C), disclaimer area (B)
+      if (col === "B" || col === "C") {
+        ws[ref].s = ws[ref].s || {};
+        ws[ref].s.alignment = Object.assign({}, ws[ref].s.alignment || {}, { wrapText: true, vertical: "top" });
+      }
+    } catch (e) {
+      // ignore style application errors
+    }
   };
  
   const setFormula = (ref, formula) => {
@@ -997,9 +1023,8 @@ async function exportOrderToExcel(delivery) {
   // ── Item rows (template has rows 15-31 for up to 17 items, row 32 = Nothing Follows) ──
   // STRATEGY:
   //   • Write actual items to rows 15 .. 14+n
-  //   • Move "***Nothing Follows***" to row 15+n (right after last item)
-  //   • Hide rows 15+n+1 .. 31 (set SheetJS row height to 0) and clear their A cell
-  //   • Leave row 32 blank (original Nothing Follows position, now unused)
+  //   • Leave rows after items blank so the sheet keeps spacing
+  //   • Place "***Nothing Follows***" on the original bottom marker row (row 32)
  
   const ITEM_START = 15;   // first item row
   const ITEM_END   = 31;   // last item row  
@@ -1022,39 +1047,28 @@ async function exportOrderToExcel(delivery) {
     setFormula(`K${row}`, `J${row}*H${row}`);
   }
  
-  // Place "Nothing Follows" immediately after last item
-  const nfRow = ITEM_START + itemCount;  // e.g. 1 item → row 16
- 
-  if (nfRow <= ITEM_END) {
-    // Move the Nothing Follows text to the row right after last item
-    // Copy style from B32 (original NF cell) and set value
-    const nfBRef = `B${nfRow}`;
-    if (!ws[nfBRef]) ws[nfBRef] = {};
-    ws[nfBRef].t = "s";
-    ws[nfBRef].v = "***Nothing Follows***";
-    // Also clear the item number from A column of that row
-    const nfARef = `A${nfRow}`;
-    if (ws[nfARef]) {
-      ws[nfARef].t = "s";
-      ws[nfARef].v = "";
+  // Place "Nothing Follows" at the bottom NF_ORIG row (row 32)
+  // Leave blank rows between the last item and NF_ORIG so the sheet keeps spacing
+  const nfRow = NF_ORIG; // fixed bottom row for the marker
+
+  // Clear any intermediate rows between last item row and NF_ORIG so they appear empty
+  const lastItemRow = ITEM_START + itemCount - 1; // if itemCount==0 then lastItemRow = 14
+  for (let r = lastItemRow + 1; r < nfRow; r++) {
+    const cols = ['A','B','C','D','E','F','G','H','I','J','K'];
+    for (const c of cols) {
+      const ref = `${c}${r}`;
+      if (ws[ref]) { ws[ref].t = 's'; ws[ref].v = ''; }
     }
- 
-    // Hide all unused item rows below the Nothing Follows row
-    if (!ws["!rows"]) ws["!rows"] = [];
-    for (let r = nfRow + 1; r <= ITEM_END; r++) {
-      // Clear item number in column A
-      const aRef = `A${r}`;
-      if (ws[aRef]) { ws[aRef].t = "s"; ws[aRef].v = ""; }
-      // Hide row (index is 0-based in SheetJS)
-      const idx = r - 1;
-      if (!ws["!rows"][idx]) ws["!rows"][idx] = {};
-      ws["!rows"][idx].hpt = 0;   // height in points = 0 → hidden
-      ws["!rows"][idx].hidden = true;
-    }
- 
-    // Also clear the original Nothing Follows row (32) content since we moved it up
-    if (ws[`B${NF_ORIG}`]) { ws[`B${NF_ORIG}`].t = "s"; ws[`B${NF_ORIG}`].v = ""; }
   }
+
+  // Ensure the NF_ORIG row contains the Nothing Follows text
+  const nfBRef = `B${nfRow}`;
+  if (!ws[nfBRef]) ws[nfBRef] = {};
+  ws[nfBRef].t = 's';
+  ws[nfBRef].v = '***Nothing Follows***';
+  // Clear the A column on the NF row
+  const nfARef = `A${nfRow}`;
+  if (ws[nfARef]) { ws[nfARef].t = 's'; ws[nfARef].v = ''; }
  
   // ── Totals (always reference K15:K31 so formula is stable regardless of hidden rows) ──
   setFormula("K36", "SUM(K15:K31)");
@@ -1067,7 +1081,7 @@ async function exportOrderToExcel(delivery) {
   wb.Sheets[newName] = ws;
   delete wb.Sheets[oldName];
  
-  XLSX.writeFile(wb, `Quotation_Order_${orderId}.xlsx`);
+  XLSX.writeFile(wb, `Quotation_Order_${orderId}.xlsx`, { bookType: 'xlsx', cellStyles: true });
 }
 
 
