@@ -1144,6 +1144,49 @@ async function exportOrderToExcel(delivery) {
   } catch (e) {
     // ignore
   }
+
+  // Consolidate disclaimer paragraph cells into one wrapped cell (handles non-contiguous paragraph rows)
+  try {
+    const keysAll = Object.keys(ws);
+    const labelKey = keysAll.find((k) => {
+      const v = ws[k] && ws[k].v;
+      return typeof v === 'string' && v.trim().toLowerCase().startsWith('disclaimer');
+    });
+    if (labelKey) {
+      const m = labelKey.match(/([A-Z]+)(\d+)$/);
+      if (m) {
+        const bodyCol = 'B';
+        const labelRow = Number(m[2]);
+        const startRow = labelRow + 1;
+        const collected = [];
+        // scan a reasonable window (8 rows) and record any non-empty paragraph cells and their rows
+        for (let r = startRow; r < startRow + 12; r++) {
+          const ref = `${bodyCol}${r}`;
+          if (ws[ref] && ws[ref].v && String(ws[ref].v).trim()) {
+            collected.push({ row: r, text: String(ws[ref].v).trim() });
+          }
+        }
+        if (collected.length) {
+          const targetRef = `${bodyCol}${collected[0].row}`;
+          const joined = collected.map((p) => p.text).join('\n\n');
+          ws[targetRef] = ws[targetRef] || {};
+          ws[targetRef].t = 's';
+          ws[targetRef].v = joined;
+          ws[targetRef].s = ws[targetRef].s || {};
+          ws[targetRef].s.alignment = Object.assign({}, ws[targetRef].s.alignment || {}, { wrapText: true, vertical: 'top' });
+          ws['!rows'] = ws['!rows'] || [];
+          ws['!rows'][collected[0].row - 1] = Object.assign({}, ws['!rows'][collected[0].row - 1] || {}, { hpt: 100 });
+          // clear the original paragraph cells except the target
+          for (let i = 1; i < collected.length; i++) {
+            const cref = `${bodyCol}${collected[i].row}`;
+            if (ws[cref]) delete ws[cref];
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 
@@ -1519,7 +1562,7 @@ export default function AdminOrders() {
                           className="cursor-pointer w-3.5 h-3.5 accent-green-600"
                         />
                       </th>
-                      {["Order ID", "Product", "Client", "Contact", "Address", "Payment", "Shipping Fee", "Total Paid", "Status", "Date", "Action"].map((h) => (
+                      {["Order ID", "Product", "Client", "Contact", "Payment", "Shipping Fee", "Total Paid", "Status", "Date", "Action"].map((h) => (
                         <th
                           key={h}
                           className="px-3.5 py-3 text-left font-semibold text-gray-700 whitespace-nowrap text-[11px] uppercase tracking-wide"
@@ -1577,9 +1620,6 @@ export default function AdminOrders() {
                               <div className="text-[11px] text-gray-400">TIN: {user.tin_number}</div>
                             )}
                           </td>
-                          <td className="px-3.5 py-3.5 text-gray-500 text-xs max-w-[180px]">
-  {resolveCheckoutAddress(d.checkout) || "—"}
-</td>
                           <td className="px-3.5 py-3.5 text-gray-700 whitespace-nowrap capitalize">
                             {checkout?.payment_method ?? "—"}
                           </td>
@@ -1614,7 +1654,7 @@ export default function AdminOrders() {
                     })}
                     {paginated.length === 0 && (
                       <tr>
-                        <td colSpan={12} className="py-10 text-xs text-center text-gray-400">
+                        <td colSpan={11} className="py-10 text-xs text-center text-gray-400">
                           No orders found.
                         </td>
                       </tr>
