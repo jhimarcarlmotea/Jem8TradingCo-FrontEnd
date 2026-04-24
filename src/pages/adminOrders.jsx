@@ -468,8 +468,7 @@ function exportOrderToPDF(delivery) {
   const paymentMethod = (checkout?.payment_method ?? "COD").replace(/_/g, " ").toUpperCase();
 
   // Render up to ITEM_MAX item rows. Leave empty rows after Nothing Follows
-  const ITEM_MAX = 17;
-  const itemCount = Math.min(items.length, ITEM_MAX);
+  const itemCount = items.length;
 
   const itemRowsArr = [];
   for (let i = 0; i < itemCount; i++) {
@@ -489,23 +488,9 @@ function exportOrderToPDF(delivery) {
         <td style="text-align:right;padding:5px 6px;">${fmt(amount)}</td>
       </tr>`);
   }
-
-  // If there are fewer than ITEM_MAX items, leave blank rows so the table keeps consistent height
-  const blankCountAfterNF = ITEM_MAX - itemCount;
-  const blankRowHtml = `<tr>
-    <td style="text-align:center;padding:5px 4px;"></td>
-    <td style="padding:5px 6px;"></td>
-    <td style="text-align:center;padding:5px 4px;"></td>
-    <td style="text-align:center;padding:5px 4px;"></td>
-    <td style="text-align:center;padding:5px 4px;"></td>
-    <td style="text-align:right;padding:5px 6px;"></td>
-    <td style="text-align:right;padding:5px 6px;"></td>
-  </tr>`;
-
   const itemRows = itemRowsArr.join("");
-  const nfRowHtml = `\n      <tr class="nothing-follows">\n        <td></td>\n        <td colspan="4">***Nothing Follows***</td>\n        <td></td>\n        <td></td>\n      </tr>`;
-  let blankRowsHtml = "";
-  for (let i = 0; i < blankCountAfterNF; i++) blankRowsHtml += blankRowHtml;
+  const nfRowHtml = `\n      <tr class="nothing-follows">\n        <td colspan="7" style="border-top:2px solid #333;padding:8px 0;text-align:center;font-weight:bold;">***Nothing Follows***</td>\n      </tr>`;
+  // Note: removed padded blank rows — show only actual items then "Nothing Follows"
 
   const html = `<!DOCTYPE html>
 <html>
@@ -742,7 +727,7 @@ function exportOrderToPDF(delivery) {
     border-top: none;
   }
   .sig-table td {
-    border: 1px solid #aaa;
+    border: 1.5px solid #333;
     font-size: 8.5pt;
     text-align: center;
     padding: 4px 6px;
@@ -865,7 +850,7 @@ function exportOrderToPDF(delivery) {
       </tr>
     </thead>
     <tbody>
-      ${itemRows}${blankRowsHtml}${nfRowHtml}
+      ${itemRows}${nfRowHtml}
     </tbody>
   </table>
 </div>
@@ -906,13 +891,15 @@ function exportOrderToPDF(delivery) {
     <td class="sig-header">Reference No.</td>
   </tr>
   <tr>
-    <td class="sig-space"></td>
-    <td class="sig-space"></td>
-    <td class="sig-space"></td>
-    <td class="sig-space" rowspan="3"></td>
+    <td class="sig-space">&nbsp;</td>
+    <td class="sig-space">&nbsp;</td>
+    <td class="sig-space">&nbsp;</td>
+    <td class="sig-space" rowspan="3">&nbsp;</td>
   </tr>
   <tr>
-    <td></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
   </tr>
   <tr>
     <td class="sig-role">Sales Executive</td>
@@ -1020,25 +1007,18 @@ async function exportOrderToExcel(delivery) {
   setVal("C12", fullAddr);
   setVal("K12", paymentMethod);
  
-  // ── Item rows (template has rows 15-31 for up to 17 items, row 32 = Nothing Follows) ──
-  // STRATEGY:
-  //   • Write actual items to rows 15 .. 14+n
-  //   • Leave rows after items blank so the sheet keeps spacing
-  //   • Place "***Nothing Follows***" on the original bottom marker row (row 32)
- 
-  const ITEM_START = 15;   // first item row
-  const ITEM_END   = 31;   // last item row  
-  const NF_ORIG    = 32;   // original Nothing Follows row
-  const itemCount  = Math.min(items.length, ITEM_END - ITEM_START + 1); // max 17
- 
-  // Write actual items
+  // ── Item rows (write actual items sequentially, then place "Nothing Follows" immediately)
+  const ITEM_START = 15; // first item row
+  const itemCount = items.length;
+
+  // Write actual items starting at ITEM_START
   for (let i = 0; i < itemCount; i++) {
-    const item    = items[i];
+    const item = items[i];
     const product = item?.product ?? {};
-    const row     = ITEM_START + i;
-    const qty     = Number(item.quantity ?? 1);
-    const price   = Number(item.price ?? product.price ?? 0);
- 
+    const row = ITEM_START + i;
+    const qty = Number(item.quantity ?? 1);
+    const price = Number(item.price ?? product.price ?? 0);
+
     setVal(`B${row}`, product.product_name ?? item.name ?? "");
     setVal(`G${row}`, product.size ?? product.variant ?? product.color ?? "");
     setVal(`H${row}`, qty);
@@ -1046,34 +1026,49 @@ async function exportOrderToExcel(delivery) {
     setVal(`J${row}`, price);
     setFormula(`K${row}`, `J${row}*H${row}`);
   }
- 
-  // Place "Nothing Follows" at the bottom NF_ORIG row (row 32)
-  // Leave blank rows between the last item and NF_ORIG so the sheet keeps spacing
-  const nfRow = NF_ORIG; // fixed bottom row for the marker
 
-  // Clear any intermediate rows between last item row and NF_ORIG so they appear empty
-  const lastItemRow = ITEM_START + itemCount - 1; // if itemCount==0 then lastItemRow = 14
-  for (let r = lastItemRow + 1; r < nfRow; r++) {
-    const cols = ['A','B','C','D','E','F','G','H','I','J','K'];
-    for (const c of cols) {
-      const ref = `${c}${r}`;
-      if (ws[ref]) { ws[ref].t = 's'; ws[ref].v = ''; }
-    }
-  }
-
-  // Ensure the NF_ORIG row contains the Nothing Follows text
+  // Place "Nothing Follows" immediately after the last item row (no padded blank rows)
+  const lastItemRow = ITEM_START + Math.max(0, itemCount) - 1; // if itemCount==0 => 14
+  const nfRow = lastItemRow + 1 >= ITEM_START ? lastItemRow + 1 : ITEM_START;
   const nfBRef = `B${nfRow}`;
-  if (!ws[nfBRef]) ws[nfBRef] = {};
+  ws[nfBRef] = ws[nfBRef] || {};
   ws[nfBRef].t = 's';
   ws[nfBRef].v = '***Nothing Follows***';
-  // Clear the A column on the NF row
-  const nfARef = `A${nfRow}`;
-  if (ws[nfARef]) { ws[nfARef].t = 's'; ws[nfARef].v = ''; }
+  // Ensure wrapText and reasonable row heights for item rows so long text doesn't overlap
+  ws['!rows'] = ws['!rows'] || [];
+  for (let r = ITEM_START; r <= lastItemRow; r++) {
+    // set a minimum height (in points) to allow wrapped text to show; Excel will auto-adjust further
+    ws['!rows'][r - 1] = Object.assign({}, ws['!rows'][r - 1] || {}, { hpt: 18 });
+    // also ensure each item description cell has wrapText alignment (in case template lost it)
+    const bRef = `B${r}`;
+    if (!ws[bRef]) ws[bRef] = { t: 's', v: '' };
+    ws[bRef].s = ws[bRef].s || {};
+    ws[bRef].s.alignment = Object.assign({}, ws[bRef].s.alignment || {}, { wrapText: true, vertical: 'top' });
+  }
+  // ensure client/info columns wrap (C9-C12) and disclaimer area (B rows) keep wrap
+  ['C9','C10','C11','C12'].forEach((ref) => {
+    if (ws[ref]) {
+      ws[ref].s = ws[ref].s || {};
+      ws[ref].s.alignment = Object.assign({}, ws[ref].s.alignment || {}, { wrapText: true, vertical: 'top' });
+    }
+  });
+  // If template lacks explicit column widths, set sane defaults for B (description) and K (amount)
+  ws['!cols'] = ws['!cols'] || [];
+  if (!ws['!cols'][1]) ws['!cols'][1] = { wch: 60 }; // B
+  if (!ws['!cols'][2]) ws['!cols'][2] = { wch: 18 }; // C
  
-  // ── Totals (always reference K15:K31 so formula is stable regardless of hidden rows) ──
-  setFormula("K36", "SUM(K15:K31)");
-  setFormula("K33", "K36/1.12");
-  setFormula("K34", "K36-K33");
+  // ── Totals (compute immediately after the NF row so layout is compact)
+  const itemsStart = 15;
+  const sumEnd = Math.max(lastItemRow, itemsStart);
+  const subtotalRow = nfRow + 1;
+  const vatBaseRow = subtotalRow + 1;
+  const vatRow = subtotalRow + 2;
+  const totalRow = subtotalRow + 4;
+
+  setFormula(`K${subtotalRow}`, `SUM(K${itemsStart}:K${sumEnd})`);
+  setFormula(`K${vatBaseRow}`, `K${subtotalRow}/1.12`);
+  setFormula(`K${vatRow}`, `K${subtotalRow}-K${vatBaseRow}`);
+  setFormula(`K${totalRow}`, `K${vatBaseRow}+K${vatRow}`);
  
   // ── Rename sheet ──
   const newName = `Order #${orderId}`;
