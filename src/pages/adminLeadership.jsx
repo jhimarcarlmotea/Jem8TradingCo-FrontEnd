@@ -273,17 +273,7 @@ const AdminLeadership = () => {
     if (!form.name.trim() || !form.position.trim()) { alert('Name and Position are required.'); return; }
     setSubmitting(true);
     try {
-<<<<<<< HEAD
       const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, buildFormData(true), {
-=======
-      const fd = new FormData();
-      fd.append('name', form.name);
-      fd.append('position', form.position);
-      fd.append('status', form.status ? 1 : 0);
-fd.append('_method', 'PUT');
-      if (imgFile) fd.append('leadership_img', imgFile);
-      const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, fd, {
->>>>>>> f67cbd51621a96ae9b311a17c725ccf0c3e9dae6
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
