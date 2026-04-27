@@ -112,11 +112,38 @@ export default function NotificationsBell({ user: userProp, token: tokenProp, on
         className="nb-button"
         onClick={() => setOpen(o => !o)}
         title="Notifications"
+        style={{ background: 'transparent', border: 'none', padding: 6, cursor: 'pointer' }}
       >
-        <span aria-hidden className="nb-icon">🔔</span>
-        {unreadCount > 0 && (
-          <span className="nb-badge" aria-label={`${unreadCount} unread notifications`}>{unreadCount}</span>
-        )}
+        <div style={{ position: 'relative', width: 28, height: 28, display: 'inline-block' }} aria-hidden>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden focusable="false">
+            <path d="M12 2C10.3431 2 9 3.34315 9 5V6.089C6.165 7.002 4 9.828 4 13V16L2 18V19H22V18L20 16V13C20 9.828 17.835 7.002 15 6.089V5C15 3.34315 13.6569 2 12 2Z" fill="#2e6b45"/>
+            <path d="M8.5 20C8.5 21.3807 9.61929 22.5 11 22.5H13C14.3807 22.5 15.5 21.3807 15.5 20" fill="#2e6b45"/>
+          </svg>
+
+          {unreadCount > 0 && (
+            <span
+              className="nb-badge"
+              aria-label={`${unreadCount} unread notifications`}
+              style={{
+                position: 'absolute',
+                top: -6,
+                right: -6,
+                background: '#e53935',
+                color: '#fff',
+                borderRadius: '50%',
+                padding: '2px 6px',
+                fontSize: 12,
+                fontWeight: 700,
+                minWidth: 20,
+                height: 20,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+              }}
+            >{unreadCount > 99 ? '99+' : unreadCount}</span>
+          )}
+        </div>
       </button>
 
       {open && (
