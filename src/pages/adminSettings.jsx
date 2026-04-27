@@ -33,8 +33,6 @@ const AdminPanelSettings = () => {
   const [passwordMsg, setPasswordMsg] = useState('');
 
   const [settings, setSettings] = useState({
-    siteName: 'Jem 8 Circle Trading Co.',
-    siteURL: 'https://www.jem8circle.com/',
     adminEmail: 'admin@jem8circle.com',
     contactNumber: '(02) 8805-1432',
     companyAddress: 'Salcedo Village, Makati City, Metro Manila',
@@ -74,8 +72,6 @@ const AdminPanelSettings = () => {
 
           setSettings(prev => ({
             ...prev,
-            siteName:       d.siteName       ?? prev.siteName,
-            siteURL:        d.siteURL        ?? prev.siteURL,
             adminEmail:     d.adminEmail     ?? prev.adminEmail,
             contactNumber:  d.contactNumber  ?? prev.contactNumber,
             companyAddress: d.companyAddress ?? prev.companyAddress,
@@ -269,7 +265,7 @@ const AdminPanelSettings = () => {
   }, [appearance.theme, appearance.primaryColor]);
 
   const handleClearAll = () => {
-    setSettings({ siteName: '', siteURL: '', adminEmail: '', contactNumber: '', companyAddress: '', timezone: 'Asia/Manila', language: 'en-PH' });
+    setSettings({ adminEmail: '', contactNumber: '', companyAddress: '', timezone: 'Asia/Manila', language: 'en-PH' });
     setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '', passwordLockout: 10, sessionTimeout: 10, require2FA: false });
   };
 
@@ -301,16 +297,7 @@ const AdminPanelSettings = () => {
             </div>
             <hr className="as-divider" />
             <form onSubmit={(e) => e.preventDefault()}>
-              <div className="as-form-row">
-                <div className="as-field">
-                  <label htmlFor="siteName" className="as-label">Site Name</label>
-                  <input type="text" id="siteName" className="as-input" value={settings.siteName} onChange={handleSettingsChange} />
-                </div>
-                <div className="as-field">
-                  <label htmlFor="siteURL" className="as-label">Site URL</label>
-                  <input type="url" id="siteURL" className="as-input" value={settings.siteURL} onChange={handleSettingsChange} />
-                </div>
-              </div>
+              {/* Site Name and Site URL removed per request */}
               <div className="as-form-row">
                 <div className="as-field">
                   <label htmlFor="adminEmail" className="as-label">Admin Email</label>

@@ -191,6 +191,8 @@ const stock = product.status === "out_of_stock" ? 0 : 1;
         style={{ textDecoration: "none", color: "inherit" }}
       >
         <div className="relative w-full aspect-[4/3] bg-[#f1f5f9] overflow-hidden">
+          {/* animated background that appears on hover (uses parent .group state) */}
+          <div className="product-card-bg" />
           <img
             src={imgSrc}
             alt={name}

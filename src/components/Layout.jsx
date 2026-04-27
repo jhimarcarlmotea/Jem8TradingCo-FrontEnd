@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import NotificationsBell from './NotificationsBell';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import Logo from '../assets/Logo — Jem 8 Circle Trading Co (1).png';
@@ -94,6 +95,7 @@ export function Header() {
   const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading]           = useState(true);
   const [userRole, setUserRole]         = useState(null);
+  const [userData, setUserData]         = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef                     = useRef(null);
 
@@ -199,10 +201,12 @@ export function Header() {
       setIsLog(true);
       setProfileImage(userData?.profile_image ?? null);
       setUserRole(userData?.role ?? null);
+      setUserData(userData ?? null);
     } catch {
       setIsLog(false);
       setProfileImage(null);
       setUserRole(null);
+      setUserData(null);
     } finally {
       setLoading(false);
     }
@@ -240,6 +244,7 @@ export function Header() {
     setIsLog(false);
     setProfileImage(null);
     setUserRole(null);
+    setUserData(null);
     window.dispatchEvent(new Event("auth-logout"));
     navigate("/login");
   };
@@ -368,6 +373,11 @@ export function Header() {
             >
               Contact Us
             </Link>
+
+            {/* Notifications Bell */}
+            <div className="hidden md:flex items-center mr-2">
+              <NotificationsBell user={userData} token={localStorage.getItem('token')} />
+            </div>
 
             {/* Login / Avatar with Dropdown */}
             {!isLog ? (
