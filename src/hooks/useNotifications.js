@@ -155,17 +155,24 @@ export default function useNotifications({ user, token, pageSize = 20 } = {}) {
         const { default: io } = await import('socket.io-client');
         const { default: Echo } = await import('laravel-echo');
 
-        // expose client for Echo
-        // Echo expects a global io reference in some builds
+        // expose client for Echo (some builds expect global `io`)
         try { window.io = io; } catch (e) { /* ignore */ }
 
-        const echo = new Echo({
-          broadcaster: 'socket.io',
-          host: wsHost,
-          client: io,
-          auth: { headers: { Authorization: `Bearer ${token}` } },
-          transports: ['websocket', 'polling'],
-        });
+        // If an Echo instance is already available globally, reuse it so other
+        // components (e.g., StartChatWithAdmin) relying on `window.Echo` continue to work.
+        let echo;
+        if (typeof window.Echo !== 'undefined' && window.Echo && typeof window.Echo.private === 'function') {
+          echo = window.Echo;
+        } else {
+          echo = new Echo({
+            broadcaster: 'socket.io',
+            host: wsHost,
+            client: io,
+            auth: { headers: { Authorization: `Bearer ${token}` } },
+            transports: ['websocket', 'polling'],
+          });
+          try { window.Echo = echo; } catch (e) { /* ignore */ }
+        }
 
         echoRef.current = echo;
 
@@ -212,8 +219,14 @@ export default function useNotifications({ user, token, pageSize = 20 } = {}) {
           }
         }
 
-        // optional: handle connection errors
-        echo.connector.socket.on('connect_error', (err) => console.warn('Echo connect_error', err));
+        // optional: handle connection errors (guard against missing connector/socket)
+        try {
+          if (echo && echo.connector && echo.connector.socket && typeof echo.connector.socket.on === 'function') {
+            echo.connector.socket.on('connect_error', (err) => console.warn('Echo connect_error', err));
+          }
+        } catch (e) {
+          // ignore
+        }
 
         if (stopped) {
           try { echo.disconnect(); } catch (e) {}

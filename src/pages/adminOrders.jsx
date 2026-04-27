@@ -1076,7 +1076,6 @@ async function exportOrderToExcel(delivery) {
   wb.Sheets[newName] = ws;
   delete wb.Sheets[oldName];
  
-  XLSX.writeFile(wb, `Quotation_Order_${orderId}.xlsx`, { bookType: 'xlsx', cellStyles: true });
 
   // Ensure disclaimer and long text cells wrap: detect cells containing known disclaimer fragments
   try {
@@ -1186,6 +1185,42 @@ async function exportOrderToExcel(delivery) {
     }
   } catch (e) {
     // ignore
+  }
+  // Ensure all text cells have wrap enabled and reasonable row heights before saving
+  try {
+    ws['!rows'] = ws['!rows'] || [];
+    ws['!cols'] = ws['!cols'] || [];
+    const keys = Object.keys(ws);
+    for (const k of keys) {
+      if (!k || k[0] === '!') continue;
+      const cell = ws[k];
+      if (!cell) continue;
+      const isStringCell = cell.t === 's' || typeof cell.v === 'string';
+      if (!isStringCell) continue;
+      cell.s = cell.s || {};
+      cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { wrapText: true, vertical: 'top' });
+      const m = k.match(/(\d+)$/);
+      if (m) {
+        const rowIdx = Number(m[1]);
+        // estimate needed height: count lines and average wrap width
+        const text = String(cell.v || '');
+        const explicitLines = text.split(/\r?\n/).length;
+        const approxCharsPerLine = 60; // conservative estimate for wrapped width
+        const extraLines = Math.ceil(text.length / approxCharsPerLine);
+        const lines = Math.max(explicitLines, extraLines);
+        const hpt = Math.min(200, Math.max(18, lines * 14));
+        ws['!rows'][rowIdx - 1] = Object.assign({}, ws['!rows'][rowIdx - 1] || {}, { hpt });
+      }
+    }
+
+    // Ensure minimum column widths for key columns (B: description, C: client info/address)
+    if (!ws['!cols'][1] || !ws['!cols'][1].wch || ws['!cols'][1].wch < 40) ws['!cols'][1] = Object.assign({}, ws['!cols'][1] || {}, { wch: 60 });
+    if (!ws['!cols'][2] || !ws['!cols'][2].wch || ws['!cols'][2].wch < 20) ws['!cols'][2] = Object.assign({}, ws['!cols'][2] || {}, { wch: 30 });
+
+    XLSX.writeFile(wb, `Quotation_Order_${orderId}.xlsx`, { bookType: 'xlsx', cellStyles: true });
+  } catch (e) {
+    console.error('Failed to write XLSX file', e);
+    alert('Failed to generate XLSX file.');
   }
 }
 
