@@ -13,6 +13,7 @@ export default function StartChatWithAdmin({
   onStarted,
   productId = null,
   productName = null,
+  productImage = null,  // ← dagdag
   showButton = true,
 }) {
   const [loading, setLoading] = useState(false);
@@ -126,25 +127,37 @@ export default function StartChatWithAdmin({
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-3">
-        {showButton && (
-          <>
-            <button
-              onClick={startChat}
-              disabled={loading}
-              className="inline-flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-[#2f855a] to-[#1e40af] hover:from-[#2b7a50] hover:to-[#1b3aa0] transition-colors shadow-sm"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>{loading ? 'Starting chat…' : 'Contact Admin / Start Chat'}</span>
-            </button>
+<div className="flex items-center gap-3">
+  {showButton && (
+    <>
+      {/* Product preview */}
+{productName && (
+  <div className="flex items-center gap-2 px-3 py-2 bg-[#f0faf5] border border-[#D1FAE5] rounded-xl">
+    {productImage ? (
+      <img src={productImage} alt={productName} className="w-10 h-10 rounded-lg object-cover border border-[#D1FAE5]" />
+    ) : (
+      <span className="text-lg">🛍️</span>
+    )}
+    <div>
+      <div className="text-xs text-gray-500">Inquiring about:</div>
+      <div className="text-xs font-semibold text-[#1a2e22] truncate max-w-[180px]">{productName}</div>
+    </div>
+  </div>
+)}
 
-            {/* <div className="text-xs text-gray-500">Available Mon–Fri, 9am–5pm</div> */}
-          </>
-        )}
-      </div>
-
+      <button
+        onClick={startChat}
+        disabled={loading}
+        className="inline-flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-[#2f855a] to-[#1e40af] hover:from-[#2b7a50] hover:to-[#1b3aa0] transition-colors shadow-sm"
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span>{loading ? 'Starting chat…' : 'Contact Admin / Start Chat'}</span>
+      </button>
+    </>
+  )}
+</div>
       {error && (
         <div className="mt-3 text-sm text-red-600">
           {error} <button onClick={startChat} className="ml-2 underline">Retry</button>
@@ -152,7 +165,7 @@ export default function StartChatWithAdmin({
       )}
 
       {chatroomId && (
-        <div className="mt-4 bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+        <div className="p-4 mt-4 bg-white border border-gray-100 shadow-sm rounded-xl">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-md bg-[#f0faf5] flex items-center justify-center text-lg">💬</div>
@@ -162,11 +175,11 @@ export default function StartChatWithAdmin({
               </div>
             </div>
             {productName && (
-              <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-md">Product: {productName}</div>
+              <div className="px-2 py-1 text-xs text-gray-600 rounded-md bg-gray-50">Product: {productName}</div>
             )}
           </div>
 
-          <div className="mt-3 max-h-48 overflow-auto space-y-2">
+          <div className="mt-3 space-y-2 overflow-auto max-h-48">
             {messages.length === 0 && <div className="text-xs text-gray-400">No messages yet</div>}
             {messages.map((m, i) => {
               const senderIsAdmin = !!(m.is_admin || m.sender === 'admin' || m.from === 'admin');
@@ -175,12 +188,12 @@ export default function StartChatWithAdmin({
               const avatarSrc = avatarCandidate;
               return (
                 <div key={i} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                  <div className="flex-shrink-0 w-8 h-8 overflow-hidden rounded-full">
                     {avatarSrc ? (
                       <img
                         src={avatarSrc}
                         alt={m.sender_name || m.sender || m.user?.name || ''}
-                        className="w-full h-full object-cover block"
+                        className="block object-cover w-full h-full"
                         onError={(e) => { try { e.target.onerror = null; e.target.src = svgFallback(letter, '#4d7b65'); } catch (err) { e.target.style.display = 'none'; } }}
                       />
                     ) : (
