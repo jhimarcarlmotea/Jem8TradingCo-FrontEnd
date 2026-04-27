@@ -1,15 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Shella from '../assets/Shella_Ricafrente-Acibar.png';
-import Jinkie from '../assets/Jinkie_Ricafrente-Malinag.png';
-import Akiko from '../assets/Akiko_Serrano.png';
-import Ruby from '../assets/Ruby_Ann_Castillo.png';
-import Charisse from '../assets/Charisse_Decano.png';
-import Adrian from '../assets/Adrian_Mallanao.png';
-import Vhernaldo from '../assets/Vhernaldo_Ricafrente.png';
-import Mark from '../assets/Mark_Edward_C_Malinag.png';
-import Daniel from '../assets/Daniel_Kian_Rodriguez_Cadena.png';
-import Kayla from '../assets/Kayla_R_Bacsafra.png';
-import Cristina from '../assets/Cristina_A_Saturnio.png';
 import officeSuppliesImg from '../assets/Office supplies & equipment.png';
 import personalCareImg   from '../assets/Personal & Home care products.png';
 import janitorialImg     from '../assets/Janitorial.png';
@@ -17,13 +6,15 @@ import pantrySuppliesImg from '../assets/Pantry supplies.png';
 
 const BASE = 'http://127.0.0.1:8000';
 
-const getInitials = (name) =>
-  name.replace(/^(Ms\.|Mr\.)\s+/, '').split(' ').slice(0, 2).map((n) => n[0]).join('');
-
 const resolveImg = (path) => {
   if (!path) return null;
   return path.startsWith('http') ? path : `${BASE}/storage/${path}`;
 };
+
+const getInitials = (name) =>
+  name.replace(/^(Ms\.|Mr\.)\s+/, '').split(' ').slice(0, 2).map((n) => n[0]).join('');
+
+
 
 const ENTERPRISE_IMAGES = [
   { src: officeSuppliesImg, label: 'Office Supplies & Equipment'   },
@@ -42,6 +33,21 @@ const ENTERPRISE_IMAGES = [
 
 const About = () => {
   const [stats] = useState({ since: 2016, employees: '1–7', clients: 250 });
+  const [leaders, setLeaders]         = useState([]);
+  const [appdev,  setAppdev]          = useState([]);
+  const [teamLoading, setTeamLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/admin-leadership`)
+      .then((r) => r.json())
+      .then((json) => {
+        const all = Array.isArray(json.data) ? json.data : [];
+        setLeaders(all.filter((m) => m.status && (m.team ?? 'leadership') === 'leadership'));
+        setAppdev(all.filter((m)  => m.status && m.team === 'appdev'));
+      })
+      .catch(console.error)
+      .finally(() => setTeamLoading(false));
+  }, []);
 
   const [groupIndex, setGroupIndex] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
@@ -60,24 +66,7 @@ const About = () => {
 
   const visibleImages = ENTERPRISE_IMAGES.slice(groupIndex * 3, groupIndex * 3 + 3);
 
-  const [leaders] = useState([
-    { id: 1,  name: 'Ms. Shella R. Acibar',            role: 'Co-Owner of Jem 8 Circle',                           image: Shella    },
-    { id: 2,  name: 'Ms. Jinkie Malinag',               role: 'Co-Owner of Jem 8 Circle',                           image: Jinkie    },
-    { id: 3,  name: 'Ms. Akiko Serrano',                role: 'Sales Executive of Jem 8 Circle',                    image: Akiko     },
-    { id: 4,  name: 'Ms. Ruby Ann Castillo',            role: 'Sales Executive of Jem 8 Circle',                    image: Ruby      },
-    { id: 5,  name: 'Ms. Charisse Mae Decano',          role: 'Admin/HR Representative of Jem 8 Circle',            image: Charisse  },
-    { id: 6,  name: 'Mr. Adrian Mallanao',              role: 'Laison Head Officer of Jem 8 Circle',                image: Adrian    },
-    { id: 7,  name: 'Mr. Vhernaldo Ricafrente',         role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Vhernaldo },
-    { id: 8,  name: 'Mr. Mark Edward Malinag',          role: 'Marketing/Admin Assistant of Jem 8 Circle',          image: Mark      },
-    { id: 9,  name: 'Mr. Daniel Kian Rodriguez Cadena', role: 'Business Associate of Jem 8 Circle',                 image: Daniel    },
-    { id: 10, name: 'Ms. Kayla R. Bacsafra',            role: 'Sales Executive of Jem 8 Circle (South Luzon Area)', image: Kayla     },
-    { id: 11, name: 'Ms. Cristina A. Saturnio',         role: 'Accounting and Finance of Jem 8 Circle',             image: Cristina  },
-  ]);
-
-  const handleImageError = (e) => {
-    e.target.style.display = 'none';
-    e.target.nextSibling?.style && (e.target.nextSibling.style.display = 'flex');
-  };
+  
 
   const detailRows = [
     {
@@ -350,30 +339,148 @@ const About = () => {
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
               >
                 <div className="relative w-full overflow-hidden" style={{ aspectRatio: '1/1', background: 'var(--green-light)' }}>
-                  <img
-                    src={leader.image}
-                    alt={leader.name}
-                    className="object-cover object-top w-full h-full"
-                    onError={handleImageError}
-                  />
-                  <div
-                    className="absolute inset-0 items-center justify-center hidden font-bold"
-                    style={{ fontFamily: 'var(--font-heading)', fontSize: 36, color: 'var(--green)', background: 'var(--green-light)' }}
-                  >
-                    {getInitials(leader.name)}
+                  {resolveImg(leader.leadership_img) ? (
+                    <img
+                      src={resolveImg(leader.leadership_img)}
+                      alt={leader.name}
+                      className="object-cover object-top w-full h-full"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-end" style={{ background: 'linear-gradient(160deg, #d4e9de 0%, #edf4f0 100%)' }}>
+                    {/* Head */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '18%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '36%',
+                      aspectRatio: '1/1',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #b0cfc0 0%, #c8ddd4 100%)',
+                      boxShadow: 'inset 0 -4px 10px rgba(77,123,101,0.15)',
+                    }} />
+                    {/* Shoulders / Body */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '80%',
+                      height: '38%',
+                      borderRadius: '60% 60% 0 0',
+                      background: 'linear-gradient(180deg, #b0cfc0 0%, #c8ddd4 100%)',
+                      boxShadow: 'inset 0 4px 12px rgba(77,123,101,0.1)',
+                    }} />
                   </div>
+                  )}
                 </div>
                 <div style={{ padding: '16px 14px 18px' }}>
                   <div className="font-bold leading-[1.4]" style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--dark)', marginBottom: 5 }}>
                     {leader.name}
                   </div>
                   <div className="font-medium leading-[1.4]" style={{ fontFamily: 'var(--font-sub)', fontSize: 12, color: 'var(--green)' }}>
-                    {leader.role}
+                    {leader.position}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+     {/* ===== APP DEV TEAM ===== */}
+      <section className="bg-white" style={{ padding: 'clamp(60px, 8vw, 110px) 0' }}>
+        <div className="container">
+          <div className="mb-[clamp(40px,6vw,64px)] text-center">
+            <div
+              className="mb-2 inline-flex items-center gap-2 rounded-full border bg-white px-[18px] py-[7px] text-[12px] font-semibold uppercase tracking-[2px]"
+              style={{ borderColor: 'var(--green-border)', fontFamily: 'var(--font-sub)', color: 'var(--green)' }}
+            >
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: 'var(--green)' }} />
+              Our Team
+            </div>
+            <h2 className="block mt-2 font-bold" style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(26px, 3vw, 38px)', color: 'var(--dark)' }}>
+              App Dev Team
+            </h2>
+            <p className="mt-2 leading-[1.8]" style={{ fontFamily: 'var(--font-sub)', fontSize: 'clamp(15px, 1.8vw, 18px)', color: 'var(--gray)' }}>
+              The developers behind this platform.
+            </p>
+          </div>
+
+          {teamLoading ? (
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
+              {[1,2,3,4].map((i) => (
+                <div key={i} className="overflow-hidden bg-white border rounded-xl border-slate-100 animate-pulse">
+                  <div className="w-full bg-slate-100" style={{ aspectRatio: '1/1' }} />
+                  <div className="p-4 space-y-2">
+                    <div className="h-3 rounded bg-slate-100 w-3/4 mx-auto" />
+                    <div className="h-2.5 rounded bg-slate-100 w-1/2 mx-auto" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : appdev.length === 0 ? (
+            <p className="text-center" style={{ color: 'var(--gray)', fontFamily: 'var(--font-sub)' }}>
+              No app dev team members added yet.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 max-[1100px]:grid-cols-3 max-[480px]:gap-[14px]">
+              {appdev.map((member) => (
+                <div
+                  key={member.leadership_id ?? member.id}
+                  className="overflow-hidden text-center transition-all duration-300 bg-white hover:-translate-y-1 hover:shadow-lg"
+                  style={{ borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--green-border)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                >
+                  <div className="relative w-full overflow-hidden" style={{ aspectRatio: '1/1', background: 'var(--green-light)' }}>
+                    {resolveImg(member.leadership_img) ? (
+                      <img
+                        src={resolveImg(member.leadership_img)}
+                        alt={member.name}
+                        className="object-cover object-top w-full h-full"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-end" style={{ background: 'linear-gradient(160deg, #d4e9de 0%, #edf4f0 100%)' }}>
+                    {/* Head */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '18%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '36%',
+                      aspectRatio: '1/1',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #b0cfc0 0%, #c8ddd4 100%)',
+                      boxShadow: 'inset 0 -4px 10px rgba(77,123,101,0.15)',
+                    }} />
+                    {/* Shoulders / Body */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '80%',
+                      height: '38%',
+                      borderRadius: '60% 60% 0 0',
+                      background: 'linear-gradient(180deg, #b0cfc0 0%, #c8ddd4 100%)',
+                      boxShadow: 'inset 0 4px 12px rgba(77,123,101,0.1)',
+                    }} />
+                  </div>
+                    )}
+                  </div>
+                  <div style={{ padding: '16px 14px 18px' }}>
+                    <div className="font-bold leading-[1.4]" style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--dark)', marginBottom: 5 }}>
+                      {member.name}
+                    </div>
+                    <div className="font-medium leading-[1.4]" style={{ fontFamily: 'var(--font-sub)', fontSize: 12, color: 'var(--green)' }}>
+                      {member.position}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

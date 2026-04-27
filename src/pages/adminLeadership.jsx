@@ -37,6 +37,21 @@ const parseError = (err) => {
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-lg text-[13px] text-slate-900 bg-white outline-none box-border font-[inherit] placeholder-slate-400 focus:border-blue-500 transition-colors disabled:opacity-50";
 const labelCls = "block text-[11px] font-semibold text-slate-600 mb-1.5 uppercase tracking-wide";
 
+const TEAMS = [
+  { key: 'leadership', label: '👥 Leadership'   },
+  { key: 'appdev',     label: '💻 App Dev Team'  },
+];
+
+// ─── Silhouette placeholder ───────────────────────────────────────────────────
+const SilhouettePlaceholder = () => (
+  <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'var(--green-light, #edf4f0)' }}>
+    <svg viewBox="0 0 100 100" width="62%" height="62%" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="36" r="22" fill="#4d7b65" fillOpacity="0.28"/>
+      <ellipse cx="50" cy="86" rx="36" ry="22" fill="#4d7b65" fillOpacity="0.18"/>
+    </svg>
+  </div>
+);
+
 // ─── Overlay ──────────────────────────────────────────────────────────────────
 function Overlay({ children, onClose, narrow }) {
   return (
@@ -46,8 +61,7 @@ function Overlay({ children, onClose, narrow }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        data-overlay
-        className={`bg-white w-full rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-h-[94vh] overflow-y-auto ${narrow ? "max-w-[400px]" : "max-w-[500px]"}`}
+        className={`bg-white w-full rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-h-[94vh] overflow-y-auto ${narrow ? 'max-w-[400px]' : 'max-w-[500px]'}`}
       >
         {children}
       </div>
@@ -70,7 +84,7 @@ function ModalHeader({ title, subtitle, onClose }) {
   );
 }
 
-// ─── Mobile Member Card ───────────────────────────────────────────────────────
+// ─── Member Card (Mobile) ─────────────────────────────────────────────────────
 function MemberCard({ member, idx, onView, onEdit, onDelete, onToggle }) {
   const imgSrc = resolveImg(member);
   return (
@@ -78,7 +92,7 @@ function MemberCard({ member, idx, onView, onEdit, onDelete, onToggle }) {
       <div className="p-3">
         <div className="flex items-center gap-3 mb-2.5">
           <div
-            className="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden border rounded-full border-slate-100"
+            className="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden border rounded-full border-slate-100 relative"
             style={{ backgroundColor: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length] }}
           >
             {imgSrc
@@ -94,27 +108,17 @@ function MemberCard({ member, idx, onView, onEdit, onDelete, onToggle }) {
             onClick={onToggle}
             className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 cursor-pointer transition-colors
               ${member.status
-                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200"
+                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
               }`}
           >
             {member.status ? '● Visible' : '○ Hidden'}
           </button>
         </div>
-
         <div className="flex gap-1.5 pt-2.5 border-t border-slate-100">
-          <button onClick={onView}
-            className="flex-1 py-1.5 text-[11px] font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors">
-            👁 View
-          </button>
-          <button onClick={onEdit}
-            className="flex-1 py-1.5 text-[11px] font-semibold border border-blue-200 rounded-lg bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100 transition-colors">
-            ✏️ Edit
-          </button>
-          <button onClick={onDelete}
-            className="flex-1 py-1.5 text-[11px] font-semibold border border-red-200 rounded-lg bg-red-50 text-red-600 cursor-pointer hover:bg-red-100 transition-colors">
-            🗑️ Delete
-          </button>
+          <button onClick={onView}   className="flex-1 py-1.5 text-[11px] font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors">👁 View</button>
+          <button onClick={onEdit}   className="flex-1 py-1.5 text-[11px] font-semibold border border-blue-200 rounded-lg bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100 transition-colors">✏️ Edit</button>
+          <button onClick={onDelete} className="flex-1 py-1.5 text-[11px] font-semibold border border-red-200 rounded-lg bg-red-50 text-red-600 cursor-pointer hover:bg-red-100 transition-colors">🗑️ Delete</button>
         </div>
       </div>
     </div>
@@ -169,19 +173,20 @@ const AdminLeadership = () => {
   const [members, setMembers]         = useState([]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState(null);
+  const [activeTeam, setActiveTeam]   = useState('leadership');
 
   const [showModal, setShowModal]       = useState(false);
   const [editTarget, setEditTarget]     = useState(null);
   const [viewTarget, setViewTarget]     = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const emptyForm = { name: '', position: '', status: true };
-  const [form, setForm]             = useState(emptyForm);
+  const [form, setForm]             = useState({ name: '', position: '', status: true, team: 'leadership' });
   const [imgFile, setImgFile]       = useState(null);
   const [imgPreview, setImgPreview] = useState(null);
-
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting]     = useState(false);
+
+  const filteredMembers = members.filter((m) => (m.team ?? 'leadership') === activeTeam);
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -202,7 +207,7 @@ const AdminLeadership = () => {
 
   const openAdd = () => {
     setEditTarget(null);
-    setForm(emptyForm);
+    setForm({ name: '', position: '', status: true, team: activeTeam });
     setImgFile(null);
     setImgPreview(null);
     setShowModal(true);
@@ -210,7 +215,12 @@ const AdminLeadership = () => {
 
   const openEdit = (member) => {
     setEditTarget(member);
-    setForm({ name: member.name, position: member.position, status: !!member.status });
+    setForm({
+      name:     member.name,
+      position: member.position,
+      status:   !!member.status,
+      team:     member.team ?? 'leadership',
+    });
     setImgFile(null);
     setImgPreview(resolveImg(member));
     setShowModal(true);
@@ -223,16 +233,29 @@ const AdminLeadership = () => {
     setImgPreview(URL.createObjectURL(file));
   };
 
+  const buildFormData = (isEdit = false) => {
+    const fd = new FormData();
+    fd.append('name',     form.name);
+    fd.append('position', form.position);
+    fd.append('status',   form.status ? 1 : 0);
+    fd.append('team',     form.team);
+    if (imgFile) fd.append('leadership_img', imgFile);
+    return fd;
+  };
+
   const handleAdd = async () => {
     if (!form.name.trim() || !form.position.trim()) { alert('Name and Position are required.'); return; }
-    if (!imgFile) { alert('A photo is required when adding a member.'); return; }
     setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append('name', form.name);
+      fd.append('name',     form.name);
       fd.append('position', form.position);
-      fd.append('status', form.status ? 1 : 0);
-      fd.append('leadership_img', imgFile);
+      fd.append('status',   form.status ? 1 : 0);
+      fd.append('team',     form.team);
+      if (imgFile) fd.append('leadership_img', imgFile);
+
+      console.log('Adding member with team:', form.team);
+
       const res = await axios.post(`${BASE}/api/admin-leadership`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
@@ -250,6 +273,9 @@ const AdminLeadership = () => {
     if (!form.name.trim() || !form.position.trim()) { alert('Name and Position are required.'); return; }
     setSubmitting(true);
     try {
+<<<<<<< HEAD
+      const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, buildFormData(true), {
+=======
       const fd = new FormData();
       fd.append('name', form.name);
       fd.append('position', form.position);
@@ -257,6 +283,7 @@ const AdminLeadership = () => {
 fd.append('_method', 'PUT');
       if (imgFile) fd.append('leadership_img', imgFile);
       const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, fd, {
+>>>>>>> f67cbd51621a96ae9b311a17c725ccf0c3e9dae6
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
@@ -275,7 +302,6 @@ fd.append('_method', 'PUT');
     try {
       const fd = new FormData();
       fd.append('status', newStatus);
-      fd.append('_method', 'PUT');
       await axios.post(`${BASE}/api/admin-leadership/${getId(member)}`, fd, {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
@@ -311,10 +337,7 @@ fd.append('_method', 'PUT');
         {/* Top Bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-4 pb-0 sm:pt-5 sm:px-7">
           <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="text-xl bg-transparent border-none cursor-pointer lg:hidden text-slate-700"
-            >☰</button>
+            <button onClick={() => setSidebarOpen(true)} className="text-xl bg-transparent border-none cursor-pointer lg:hidden text-slate-700">☰</button>
             <h1 className="m-0 text-[18px] sm:text-xl font-bold text-slate-900">Leadership Management</h1>
           </div>
           <button
@@ -328,15 +351,36 @@ fd.append('_method', 'PUT');
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3.5 px-3 sm:px-7 py-4 sm:py-5">
           {[
-            { label: "Total Members", value: loading ? "—" : members.length,                                      sub: "All team members" },
-            { label: "Visible",       value: loading ? "—" : members.filter((m) => m.status).length,              sub: "Shown on site"    },
-            { label: "Hidden",        value: loading ? "—" : members.filter((m) => !m.status).length,             sub: "Not displayed"    },
+            { label: 'Total Members', value: loading ? '—' : members.length,                        sub: 'All team members' },
+            { label: 'Visible',       value: loading ? '—' : members.filter((m) => m.status).length, sub: 'Shown on site'    },
+            { label: 'Hidden',        value: loading ? '—' : members.filter((m) => !m.status).length, sub: 'Not displayed'   },
           ].map((s) => (
             <div key={s.label} className="px-3 py-3 bg-white border shadow-sm sm:px-4 sm:py-4 rounded-xl border-slate-100">
               <div className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 sm:mb-1.5 leading-tight">{s.label}</div>
               <div className="text-[22px] sm:text-[26px] font-extrabold text-slate-900 leading-none">{s.value}</div>
               <div className="text-[9px] sm:text-[10px] text-slate-400 mt-1 font-semibold tracking-wide">{s.sub}</div>
             </div>
+          ))}
+        </div>
+
+        {/* Team Tabs */}
+        <div className="px-3 sm:px-7 mb-4 flex gap-2">
+          {TEAMS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTeam(t.key)}
+              className={`px-4 py-2 rounded-lg text-[13px] font-semibold border transition-colors cursor-pointer
+                ${activeTeam === t.key
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+            >
+              {t.label}
+              <span className={`ml-2 text-[11px] px-1.5 py-0.5 rounded-full font-bold
+                ${activeTeam === t.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                {members.filter((m) => (m.team ?? 'leadership') === t.key).length}
+              </span>
+            </button>
           ))}
         </div>
 
@@ -348,62 +392,55 @@ fd.append('_method', 'PUT');
           </div>
         )}
 
-        {/* ── Mobile card grid ── */}
-        {!loading && members.length > 0 && (
+        {/* Mobile cards */}
+        {!loading && filteredMembers.length > 0 && (
           <div className="block px-3 pb-4 sm:hidden">
             <div className="grid grid-cols-1 gap-3">
-              {members.map((member, idx) => (
+              {filteredMembers.map((member, idx) => (
                 <MemberCard
                   key={getId(member)}
-                  member={member}
-                  idx={idx}
-                  onView={() => setViewTarget(member)}
-                  onEdit={() => openEdit(member)}
-                  onDelete={() => setDeleteTarget(member)}
-                  onToggle={() => toggleVisible(member)}
+                  member={member} idx={idx}
+                  onView={()   => setViewTarget(member)}
+                  onEdit={()   => openEdit(member)}
+                  onDelete={()  => setDeleteTarget(member)}
+                  onToggle={()  => toggleVisible(member)}
                 />
               ))}
             </div>
           </div>
         )}
 
-        {/* Mobile skeleton */}
-        {loading && (
-          <div className="block px-3 pb-4 space-y-3 sm:hidden">
-            <MobileSkeletons />
-          </div>
-        )}
+        {loading && <div className="block px-3 pb-4 space-y-3 sm:hidden"><MobileSkeletons /></div>}
 
-        {/* Empty state */}
-        {!loading && members.length === 0 && !error && (
+        {!loading && filteredMembers.length === 0 && !error && (
           <div className="mx-3 sm:mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="py-12 text-sm text-center text-slate-400">No members found.</div>
+            <div className="py-12 text-sm text-center text-slate-400">
+              No {activeTeam === 'appdev' ? 'App Dev' : 'Leadership'} members found.
+            </div>
           </div>
         )}
 
-        {/* ── Desktop table ── */}
-        {!loading && members.length > 0 && (
+        {/* Desktop table */}
+        {!loading && filteredMembers.length > 0 && (
           <div className="hidden sm:block mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
                 <thead className="border-b bg-slate-50 border-slate-100">
                   <tr>
-                    {["#", "Image", "Full Name", "Position", "Visible", "Action"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">
-                        {h}
-                      </th>
+                    {['#', 'Image', 'Full Name', 'Position', 'Visible', 'Action'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {members.map((member, idx) => {
+                  {filteredMembers.map((member, idx) => {
                     const imgSrc = resolveImg(member);
                     return (
                       <tr key={getId(member)} className="border-b border-slate-50 last:border-b-0 hover:[&_td]:bg-[#F8FAFF] transition-colors">
                         <td className="px-4 py-3 font-mono text-xs align-middle text-slate-400">{idx + 1}</td>
                         <td className="px-4 py-3 align-middle">
                           <div
-                            className="flex items-center justify-center flex-shrink-0 overflow-hidden border rounded-full w-11 h-11 border-slate-100"
+                            className="relative flex items-center justify-center flex-shrink-0 overflow-hidden border rounded-full w-11 h-11 border-slate-100"
                             style={{ backgroundColor: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length] }}
                           >
                             {imgSrc
@@ -419,8 +456,8 @@ fd.append('_method', 'PUT');
                             onClick={() => toggleVisible(member)}
                             className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border cursor-pointer transition-colors whitespace-nowrap
                               ${member.status
-                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                                : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200"
+                                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
                               }`}
                           >
                             {member.status ? '● Visible' : '○ Hidden'}
@@ -428,8 +465,8 @@ fd.append('_method', 'PUT');
                         </td>
                         <td className="px-4 py-3 align-middle">
                           <div className="flex gap-1.5">
-                            <button onClick={() => setViewTarget(member)} className="px-3 py-1 text-xs font-semibold transition-colors border rounded-md cursor-pointer border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100">View</button>
-                            <button onClick={() => openEdit(member)} className="px-3 py-1 text-xs font-semibold text-blue-700 transition-colors border border-blue-200 rounded-md cursor-pointer bg-blue-50 hover:bg-blue-100">Edit</button>
+                            <button onClick={() => setViewTarget(member)}   className="px-3 py-1 text-xs font-semibold transition-colors border rounded-md cursor-pointer border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100">View</button>
+                            <button onClick={() => openEdit(member)}        className="px-3 py-1 text-xs font-semibold text-blue-700 transition-colors border border-blue-200 rounded-md cursor-pointer bg-blue-50 hover:bg-blue-100">Edit</button>
                             <button onClick={() => setDeleteTarget(member)} className="px-3 py-1 text-xs font-semibold text-red-600 transition-colors border border-red-200 rounded-md cursor-pointer bg-red-50 hover:bg-red-100">Delete</button>
                           </div>
                         </td>
@@ -442,17 +479,12 @@ fd.append('_method', 'PUT');
           </div>
         )}
 
-        {/* Desktop skeleton */}
         {loading && (
           <div className="hidden sm:block mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
                 <thead className="border-b bg-slate-50 border-slate-100">
-                  <tr>
-                    {["#", "Image", "Full Name", "Position", "Visible", "Action"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
+                  <tr>{['#', 'Image', 'Full Name', 'Position', 'Visible', 'Action'].map((h) => <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">{h}</th>)}</tr>
                 </thead>
                 <tbody><DesktopSkeletons /></tbody>
               </table>
@@ -460,13 +492,11 @@ fd.append('_method', 'PUT');
           </div>
         )}
 
-        {/* Count footer */}
-        {!loading && members.length > 0 && (
+        {!loading && filteredMembers.length > 0 && (
           <div className="px-3 sm:px-7 pt-2.5 text-xs text-slate-400">
-            {members.length} member{members.length !== 1 ? 's' : ''} total
+            {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''} in {activeTeam === 'appdev' ? 'App Dev Team' : 'Leadership'}
           </div>
         )}
-
       </main>
 
       {/* ── Add / Edit Modal ── */}
@@ -480,9 +510,7 @@ fd.append('_method', 'PUT');
           <div className="px-4 py-5 sm:px-6">
 
             {/* Image upload */}
-            <label className={labelCls}>
-              Photo {editTarget === null && <span className="text-red-500">*</span>}
-            </label>
+            <label className={labelCls}>Photo <span className="text-slate-400 normal-case font-normal">(optional)</span></label>
             <label
               htmlFor="lm-img-upload"
               className="flex items-center gap-3 border-2 border-dashed border-slate-300 rounded-xl p-3.5 cursor-pointer bg-slate-50 hover:border-blue-500 transition-colors mb-3"
@@ -490,21 +518,17 @@ fd.append('_method', 'PUT');
               {imgPreview ? (
                 <img src={imgPreview} alt="preview" className="flex-shrink-0 object-cover border-2 rounded-full w-14 h-14 border-slate-200" />
               ) : (
-                <div className="flex items-center justify-center flex-shrink-0 text-2xl rounded-full w-14 h-14 bg-slate-200">🧑</div>
+                <div className="flex items-center justify-center flex-shrink-0 w-14 h-14 rounded-full bg-slate-200 overflow-hidden relative">
+                  <SilhouettePlaceholder />
+                </div>
               )}
               <div>
                 <div className="text-[13px] font-semibold text-slate-700">
                   {imgPreview ? 'Click to change photo' : 'Click to upload photo'}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">JPEG, PNG — max 2 MB</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">JPEG, PNG — max 40 MB · Optional</div>
               </div>
-              <input
-                id="lm-img-upload"
-                type="file"
-                accept="image/jpeg,image/png,image/jpg"
-                onChange={handleImgChange}
-                className="hidden"
-              />
+              <input id="lm-img-upload" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleImgChange} className="hidden" />
             </label>
             {imgPreview && (
               <button
@@ -515,6 +539,27 @@ fd.append('_method', 'PUT');
                 ✕ Remove photo
               </button>
             )}
+
+            {/* Team selector */}
+            <div className="mb-4">
+              <label className={labelCls}>Team</label>
+              <div className="flex gap-2">
+                {TEAMS.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, team: t.key }))}
+                    className={`flex-1 py-2 rounded-lg text-[12px] font-semibold border transition-colors cursor-pointer
+                      ${form.team === t.key
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="mb-4">
               <label className={labelCls}>Full Name</label>
@@ -543,29 +588,14 @@ fd.append('_method', 'PUT');
                 onClick={() => setForm((p) => ({ ...p, status: !p.status }))}
                 className={`relative w-11 h-6 rounded-full border-none cursor-pointer transition-colors flex-shrink-0 ${form.status ? 'bg-blue-600' : 'bg-slate-300'}`}
               >
-                <span
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.status ? 'left-5' : 'left-0.5'}`}
-                />
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.status ? 'left-5' : 'left-0.5'}`} />
               </button>
             </div>
 
             <div className="flex gap-2.5">
-              <button
-                onClick={() => setShowModal(false)}
-                disabled={submitting}
-                className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveForm}
-                disabled={submitting}
-                className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${submitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 cursor-pointer hover:bg-blue-700'}`}
-              >
-                {submitting
-                  ? (editTarget === null ? 'Adding…' : 'Saving…')
-                  : (editTarget === null ? 'Add Member' : 'Save Changes')
-                }
+              <button onClick={() => setShowModal(false)} disabled={submitting} className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
+              <button onClick={saveForm} disabled={submitting} className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${submitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 cursor-pointer hover:bg-blue-700'}`}>
+                {submitting ? (editTarget === null ? 'Adding…' : 'Saving…') : (editTarget === null ? 'Add Member' : 'Save Changes')}
               </button>
             </div>
           </div>
@@ -579,37 +609,23 @@ fd.append('_method', 'PUT');
           <Overlay onClose={() => setViewTarget(null)} narrow>
             <ModalHeader title="Member Details" onClose={() => setViewTarget(null)} />
             <div className="px-4 py-6 text-center sm:px-6">
-              <div
-                className="flex items-center justify-center w-20 h-20 mx-auto mb-4 overflow-hidden border-2 rounded-full border-slate-100"
-                style={{ backgroundColor: imgSrc ? 'transparent' : '#a8d5ba' }}
-              >
+              <div className="relative flex items-center justify-center w-20 h-20 mx-auto mb-4 overflow-hidden border-2 rounded-full border-slate-100" style={{ backgroundColor: imgSrc ? 'transparent' : '#a8d5ba' }}>
                 {imgSrc
                   ? <img src={imgSrc} alt={viewTarget.name} className="object-cover w-full h-full" onError={(e) => { e.target.style.display = 'none'; }} />
-                  : <span className="text-xl font-bold text-slate-600">{getInitials(viewTarget.name)}</span>
+                  : <SilhouettePlaceholder />
                 }
               </div>
               <div className="font-bold text-slate-900 text-[16px] mb-1">{viewTarget.name}</div>
-              <div className="text-slate-400 text-[13px] mb-4">{viewTarget.position}</div>
-              <span className={`inline-flex text-[11px] font-semibold px-3 py-1 rounded-full border
-                ${viewTarget.status
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : "bg-slate-100 text-slate-500 border-slate-300"
-                }`}>
+              <div className="text-slate-400 text-[13px] mb-1">{viewTarget.position}</div>
+              <div className="text-[11px] text-slate-400 mb-4">
+                {viewTarget.team === 'appdev' ? '💻 App Dev Team' : '👥 Leadership'}
+              </div>
+              <span className={`inline-flex text-[11px] font-semibold px-3 py-1 rounded-full border ${viewTarget.status ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>
                 {viewTarget.status ? '● Visible' : '○ Hidden'}
               </span>
               <div className="flex gap-2.5 mt-6">
-                <button
-                  onClick={() => setViewTarget(null)}
-                  className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => { openEdit(viewTarget); setViewTarget(null); }}
-                  className="flex-1 py-2.5 border-none rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors"
-                >
-                  ✏️ Edit
-                </button>
+                <button onClick={() => setViewTarget(null)} className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors">Close</button>
+                <button onClick={() => { openEdit(viewTarget); setViewTarget(null); }} className="flex-1 py-2.5 border-none rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors">✏️ Edit</button>
               </div>
             </div>
           </Overlay>
@@ -622,23 +638,11 @@ fd.append('_method', 'PUT');
           <div className="px-6 py-8 text-center sm:px-7">
             <div className="mb-3 text-5xl">🗑️</div>
             <h3 className="m-0 mb-2 text-[18px] font-bold text-slate-900">Delete Member?</h3>
-            <p className="m-0 mb-1.5 text-sm text-slate-500">
-              "<strong className="text-slate-700">{deleteTarget.name}</strong>"
-            </p>
+            <p className="m-0 mb-1.5 text-sm text-slate-500">"<strong className="text-slate-700">{deleteTarget.name}</strong>"</p>
             <p className="m-0 mb-6 text-[13px] text-slate-400">This action cannot be undone.</p>
             <div className="flex gap-2.5">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-                className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deleting}
-                className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${deleting ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 cursor-pointer hover:bg-red-700'}`}
-              >
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
+              <button onClick={confirmDelete} disabled={deleting} className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${deleting ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 cursor-pointer hover:bg-red-700'}`}>
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
             </div>
