@@ -254,7 +254,7 @@ const AdminLeadership = () => {
       fd.append('name', form.name);
       fd.append('position', form.position);
       fd.append('status', form.status ? 1 : 0);
-      fd.append('_method', 'POST');
+fd.append('_method', 'PUT');
       if (imgFile) fd.append('leadership_img', imgFile);
       const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, fd, {
         ...axiosConfig,
