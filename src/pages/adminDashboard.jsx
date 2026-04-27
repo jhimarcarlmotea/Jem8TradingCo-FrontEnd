@@ -22,13 +22,27 @@ const num = (v) => Number(v ?? 0).toLocaleString();
 
 const timeAgo = (dateStr) => {
   if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
+  
+  // Force UTC parsing if no timezone info is present
+  const date = new Date(
+    dateStr.includes("Z") || dateStr.includes("+") || dateStr.includes("-", 10)
+      ? dateStr
+      : dateStr + "Z"  // treat as UTC if no timezone suffix
+  );
+  
+  const diff = Date.now() - date.getTime();
+
+  // Handle negative diff (future timestamps / clock skew)
+  if (diff < 0) return "Just now";
+
   const m = Math.floor(diff / 60000);
   if (m < 1) return "Just now";
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
-  return new Date(dateStr).toLocaleDateString("en-PH", {
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return date.toLocaleDateString("en-PH", {
     month: "short",
     day: "numeric",
   });
@@ -338,11 +352,18 @@ function BarChart({ data }) {
 }
 
 function LineChart({ thisYear = {}, lastYear = {} }) {
+  const currentMonth = new Date().getMonth() + 1; // 1-based
   const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const thisVals = months.map((m) => Number(thisYear[m] ?? 0));
-  const lastVals = months.map((m) => Number(lastYear[m] ?? 0));
+
+  // Only include months up to current month that have data or are within range
+  const activeMonths = months.filter((m) => m <= currentMonth);
+
+  const thisVals = activeMonths.map((m) => Number(thisYear[m] ?? 0));
+  const lastVals = activeMonths.map((m) => Number(lastYear[m] ?? 0));
   const max = Math.max(...thisVals, ...lastVals, 1);
+
+  const hasLastYear = lastVals.some((v) => v > 0);
 
   const vw = 500, vh = 120;
   const padL = 10, padR = 10, padT = 10, padB = 22;
@@ -351,7 +372,7 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
 
   const coords = (vals) =>
     vals.map((v, i) => ({
-      x: padL + (i / (vals.length - 1)) * chartW,
+      x: padL + (i / Math.max(activeMonths.length - 1, 1)) * chartW,
       y: padT + chartH - (v / max) * chartH,
     }));
 
@@ -384,7 +405,7 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
     >
       <defs>
         <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.15" />
+          <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.18" />
           <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
         </linearGradient>
         <clipPath id="chartClip2">
@@ -392,7 +413,7 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
         </clipPath>
       </defs>
 
-      {[0, 0.5, 1].map((pct, i) => (
+      {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => (
         <line
           key={i}
           x1={padL} x2={padL + chartW}
@@ -407,15 +428,19 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
         fill="url(#areaGrad2)"
         clipPath="url(#chartClip2)"
       />
-      <path
-        d={d2}
-        fill="none"
-        stroke="#CBD5E1"
-        strokeWidth="1.2"
-        strokeDasharray="3 2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+
+      {hasLastYear && (
+        <path
+          d={d2}
+          fill="none"
+          stroke="#CBD5E1"
+          strokeWidth="1.2"
+          strokeDasharray="3 2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+
       <path
         d={d1}
         fill="none"
@@ -424,13 +449,16 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+
       {thisPts.map((p, i) => (
         <circle
           key={i} cx={p.x} cy={p.y} r="3"
           fill="white" stroke="#3B82F6" strokeWidth="1.8"
         />
       ))}
-      {labels.map((l, i) => (
+
+      {/* Only show labels for active months */}
+      {activeMonths.map((m, i) => (
         <text
           key={i}
           x={thisPts[i].x}
@@ -440,7 +468,7 @@ function LineChart({ thisYear = {}, lastYear = {} }) {
           fill="#94A3B8"
           fontFamily="'DM Sans', sans-serif"
         >
-          {l}
+          {labels[m - 1]}
         </text>
       ))}
     </svg>
@@ -621,13 +649,15 @@ export default function AdminDashboard() {
     },
   ];
 
-  const salesChartData = Object.entries(sales.monthly_chart ?? {}).map(
-    ([m, v], i) => ({
-      label: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m) - 1] ?? m,
-      value: Number(v),
-      color: CHART_COLORS[i % CHART_COLORS.length],
-    })
-  );
+  const currentMonth = new Date().getMonth() + 1; 
+
+const salesChartData = Object.entries(sales.monthly_chart ?? {})
+  .sort(([a], [b]) => Number(a) - Number(b))
+  .map(([m, v], i) => ({
+    label: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m) - 1] ?? m,
+    value: Number(v),
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
 
   const marketingRaw = Object.entries(traffic.revenue_by_address ?? {})
     .slice(0, 5)
@@ -872,26 +902,41 @@ export default function AdminDashboard() {
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
                   Total Users Overview
                 </span>
-                <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#94A3B8" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#94A3B8", alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span
+                    style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: "#3B82F6", display: "inline-block",
+                    }}
+                  />
+                  This year
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span
+                    style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: "#CBD5E1", display: "inline-block",
+                    }}
+                  />
+                  Last year
+                  {!Object.values(accounts.new_per_month_prev ?? {}).some((v) => Number(v) > 0) && (
                     <span
                       style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        background: "#3B82F6", display: "inline-block",
+                        fontSize: 9,
+                        color: "#94A3B8",
+                        background: "#F1F5F9",
+                        padding: "1px 6px",
+                        borderRadius: 10,
+                        marginLeft: 2,
+                        fontStyle: "italic",
                       }}
-                    />
-                    This year
-                  </span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span
-                      style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        background: "#CBD5E1", display: "inline-block",
-                      }}
-                    />
-                    Last year
-                  </span>
-                </div>
+                    >
+                      No data
+                    </span>
+                  )}
+                </span>
+              </div>
               </div>
               <div
                 style={{ fontSize: 10, color: "#3B82F6", fontWeight: 600, marginBottom: 6 }}
@@ -920,10 +965,10 @@ export default function AdminDashboard() {
                   {loading ? (
                     <Skeleton style={{ height: "100%", width: "100%" }} />
                   ) : (
-                    <LineChart
-                      thisYear={accounts.new_per_month ?? {}}
-                      lastYear={{}}
-                    />
+                   <LineChart
+                    thisYear={accounts.new_per_month ?? {}}
+                    lastYear={accounts.new_per_month_prev ?? {}}
+                  />
                   )}
                 </div>
               </div>
