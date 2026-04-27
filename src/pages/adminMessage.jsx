@@ -248,7 +248,7 @@ export default function AdminMessages() {
         const rooms = Array.isArray(resp) ? resp : resp.rooms || resp.chatrooms || [];
         if (!mounted) return;
         const meId = (typeof meResp !== 'undefined' && meResp && meResp.data) ? (meResp.data.id || meResp.data.user_id || null) : null;
-        const mapped = rooms.map((r) => {
+        let mapped = rooms.map((r) => {
           // If there are participants, prefer the other participant (not current user) for name/email/avatar
           let other = null;
           if (Array.isArray(r.participants) && r.participants.length > 0) {

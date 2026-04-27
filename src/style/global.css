@@ -286,3 +286,28 @@ ul { list-style: none; }
 @media (max-width: 480px) {
   .site-header__login-btn { display: none; }
 }
+
+/* Product card hover background pop animation */
+.product-card-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 40%, rgba(77,123,101,0.14) 0%, rgba(77,123,101,0.06) 30%, transparent 60%);
+  transform: scale(0.92);
+  opacity: 0;
+  transition: transform 280ms cubic-bezier(.2,.9,.3,1), opacity 280ms cubic-bezier(.2,.9,.3,1);
+  filter: blur(6px);
+  border-radius: 12px 12px 0 0;
+}
+
+.group:hover .product-card-bg {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Slight stronger highlight for active/keyboard focus */
+.group:focus-within .product-card-bg,
+.group:active .product-card-bg {
+  transform: scale(1.02);
+  opacity: 1;
+}
