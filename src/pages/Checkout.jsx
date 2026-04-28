@@ -11,6 +11,87 @@ const BASE = "http://127.0.0.1:8000/api";
 const SHIPPING_FEE = 150;
 const FREE_SHIPPING_MIN = 2000;
 
+// ── Delivery rules configuration (standardized, PHP amounts) ───────────
+const DELIVERY_CONFIG = {
+  locations: {
+    makati: {
+      min_order_by_zone: { near: 5000, mid: 8000, far: 10000 },
+      bag_delivery_minimum: 25000,
+      default_methods: ["pre_delivery", "lalamove", "ap_cargo"],
+    },
+    pasig: { min_order: 30000, default_methods: ["courier"] },
+    outside_metro_manila: { min_order: 50000, default_methods: ["ap_cargo"] },
+    metro_manila_default: { min_order: 5000, default_methods: ["lalamove", "pre_delivery", "ap_cargo"] },
+  },
+  providers: {
+    pre_delivery: { description: "In-house / scheduled delivery" },
+    lalamove: {
+      description: "On-demand intra-city delivery; request provider quotation and include in checkout",
+      capacity_limits: { max_weight_kg: 150, max_volume_m3: 1.5 },
+      fallback: "ap_cargo",
+    },
+    courier: { description: "Third-party courier (Pasig default)" },
+    ap_cargo: { description: "Freight/cargo for outside-Manila or oversized shipments" },
+  },
+};
+
+// Helpers: normalize and decision logic
+const normalize = (s = "") => String(s || "").trim().toLowerCase();
+const isMakati = (addr) => normalize(addr.city || addr.province).includes("makati");
+const isPasig = (addr) => normalize(addr.city || addr.province).includes("pasig");
+const isMetroManila = (addr) => {
+  const city = normalize(addr.city || "");
+  const metroKeywords = ["metro", "manila", "makati", "pasig", "quezon", "quezon city", "muntinlupa", "las piñas", "parañaque", "taguig", "navotas", "malabon", "caloocan", "valenzuela", "marikina", "san juan", "mandaluyong", "pateros", "pasay"];
+  return metroKeywords.some((k) => city.includes(k) || normalize(addr.province).includes(k));
+};
+
+// Determine Makati zone. Lacking geo data, default to 'near' unless address has hints.
+const determineMakatiZone = (addr) => {
+  const hint = normalize([addr.street, addr.barangay, addr.zip].filter(Boolean).join(" "));
+  if (!hint) return "near"; // conservative default
+  // crude heuristics (can be replaced by admin override or geolocation)
+  if (/poblacion|greenbelt|ayala|salcedo|rockwell/.test(hint)) return "near";
+  if (/north|south|east|west|beltway|oxford|malugay|belt/.test(hint)) return "mid";
+  return "far";
+};
+
+// Heuristic to detect "bag" deliveries (apply bag minimum)
+const hasBagDelivery = (items) => items.some((it) => /bag/i.test(it.name || "") || /bag/i.test(it.cat || ""));
+
+// If no weight/volume data available, use subtotal heuristic for capacity (placeholder)
+const exceedsLalamoveCapacity = (items, subtotal) => {
+  // Placeholder: treat very large orders as exceeding Lalamove capacity
+  if (subtotal >= 100000) return true;
+  if (items.length > 20) return true;
+  return false;
+};
+
+const getMinOrderForAddress = (addr, items = [], subtotal = 0) => {
+  if (isMakati(addr)) {
+    if (hasBagDelivery(items)) return DELIVERY_CONFIG.locations.makati.bag_delivery_minimum;
+    const zone = determineMakatiZone(addr);
+    return DELIVERY_CONFIG.locations.makati.min_order_by_zone[zone] ?? DELIVERY_CONFIG.locations.makati.min_order_by_zone.near;
+  }
+  if (isPasig(addr)) return DELIVERY_CONFIG.locations.pasig.min_order;
+  if (!isMetroManila(addr)) return DELIVERY_CONFIG.locations.outside_metro_manila.min_order;
+  return DELIVERY_CONFIG.locations.metro_manila_default.min_order;
+};
+
+const chooseDeliveryProvider = (addr, items = [], subtotal = 0) => {
+  if (!isMetroManila(addr)) return "ap_cargo";
+  if (isPasig(addr)) return "courier";
+  if (isMakati(addr)) {
+    // prefer pre_delivery if small and near; else lalamove if within capacity
+    const zone = determineMakatiZone(addr);
+    if (zone === "near" && subtotal <= 20000) return "pre_delivery";
+    if (!exceedsLalamoveCapacity(items, subtotal)) return "lalamove";
+    return "ap_cargo";
+  }
+  // Metro Manila default
+  if (!exceedsLalamoveCapacity(items, subtotal)) return "lalamove";
+  return "ap_cargo";
+};
+
 const PAYMENT_METHODS = [
   {
     id: "gcash",
@@ -308,6 +389,8 @@ export default function Checkout() {
   const [receiptFile, setReceiptFile] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
   const receiptInputRef = useRef(null);
+  const [deliveryProvider, setDeliveryProvider] = useState(null);
+  const [requiredMinimum, setRequiredMinimum] = useState(null);
 
   useEffect(() => {
     getUserAddresses()
@@ -388,10 +471,47 @@ export default function Checkout() {
   };
 
   // ── Touch all fields and show errors when clicking "Review Order" ─────────
+  const getResolvedAddress = () => {
+    if (addrMode === "saved" && selectedAddr) {
+      return {
+        street: selectedAddr.street || "",
+        barangay: selectedAddr.barangay || "",
+        city: selectedAddr.city || "",
+        province: selectedAddr.province || "",
+        zip: selectedAddr.postal_code || "",
+        country: selectedAddr.country || "Philippines",
+      };
+    }
+    return {
+      street: delivery.address || "",
+      barangay: delivery.barangay || "",
+      city: delivery.city || "",
+      province: delivery.province || "",
+      zip: delivery.zip || "",
+      country: "Philippines",
+    };
+  };
+
   const handleProceedToReview = () => {
+    setPlaceError(null);
+
+    // Resolve address and determine required minimum + provider
+    const resolved = getResolvedAddress();
+    const minReq = getMinOrderForAddress(resolved, items, subtotal);
+    setRequiredMinimum(minReq);
+    if (subtotal < minReq) {
+      setPlaceError(`Minimum order for this delivery location is ₱${Number(minReq).toLocaleString()}.`);
+      // Move user back to delivery step if they somehow advanced
+      setStep(0);
+      return;
+    }
+
+    const provider = chooseDeliveryProvider(resolved, items, subtotal);
+    setDeliveryProvider(provider);
+
+    // Validate payment fields as before
     const errors = validatePaymentFields(payMethod, payFields);
     if (Object.keys(errors).length > 0) {
-      // Mark all fields as touched so errors show
       const allTouched = {};
       (PAYMENT_VALIDATORS[payMethod] ? Object.keys(PAYMENT_VALIDATORS[payMethod]) : []).forEach(
         (f) => (allTouched[f] = true)
@@ -400,6 +520,7 @@ export default function Checkout() {
       setPayFieldErrors(errors);
       return;
     }
+
     setStep(2);
   };
 
@@ -479,6 +600,10 @@ export default function Checkout() {
     cartIds.forEach((id) => formData.append("cart_ids[]", id));
     formData.append("payment_method", payMethod);
     formData.append("shipping_fee", shippingFee);
+    // Provider chosen by rules (e.g., lalamove, ap_cargo, pre_delivery, courier)
+    formData.append("shipping_provider", deliveryProvider || "lalamove");
+    // If Lalamove quote is required, backend should request it; placeholder here
+    formData.append("shipping_quote", "");
     if (specialNote) formData.append("special_instructions", specialNote);
 
     Object.entries(paymentDetails).forEach(([key, val]) => {

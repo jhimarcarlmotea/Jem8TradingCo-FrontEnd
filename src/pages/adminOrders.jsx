@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import axios from "axios";
 import AdminNav from "../components/AdminNav";
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const api = axios.create({
   baseURL: "http://127.0.0.1:8000/api",
@@ -1735,4 +1737,96 @@ export default function AdminOrders() {
       </div>
     </>
   );
+}
+
+// Generic browser-friendly Excel export using ExcelJS + file-saver
+export async function exportToExcel(data = [], filename = `export-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.xlsx`) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Sheet1');
+
+  // derive columns from union of object keys in order of appearance
+  const keys = data && data.length
+    ? Array.from(data.reduce((set, obj) => {
+        Object.keys(obj || {}).forEach((k) => set.add(k));
+        return set;
+      }, new Set()))
+    : [];
+
+  if (!keys.length) {
+    worksheet.addRow(['No data to export']);
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    });
+    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+    const buf = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, filename);
+    return;
+  }
+
+  worksheet.columns = keys.map((k) => ({ header: String(k), key: k, width: 10 }));
+
+  // add rows using object form so keys map correctly
+  for (const rowObj of data) worksheet.addRow(rowObj);
+
+  // compute optimal column widths based on longest line in each column
+  const maxColLengths = worksheet.columns.map((col, colIndex) => {
+    const headerText = String(col.header ?? '');
+    let max = headerText.length;
+    for (let r = 2; r <= worksheet.rowCount; r++) {
+      const cell = worksheet.getRow(r).getCell(colIndex + 1);
+      const val = cell.value;
+      let text = '';
+      if (val == null) text = '';
+      else if (typeof val === 'object' && val.richText) text = val.richText.map((t) => t.text).join('');
+      else text = String(val);
+      const longestLine = text.split(/\r?\n/).reduce((a, b) => Math.max(a, b.length), 0);
+      max = Math.max(max, longestLine);
+    }
+    return max;
+  });
+
+  worksheet.columns.forEach((col, i) => {
+    const calculated = Math.min(Math.max(8, Math.ceil(maxColLengths[i] + 2)), 60);
+    col.width = calculated;
+  });
+
+  // freeze header
+  worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  // header styling using getRow(1)
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = Math.max(20, headerRow.height || 20);
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+    cell.border = {
+      top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+    };
+  });
+
+  // style all data cells: wrap, vertical middle, borders
+  for (let r = 2; r <= worksheet.rowCount; r++) {
+    const row = worksheet.getRow(r);
+    row.alignment = { wrapText: true, vertical: 'middle' };
+    for (let c = 1; c <= worksheet.columnCount; c++) {
+      const cell = row.getCell(c);
+      const prev = cell.alignment || {};
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: prev.horizontal || 'left' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    }
+    row.commit();
+  }
+
+  headerRow.commit();
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, filename);
 }
