@@ -79,6 +79,289 @@ function getExportedSet() {
     return new Set();
   }
 }
+
+// New ExcelJS-based exporter using Reports.tsx style
+async function exportOrderToExcelJS(delivery) {
+  try {
+    const checkout = delivery.checkout || {};
+    const user = checkout.user || {};
+    const items = checkout.items || [];
+    const orderId = checkout.checkout_id || delivery.delivery_id || "order";
+    const paid = Number(checkout.paid_amount || 0);
+    const shipping = Number(checkout.shipping_fee || 0);
+    const subtotal = Math.max(0, paid - shipping);
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(`Order_${orderId}`);
+
+    // Layout to match sample: title at rows 5-7, client info rows 9-12, table header row 14
+    ws.mergeCells('A5:G7');
+    ws.getCell('A5').value = 'QUOTATION';
+    ws.getCell('A5').font = { bold: true, size: 24 };
+    ws.getCell('A5').alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(5).height = 28;
+
+    // Client Info grid (rows 9-12)
+    const ciStart = 9;
+    // labels on A, values on B-F with right-side meta in G
+    ws.getCell(`A${ciStart}`).value = 'Client Name:';
+    ws.mergeCells(`B${ciStart}:F${ciStart}`);
+    ws.getCell(`B${ciStart}`).value = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    ws.getCell(`G${ciStart}`).value = 'Date:';
+    ws.getCell(`A${ciStart}`).font = { bold: true };
+
+    ws.getCell(`A${ciStart+1}`).value = 'Company Name:';
+    ws.mergeCells(`B${ciStart+1}:F${ciStart+1}`);
+    ws.getCell(`B${ciStart+1}`).value = user.company_name || '';
+    ws.getCell(`G${ciStart+1}`).value = 'Deliver:';
+    ws.getCell(`A${ciStart+1}`).font = { bold: true };
+
+    ws.getCell(`A${ciStart+2}`).value = 'Contact Details:';
+    ws.mergeCells(`B${ciStart+2}:F${ciStart+2}`);
+    ws.getCell(`B${ciStart+2}`).value = [user.email, user.phone_number].filter(Boolean).join(' | ');
+    ws.getCell(`G${ciStart+2}`).value = 'Validity:';
+    ws.getCell(`A${ciStart+2}`).font = { bold: true };
+
+    ws.getCell(`A${ciStart+3}`).value = 'Address:';
+    ws.mergeCells(`B${ciStart+3}:F${ciStart+3}`);
+    ws.getCell(`B${ciStart+3}`).value = resolveCheckoutAddress(checkout) || '';
+    ws.getCell(`G${ciStart+3}`).value = 'Payment & Terms';
+    ws.getCell(`A${ciStart+3}`).font = { bold: true };
+    // fill payment method
+    ws.getCell(`G${ciStart+3}`).font = { bold: true };
+    ws.getCell(`G${ciStart+3}`).value = (checkout.payment_method || 'COD').toString().replace(/_/g,' ').toUpperCase();
+
+    // draw borders for client info grid
+    for (let r = ciStart; r <= ciStart+3; r++) {
+      ['A','B','C','D','E','F','G'].forEach((col) => {
+        const c = ws.getCell(`${col}${r}`);
+        c.border = {
+          top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' }
+        };
+      });
+    }
+
+    const headerRow = 14;
+    const cols = ['No','Description','Size/Variant','Qty','Unit','Unit Price','Amount'];
+    // set column widths before laying out signature/footer so merges align
+    ws.columns = [
+      { width: 6 },
+      { width: 36 },
+      { width: 18 },
+      { width: 8 },
+      { width: 10 },
+      { width: 14 },
+      { width: 14 },
+    ];
+    cols.forEach((c, i) => {
+      const cell = ws.getCell(headerRow, i+1);
+      cell.value = c;
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: 'center' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE3F0' } };
+      // header borders
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    });
+
+    // Fixed item table height to match template: rows 15..31 (17 rows)
+    const ITEM_START = headerRow + 1; // 15
+    const ITEM_MAX = 17;
+    for (let r = 0; r < ITEM_MAX; r++) {
+      const rowNumber = ITEM_START + r;
+      const it = items[r] || null;
+      if (it) {
+        const product = it.product || {};
+        const qty = Number(it.quantity || 1);
+        const price = Number(it.price ?? product.price ?? 0);
+        const amount = qty * price;
+        ws.getCell(rowNumber, 1).value = String(r + 1).padStart(2, '0');
+        ws.getCell(rowNumber, 2).value = product.product_name || it.name || '';
+        ws.getCell(rowNumber, 3).value = product.size || product.variant || product.color || '';
+        ws.getCell(rowNumber, 4).value = qty;
+        ws.getCell(rowNumber, 5).value = product.unit || 'pc';
+        ws.getCell(rowNumber, 6).value = price;
+        ws.getCell(rowNumber, 6).numFmt = '#,##0.00';
+        ws.getCell(rowNumber, 7).value = amount;
+        ws.getCell(rowNumber, 7).numFmt = '#,##0.00';
+      } else {
+        // leave blank cells but ensure borders exist
+        for (let c = 1; c <= 7; c++) ws.getCell(rowNumber, c).value = '';
+      }
+      // common alignment and thin borders to emulate template grid
+      ws.getCell(rowNumber,1).alignment = { horizontal: 'center' };
+      ws.getCell(rowNumber,4).alignment = { horizontal: 'center' };
+      ws.getCell(rowNumber,6).alignment = { horizontal: 'right' };
+      ws.getCell(rowNumber,7).alignment = { horizontal: 'right' };
+      for (let c = 1; c <= 7; c++) {
+        ws.getCell(rowNumber, c).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+      }
+    }
+    // place "Nothing Follows" at fixed row after items per template
+    let rowIdx = ITEM_START + ITEM_MAX; // NF row
+
+    ws.mergeCells(`A${rowIdx}:G${rowIdx}`);
+    ws.getCell(`A${rowIdx}`).value = '***Nothing Follows***';
+    ws.getCell(`A${rowIdx}`).font = { bold: true, color: { argb: 'FFB91C1C' } };
+    ws.getCell(`A${rowIdx}`).alignment = { horizontal: 'center' };
+    rowIdx++;
+
+    ws.getCell(`F${rowIdx}`).value = 'Subtotal';
+    ws.getCell(`G${rowIdx}`).value = subtotal;
+    ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00';
+    // cyan highlight for totals area and borders (apply across A-F to match template)
+    const cyanFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFF0FF' } };
+    for (let col = 1; col <= 6; col++) {
+      const letter = String.fromCharCode(64 + col);
+      const cell = ws.getCell(`${letter}${rowIdx}`);
+      cell.fill = cyanFill;
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    }
+    // ensure the rightmost amount cell also has border/fill (G)
+    const rightCell = ws.getCell(`G${rowIdx}`);
+    rightCell.fill = cyanFill;
+    rightCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    rowIdx++;
+    ws.getCell(`F${rowIdx}`).value = 'Shipping';
+    ws.getCell(`G${rowIdx}`).value = shipping === 0 ? 'FREE' : shipping;
+    if (shipping !== 0) ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00';
+    // Totals rows style and borders (apply across A-F to match template)
+    for (let col = 1; col <= 6; col++) {
+      const letter = String.fromCharCode(64 + col);
+      const cell = ws.getCell(`${letter}${rowIdx}`);
+      cell.fill = cyanFill;
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    }
+    ws.getCell(`G${rowIdx}`).fill = cyanFill;
+    ws.getCell(`G${rowIdx}`).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    rowIdx++;
+    ws.getCell(`F${rowIdx}`).value = 'Total Paid';
+    ws.getCell(`G${rowIdx}`).value = paid;
+    ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00';
+    ws.getCell(`F${rowIdx}`).font = { bold: true };
+    ws.getCell(`G${rowIdx}`).font = { bold: true };
+    // apply cyan fill and borders across A-F and G for final totals row
+    for (let col = 1; col <= 6; col++) {
+      const letter = String.fromCharCode(64 + col);
+      const cell = ws.getCell(`${letter}${rowIdx}`);
+      cell.fill = cyanFill;
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    }
+    ws.getCell(`G${rowIdx}`).fill = cyanFill;
+    ws.getCell(`G${rowIdx}`).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+
+    // ── Disclaimer & Signature block (mimic original template) ──
+    rowIdx += 2; // add a small spacer
+    const discText = `* Cancellations will be considered only if the request is made within 24 hours of placing the order. However, the cancellation request will not be entertained if the orders have been communicated to the manufacturing plant and have initiated the process of processing/shipping the items. Deposits are non-refundable and client will be charged for the irreversible fees incurred once item/s has already been processed/shipped.\n\n* JEM8 CIRCLE TRADING CO. will not be held liable for the delays due to holidays, transportation and labor strikes, typhoons, floods, earthquakes, fire, volcanic eruptions, acts of God, and the like.`;
+    // Disclaimer header (light gray)
+    ws.mergeCells(`A${rowIdx}:G${rowIdx}`);
+    const discHeader = ws.getCell(`A${rowIdx}`);
+    discHeader.value = 'Disclaimer:';
+    discHeader.font = { bold: true };
+    discHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+    discHeader.alignment = { vertical: 'center', horizontal: 'left' };
+    ws.getRow(rowIdx).height = 18;
+    // Disclaimer body (merge a few rows below)
+    const bodyStart = rowIdx + 1;
+    ws.mergeCells(`A${bodyStart}:G${bodyStart + 2}`);
+    const dcell = ws.getCell(`A${bodyStart}`);
+    dcell.value = discText;
+    dcell.alignment = { wrapText: true, vertical: 'top' };
+    ws.getRow(bodyStart).height = 60;
+    rowIdx = bodyStart + 3;
+
+    // Signature table header (merge A:B, C:D, E:F, G)
+    const sigHeaderRow = rowIdx;
+    ws.mergeCells(`A${sigHeaderRow}:B${sigHeaderRow}`);
+    ws.mergeCells(`C${sigHeaderRow}:D${sigHeaderRow}`);
+    ws.mergeCells(`E${sigHeaderRow}:F${sigHeaderRow}`);
+    // G remains single
+    ws.getCell(`A${sigHeaderRow}`).value = 'Prepared By';
+    ws.getCell(`C${sigHeaderRow}`).value = 'Approved By:';
+    ws.getCell(`E${sigHeaderRow}`).value = 'Client Signature';
+    ws.getCell(`G${sigHeaderRow}`).value = 'Reference No.';
+    // make headers bold, centered, with blue background and white text to match sample
+    const sigHeaderFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3A66' } };
+    ['A','C','E','G'].forEach((col) => {
+      const c = ws.getCell(`${col}${sigHeaderRow}`);
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.fill = sigHeaderFill;
+      c.border = { bottom: { style: 'thin' } };
+    });
+    ws.getRow(sigHeaderRow).height = 18;
+
+    // Empty signature rows (2 rows spacing) and signature lines (bottom border)
+    const sigRow1 = sigHeaderRow + 1;
+    const sigRow2 = sigHeaderRow + 2;
+    // create merged cells for rows
+    ws.mergeCells(`A${sigRow1}:B${sigRow1}`);
+    ws.mergeCells(`C${sigRow1}:D${sigRow1}`);
+    ws.mergeCells(`E${sigRow1}:F${sigRow1}`);
+    ws.mergeCells(`A${sigRow2}:B${sigRow2}`);
+    ws.mergeCells(`C${sigRow2}:D${sigRow2}`);
+    ws.mergeCells(`E${sigRow2}:F${sigRow2}`);
+    // add bottom border in the second row for signature lines and set heights
+    ['A','C','E'].forEach((col) => {
+      ws.getCell(`${col}${sigRow2}`).border = { bottom: { style: 'thin' } };
+      ws.getCell(`${col}${sigRow1}`).alignment = { vertical: 'top' };
+      ws.getCell(`${col}${sigRow2}`).alignment = { vertical: 'bottom' };
+    });
+    // highlight signature rows: sigRow1 light green, sigRow2 gray
+    const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDFF7E6' } };
+    const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
+    ['A','B','C','D','E','F','G'].forEach((col) => {
+      ws.getCell(`${col}${sigRow1}`).fill = greenFill;
+      ws.getCell(`${col}${sigRow2}`).fill = grayFill;
+    });
+    // also give G column a signature line
+    ws.getCell(`G${sigRow1}`).value = '';
+    ws.getCell(`G${sigRow2}`).border = { bottom: { style: 'thin' } };
+    ws.getRow(sigRow1).height = 22;
+    ws.getRow(sigRow2).height = 20;
+
+    // Role row (below signature lines)
+    const roleRow = sigHeaderRow + 3;
+    ws.mergeCells(`A${roleRow}:B${roleRow}`);
+    ws.mergeCells(`C${roleRow}:D${roleRow}`);
+    ws.mergeCells(`E${roleRow}:F${roleRow}`);
+    ws.getCell(`A${roleRow}`).value = '';
+    ws.getCell(`C${roleRow}`).value = '';
+    ws.getCell(`E${roleRow}`).value = 'Date and Signature';
+    ['A','C','E'].forEach((col) => {
+      ws.getCell(`${col}${roleRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`${col}${roleRow}`).font = { italic: true };
+    });
+    ws.getRow(roleRow).height = 18;
+
+    rowIdx = roleRow + 2;
+
+    // Footer contact info (merged right area) — text removed per request
+    ws.mergeCells(`A${rowIdx}:E${rowIdx}`);
+    ws.getCell(`A${rowIdx}`).value = '';
+    ws.getCell(`A${rowIdx}`).alignment = { wrapText: true, vertical: 'top' };
+    // place email in F:G merged area to avoid truncation (left empty)
+    ws.mergeCells(`F${rowIdx}:G${rowIdx}`);
+    ws.getCell(`F${rowIdx}`).value = '';
+    ws.getCell(`F${rowIdx}`).alignment = { vertical: 'top', horizontal: 'right', wrapText: true };
+
+    ws.columns = [
+      { width: 6 },
+      { width: 36 },
+      { width: 18 },
+      { width: 8 },
+      { width: 10 },
+      { width: 14 },
+      { width: 14 },
+    ];
+
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf]), `Quotation_Order_${orderId}.xlsx`);
+  } catch (e) {
+    console.error('exportOrderToExcelJS failed', e);
+    alert('Failed to export Excel file.');
+  }
+}
+
 function markExported(ids) {
   const prev = getExportedSet();
   ids.forEach((id) => prev.add(String(id)));
@@ -1014,6 +1297,17 @@ async function exportOrderToExcel(delivery) {
   const lastItemRow = ITEM_START + Math.max(0, itemCount) - 1; // if itemCount==0 => 14
   const nfRow = lastItemRow + 1 >= ITEM_START ? lastItemRow + 1 : ITEM_START;
   const nfBRef = `B${nfRow}`;
+  // Remove any pre-existing "***Nothing Follows***" entries in the template
+  // so we don't end up with duplicates if the template already contains one.
+  Object.keys(ws).forEach((k) => {
+    if (!k || k.startsWith("!")) return;
+    try {
+      if (ws[k] && ws[k].v === '***Nothing Follows***' && k !== nfBRef) delete ws[k];
+    } catch (e) {
+      // ignore non-cell entries
+    }
+  });
+
   ws[nfBRef] = ws[nfBRef] || {};
   ws[nfBRef].t = 's';
   ws[nfBRef].v = '***Nothing Follows***';
@@ -1043,6 +1337,38 @@ async function exportOrderToExcel(delivery) {
   // ── Totals (compute immediately after the NF row so layout is compact)
   const itemsStart = 15;
   const sumEnd = Math.max(lastItemRow, itemsStart);
+  
+  // Trim worksheet range to last non-empty cell to avoid exporting many empty rows
+  try {
+    const dataCellKeys = Object.keys(ws).filter((k) => k && k[0] !== '!');
+    let maxRow = 0;
+    let maxCol = 0;
+    for (const k of dataCellKeys) {
+      const m = k.match(/([A-Z]+)(\d+)$/);
+      if (!m) continue;
+      const colLetters = m[1];
+      const rowIdx = Number(m[2]);
+      if (rowIdx > maxRow) maxRow = rowIdx;
+      // convert column letters to 1-based index
+      let colIdx = 0;
+      for (let i = 0; i < colLetters.length; i++) colIdx = colIdx * 26 + (colLetters.charCodeAt(i) - 64);
+      if (colIdx > maxCol) maxCol = colIdx;
+    }
+    if (maxRow > 0 && maxCol > 0) {
+      let lastCol = '';
+      let n = maxCol;
+      while (n > 0) {
+        const rem = (n - 1) % 26;
+        lastCol = String.fromCharCode(65 + rem) + lastCol;
+        n = Math.floor((n - 1) / 26);
+      }
+      ws['!ref'] = `A1:${lastCol}${maxRow}`;
+      // store for ExcelJS trimming
+      ws.__lastRow = maxRow;
+    }
+  } catch (e) {
+    // ignore trimming failures
+  }
   const subtotalRow = nfRow + 1;
   const vatBaseRow = subtotalRow + 1;
   const vatRow = subtotalRow + 2;
@@ -1330,6 +1656,17 @@ async function exportOrderToExcel(delivery) {
         }
       }
 
+      // Remove any extra empty rows beyond the last used row to prevent large exported files
+      try {
+        const lastRow = ws.__lastRow || 0;
+        if (lastRow && sheet.rowCount > lastRow) {
+          const removeCount = sheet.rowCount - lastRow;
+          sheet.spliceRows(lastRow + 1, removeCount);
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const finalBuf = await workbookExcel.xlsx.writeBuffer();
       const blob = new Blob([finalBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `Quotation_Order_${orderId}.xlsx`);
@@ -1352,7 +1689,8 @@ async function exportOrderToExcel(delivery) {
 async function exportSelectedOrders(deliveries, onProgress) {
   for (let i = 0; i < deliveries.length; i++) {
     onProgress && onProgress(i, deliveries.length);
-    await exportOrderToExcel(deliveries[i]);
+    // use the new ExcelJS-driven exporter matching Reports.tsx style
+    await exportOrderToExcelJS(deliveries[i]);
     await new Promise((r) => setTimeout(r, 600));
   }
   onProgress && onProgress(deliveries.length, deliveries.length);
