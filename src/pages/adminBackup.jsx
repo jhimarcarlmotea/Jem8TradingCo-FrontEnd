@@ -2,6 +2,20 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import AdminNav from '../components/AdminNav';
 
+// ── Design tokens (matched to adminReviews) ─────────────────────────────────
+const T = {
+  blue50: "#EFF6FF", blue100: "#DBEAFE", blue500: "#3B82F6", blue600: "#2563EB", blue700: "#1D4ED8",
+  green50: "#ECFDF5", green100: "#D1FAE5", green500: "#10B981", green600: "#059669",
+  amber50: "#FFFBEB", amber100: "#FEF3C7", amber500: "#F59E0B", amber600: "#D97706",
+  red50: "#FEF2F2", red100: "#FEE2E2", red500: "#EF4444", red600: "#DC2626",
+  slate50: "#F8FAFC", slate100: "#F1F5F9", slate200: "#E2E8F0", slate300: "#CBD5E1",
+  slate400: "#94A3B8", slate500: "#64748B", slate600: "#475569",
+  slate700: "#374151", slate800: "#1E293B", slate900: "#0F172A",
+  radius: { sm: 8, md: 12, lg: 16, xl: 20 },
+  shadow: { sm: "0 1px 2px rgba(15,23,42,0.05)", md: "0 4px 12px rgba(15,23,42,0.08)", hover: "0 8px 24px rgba(15,23,42,0.12)" },
+  font: "'DM Sans','Nunito',system-ui,sans-serif",
+};
+
 // ── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api',
@@ -14,8 +28,8 @@ const api = axios.create({
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const TYPE_COLORS = {
-  Database: { bg: '#daf5ff', border: '#b9cff8', text: '#2563eb' },
-  Files:    { bg: '#fef3c7', border: '#fde68a', text: '#d97706' },
+  Database: { bg: T.blue50, border: T.blue100, text: T.blue600 },
+  Files:    { bg: T.amber50, border: T.amber100, text: T.amber600 },
   Full:     { bg: '#ede9fe', border: '#ddd6fe', text: '#7c3aed' },
 };
 
@@ -41,7 +55,7 @@ const backupCards = [
     title: 'Full Backup',
     desc: 'Database + Uploaded files',
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#155dfc" strokeWidth="1.8">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.blue600} strokeWidth="1.8">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
         <polyline points="17 8 12 3 7 8"/>
         <line x1="12" y1="3" x2="12" y2="15"/>
@@ -53,7 +67,7 @@ const backupCards = [
     title: 'Database Only',
     desc: 'SQL dump of all tables',
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#155dfc" strokeWidth="1.8">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.blue600} strokeWidth="1.8">
         <ellipse cx="12" cy="5" rx="9" ry="3"/>
         <path d="M21 12c0 1.657-4.03 3-9 3S3 13.657 3 12"/>
         <path d="M3 5v14c0 1.657 4.03 3 9 3s9-1.343 9-3V5"/>
@@ -65,7 +79,7 @@ const backupCards = [
     title: 'Files Only',
     desc: 'Uploaded images & documents',
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#155dfc" strokeWidth="1.8">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.blue600} strokeWidth="1.8">
         <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
       </svg>
     ),
@@ -75,7 +89,7 @@ const backupCards = [
     title: 'Upload & Restore',
     desc: 'Restore from .sql or .zip backup',
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#155dfc" strokeWidth="1.8">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.blue600} strokeWidth="1.8">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
@@ -165,13 +179,13 @@ function RestoreProgressModal({ fileName, stage }) {
         </div>
         <h3
           className="font-semibold text-[17px] text-[#111111] m-0 mb-1"
-          style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+          style={{ fontFamily: T.font }}
         >
           {stage === 'done' ? 'Restore Complete' : 'Restoring Backup…'}
         </h3>
         <p
           className="text-[12px] text-[#888] m-0 mb-5 truncate max-w-full px-2"
-          style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+          style={{ fontFamily: T.font }}
         >
           {fileName}
         </p>
@@ -189,7 +203,7 @@ function RestoreProgressModal({ fileName, stage }) {
                   active ? 'bg-blue-50 text-blue-700 font-semibold' :
                            'text-gray-300'
                 }`}
-                style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+                style={{ fontFamily: T.font }}
               >
                 <span className="text-base leading-none">
                   {done ? '✓' : active ? <Spinner /> : '○'}
@@ -201,7 +215,7 @@ function RestoreProgressModal({ fileName, stage }) {
         </div>
 
         {stage !== 'done' && (
-          <p className="text-[11px] text-[#aaa] mt-4 m-0" style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}>
+          <p className="text-[11px] text-[#aaa] mt-4 m-0" style={{ fontFamily: T.font }}>
             This may take a few minutes. Do not close this tab.
           </p>
         )}
@@ -230,7 +244,7 @@ function RestoreConfirmModal({ file, onCancel, onConfirm }) {
         </div>
         <h3
           className="font-semibold text-[17px] text-[#111111] m-0 mb-2"
-          style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+          style={{ fontFamily: T.font }}
         >
           Restore from Backup?
         </h3>
@@ -257,7 +271,7 @@ function RestoreConfirmModal({ file, onCancel, onConfirm }) {
         {/* What will be restored */}
         <div
           className="w-full mb-4 text-left text-[12px]"
-          style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+          style={{ fontFamily: T.font }}
         >
           <p className="text-[#666] m-0 mb-2 font-semibold">This restore will:</p>
           <ul className="m-0 pl-4 text-[#555] space-y-1 list-disc">
@@ -280,7 +294,7 @@ function RestoreConfirmModal({ file, onCancel, onConfirm }) {
 
         <p
           className="text-[12px] text-red-500 font-semibold m-0 mb-5"
-          style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
+          style={{ fontFamily: T.font }}
         >
           ⚠️ This action cannot be undone. Make sure you have a current backup before proceeding.
         </p>
@@ -288,20 +302,50 @@ function RestoreConfirmModal({ file, onCancel, onConfirm }) {
         <div className="flex gap-2.5 w-full">
           <button
             className="flex-1 h-[38px] rounded-lg bg-transparent border border-[#cccccc] text-[#333333] text-[13px] font-medium cursor-pointer hover:bg-[#f5f5f5]"
-            style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+            style={{ fontFamily: T.font }}
             onClick={onCancel}
           >
             Cancel
           </button>
           <button
             className="flex-1 h-[38px] rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer border-none hover:bg-blue-700 transition-colors"
-            style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+            style={{ fontFamily: T.font }}
             onClick={onConfirm}
           >
             Restore Now
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ toasts }) {
+  return (
+    <div style={{
+      position: "fixed", bottom: 24, right: 24,
+      display: "flex", flexDirection: "column", gap: 8,
+      zIndex: 9999,
+    }}>
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          style={{
+            padding: "10px 16px",
+            borderRadius: T.radius.md,
+            fontSize: 13,
+            fontWeight: 500,
+            boxShadow: T.shadow.md,
+            border: `1px solid ${t.type === "error" ? T.red100 : T.green100}`,
+            background: t.type === "error" ? T.red50 : T.green50,
+            color: t.type === "error" ? T.red600 : T.green600,
+            fontFamily: T.font,
+          }}
+        >
+          {t.type === "error" ? "✗ " : "✓ "}{t.message}
+        </div>
+      ))}
     </div>
   );
 }
@@ -313,20 +357,19 @@ export default function AdminBackup() {
   const [loading,        setLoading]        = useState(true);
   const [runningKey,     setRunningKey]     = useState(null);
   const [deleteTarget,   setDeleteTarget]   = useState(null);
-  const [toastMsg,       setToastMsg]       = useState('');
-  const [toastType,      setToastType]      = useState('success');
+  const [toasts,         setToasts]         = useState([]);
 
   // ── Restore state ──────────────────────────────────────────────────────────
-  const [pendingRestoreFile, setPendingRestoreFile] = useState(null); // waiting for confirm
-  const [restoreStage,       setRestoreStage]       = useState(null); // null | 'uploading' | 'extracting' | 'db' | 'files' | 'done'
+  const [pendingRestoreFile, setPendingRestoreFile] = useState(null);
+  const [restoreStage,       setRestoreStage]       = useState(null);
 
   const fileInputRef = useRef(null);
 
-  // ── Toast ──────────────────────────────────────────────────────────────────
-  const showToast = useCallback((msg, type = 'success') => {
-    setToastMsg(msg);
-    setToastType(type);
-    setTimeout(() => setToastMsg(''), 4000);
+  // ── Toast helper ───────────────────────────────────────────────────────────
+  const toast = useCallback((message, type = "success") => {
+    const id = Date.now();
+    setToasts((p) => [...p, { id, message, type }]);
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000);
   }, []);
 
   // ── Fetch history ──────────────────────────────────────────────────────────
@@ -337,14 +380,14 @@ export default function AdminBackup() {
       if (res.data.status === 'success') {
         setBackups((res.data.data ?? []).map(normaliseBackup));
       } else {
-        showToast(res.data.message ?? 'Failed to load backups', 'error');
+        toast(res.data.message ?? 'Failed to load backups', 'error');
       }
     } catch (err) {
-      showToast(err.response?.data?.message ?? 'Network error – could not load backup history', 'error');
+      toast(err.response?.data?.message ?? 'Network error – could not load backup history', 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [toast]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -360,16 +403,16 @@ export default function AdminBackup() {
       if (res.data.status === 'success') {
         const newBackup = normaliseBackup(res.data.data);
         setBackups((prev) => [newBackup, ...prev]);
-        showToast(`✓ ${newBackup.type} backup completed successfully`);
+        toast(`✓ ${newBackup.type} backup completed successfully`);
       } else {
         const msg = typeof res.data.message === 'object'
           ? Object.values(res.data.message).flat().join(' ')
           : (res.data.message ?? 'Backup failed');
-        showToast(msg, 'error');
+        toast(msg, 'error');
       }
     } catch (err) {
       const msg = err.response?.data?.message ?? 'Network error – backup could not be started';
-      showToast(typeof msg === 'object' ? Object.values(msg).flat().join(' ') : msg, 'error');
+      toast(typeof msg === 'object' ? Object.values(msg).flat().join(' ') : msg, 'error');
     } finally {
       setRunningKey(null);
     }
@@ -378,17 +421,15 @@ export default function AdminBackup() {
   // ── File picker → validate → show confirm ─────────────────────────────────
   const handleFilePicked = (e) => {
     const file = e.target.files[0];
-    // Reset input so the same file can be picked again later
     e.target.value = '';
     if (!file) return;
 
     const validationError = validateRestoreFile(file);
     if (validationError) {
-      showToast(validationError, 'error');
+      toast(validationError, 'error');
       return;
     }
 
-    // Show confirmation modal with file details
     setPendingRestoreFile(file);
   };
 
@@ -402,24 +443,20 @@ export default function AdminBackup() {
     const ext   = file.name.split('.').pop()?.toLowerCase();
     const isZip = ext === 'zip';
 
-    // Start progress UI
     setRestoreStage('uploading');
 
     try {
       const formData = new FormData();
       formData.append('backup_file', file);
 
-      // Simulate multi-stage progress (server does it all in one request,
-      // but we step the UI to keep user informed)
       const stageTimer = (stage, delayMs) =>
         new Promise((res) => setTimeout(() => { setRestoreStage(stage); res(); }, delayMs));
 
       const uploadPromise = api.post('/admin/backups/restore', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 600_000, // 10 min for large backups
+        timeout: 600_000,
       });
 
-      // Visual stage progression (optimistic, actual work happens server-side)
       if (isZip) {
         await stageTimer('extracting', 1200);
         await stageTimer('db', 2500);
@@ -432,11 +469,9 @@ export default function AdminBackup() {
 
       if (res.data.status === 'success') {
         setRestoreStage('done');
-
-        // Auto-dismiss after 2.5s
         setTimeout(() => {
           setRestoreStage(null);
-          showToast(`✓ Restore from "${file.name}" completed successfully`);
+          toast(`✓ Restore from "${file.name}" completed successfully`);
           fetchHistory(true);
         }, 2500);
       } else {
@@ -444,20 +479,18 @@ export default function AdminBackup() {
         const msg = typeof res.data.message === 'object'
           ? Object.values(res.data.message).flat().join(' ')
           : (res.data.message ?? 'Restore failed');
-        showToast(msg, 'error');
+        toast(msg, 'error');
       }
     } catch (err) {
       setRestoreStage(null);
-
-      // Extract error from validation (422) or server (500)
       const errData = err.response?.data;
       if (errData?.type === 'validation' && errData?.message) {
         const msgs = typeof errData.message === 'object'
           ? Object.values(errData.message).flat().join(' ')
           : errData.message;
-        showToast(`Validation: ${msgs}`, 'error');
+        toast(`Validation: ${msgs}`, 'error');
       } else {
-        showToast(errData?.message ?? 'Network error – restore could not be completed', 'error');
+        toast(errData?.message ?? 'Network error – restore could not be completed', 'error');
       }
     }
   };
@@ -465,10 +498,10 @@ export default function AdminBackup() {
   // ── Download ───────────────────────────────────────────────────────────────
   const handleDownload = async (b) => {
     if (!b.id) {
-      showToast('Cannot download — backup ID is missing', 'error');
+      toast('Cannot download — backup ID is missing', 'error');
       return;
     }
-    showToast(`↓ Preparing download for ${b.filename}…`);
+    toast(`↓ Preparing download for ${b.filename}…`);
     try {
       const res = await api.get(`/admin/backups/${b.id}/download`, { responseType: 'blob' });
 
@@ -476,7 +509,7 @@ export default function AdminBackup() {
       if (contentType.includes('application/json')) {
         const text = await res.data.text();
         const json = JSON.parse(text);
-        showToast(json.message ?? 'Download failed', 'error');
+        toast(json.message ?? 'Download failed', 'error');
         return;
       }
 
@@ -493,12 +526,12 @@ export default function AdminBackup() {
         const text = await err.response.data.text();
         try {
           const json = JSON.parse(text);
-          showToast(json.message ?? 'Download failed', 'error');
+          toast(json.message ?? 'Download failed', 'error');
         } catch {
-          showToast('Download failed', 'error');
+          toast('Download failed', 'error');
         }
       } else {
-        showToast(err.response?.data?.message ?? 'Network error – download failed', 'error');
+        toast(err.response?.data?.message ?? 'Network error – download failed', 'error');
       }
     }
   };
@@ -511,231 +544,331 @@ export default function AdminBackup() {
       const res = await api.delete(`/admin/backups/${targetId}`);
       if (res.data.status === 'success') {
         setBackups((prev) => prev.filter((b) => b.id !== targetId));
-        showToast('Backup deleted successfully');
+        toast('Backup deleted successfully');
       } else {
-        showToast(res.data.message ?? 'Delete failed', 'error');
+        toast(res.data.message ?? 'Delete failed', 'error');
       }
     } catch (err) {
-      showToast(err.response?.data?.message ?? 'Network error – delete failed', 'error');
+      toast(err.response?.data?.message ?? 'Network error – delete failed', 'error');
     }
   };
 
   const handleRefresh = () => {
     fetchHistory();
-    showToast('✓ Backup list refreshed');
+    toast('✓ Backup list refreshed');
   };
+
+  // ── Stats for stat cards ───────────────────────────────────────────────────
+  const totalBackups = backups.length;
+  const totalSize = backups.reduce((acc, b) => {
+    const sizeInBytes = b.rawSize || 0;
+    return acc + sizeInBytes;
+  }, 0);
+  const formattedTotalSize = formatBytes(totalSize);
+  const latestBackup = backups[0]?.date || '—';
+
+  const statCards = [
+    { label: "Total Backups",  value: totalBackups, sub: "backups", bg: T.blue50, accent: T.blue600, icon: "💾" },
+    { label: "Total Size",     value: formattedTotalSize, sub: "stored", bg: T.amber50, accent: T.amber600, icon: "📦" },
+    { label: "Latest Backup",  value: latestBackup, sub: "created", bg: T.green50, accent: T.green600, icon: "🕐" },
+  ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen w-full bg-[#eaf2ed]">
+    <div style={{
+      display: "flex", minHeight: "100vh",
+      background: "#F0F4F8", fontFamily: T.font,
+    }}>
+      <style>{`
+        .ap-hamburger { display: flex; }
+        @media (min-width: 1024px) { .ap-hamburger { display: none !important; } }
+      `}</style>
+
+      <Toast toasts={toasts} />
+
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <div className="flex flex-1 min-w-0 flex-col bg-[#eaf2ed] overflow-y-auto">
-
-        {/* ── Mobile top bar ── */}
-        <div className="flex md:hidden items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-30">
-          <button
-            className="bg-transparent border-none text-xl cursor-pointer text-gray-700 flex items-center justify-center p-1 flex-shrink-0"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
-          >
-            ☰
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">💾</span>
-            <span className="font-bold text-[15px] text-gray-900" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
-              Backup &amp; Recovery
-            </span>
+      <main style={{
+        flex: 1, minWidth: 0, padding: "20px 20px",
+        overflowX: "hidden",
+      }}>
+        {/* Top bar */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, marginBottom: 20, background: "#fff", borderRadius: T.radius.lg,
+          padding: "12px 16px", border: `1px solid ${T.slate200}`,
+          boxShadow: T.shadow.sm, flexWrap: "wrap",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="ap-hamburger"
+              style={{
+                background: "none", border: `1px solid ${T.slate200}`,
+                borderRadius: T.radius.sm, width: 36, height: 36,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", fontSize: 18, color: T.slate700,
+              }}
+            >
+              ☰
+            </button>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.slate900, letterSpacing: "-0.3px" }}>Backup &amp; Recovery</h1>
+              <p style={{ margin: "1px 0 0", fontSize: 11, color: T.slate400 }}>Manage database and file backups</p>
+            </div>
           </div>
+          <button
+            onClick={handleRefresh}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "8px 14px", borderRadius: T.radius.sm,
+              border: `1px solid ${T.slate200}`, background: "#fff",
+              color: T.slate700, fontSize: 12, fontWeight: 600,
+              cursor: "pointer", transition: "background 0.12s", fontFamily: T.font,
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+            onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+          >
+            {loading ? "⟳ Loading…" : "⟳ Refresh"}
+          </button>
         </div>
 
-        <div className="flex-1 px-10 pt-8 pb-16 w-full box-border text-[#1e1e1e] max-lg:px-6 max-md:px-3 max-md:pt-4">
-
-          {/* ── Desktop page header ── */}
-          <div className="hidden md:flex items-start justify-between gap-4 mb-7 flex-wrap">
-            <div>
-              <h2 className="font-semibold text-2xl text-black m-0 mb-1 leading-tight" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
-                Backup &amp; Recovery
-              </h2>
-              <p className="text-sm text-[#6b6a6a] m-0" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
-                Manage database and file backups · Accepts .sql and .zip restore files
-              </p>
-            </div>
-            <button
-              className="inline-flex items-center gap-2 h-[38px] px-[18px] rounded-full border border-[#cac4d0] bg-transparent text-[13px] font-medium text-[#49454f] cursor-pointer transition-colors whitespace-nowrap hover:bg-[#f3f0f6]"
-              style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
-              onClick={handleRefresh}
-              aria-label="Refresh backup data"
+        {/* Stat Cards */}
+        <div style={{
+          display: "grid", gap: 10, marginBottom: 16,
+          gridTemplateColumns: "repeat(3, 1fr)",
+        }}>
+          {statCards.map((s) => (
+            <div
+              key={s.label}
+              style={{
+                background: "#fff", borderRadius: T.radius.lg, padding: "16px",
+                border: `1px solid ${T.slate200}`, boxShadow: T.shadow.sm,
+                position: "relative", overflow: "hidden", transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = T.shadow.hover; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = T.shadow.sm; }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="23 4 23 10 17 10"/>
-                <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-              </svg>
-              Refresh
-            </button>
-          </div>
-
-          {/* ── Restore info banner ── */}
-          <div
-            className="mb-6 flex items-start gap-3 px-4 py-3 rounded-xl border border-blue-200 bg-blue-50 text-[13px] text-blue-700"
-            style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
-          >
-            <span className="text-base mt-0.5">ℹ️</span>
-            <div>
-              <span className="font-semibold">Restore supports:</span>
-              {' '}<span className="font-mono bg-blue-100 px-1 rounded">.sql</span> plain SQL dumps and
-              {' '}<span className="font-mono bg-blue-100 px-1 rounded">.zip</span> full backups.
-              ZIP archives are automatically extracted — the database is imported and media folders
-              (<span className="font-mono text-[12px]">blog_images, featured_images, products, profile_images</span>)
-              are restored to their correct storage paths.
-            </div>
-          </div>
-
-          {/* ── Backup action cards ── */}
-          <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4">
-            {backupCards.map((card) => (
-              <div
-                key={card.key}
-                className="bg-white border border-[#c2c2c2] rounded-[15px] p-7 flex flex-col gap-1.5 transition-shadow hover:shadow-md"
-              >
-                <div className="w-9 h-9 flex items-center justify-center bg-[#eff6ff] rounded-lg mb-1 flex-shrink-0">
-                  {card.icon}
-                </div>
-                <h3 className="font-semibold text-sm text-[#111111] m-0" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
-                  {card.title}
-                </h3>
-                <p className="text-xs text-[#6b6a6a] m-0 mb-2.5 leading-snug" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
-                  {card.desc}
-                </p>
-                <button
-                  className="inline-flex items-center gap-1.5 h-8 px-3.5 border-none rounded-md bg-transparent text-[13px] font-medium text-[#1458b8] cursor-pointer transition-colors self-start mt-auto hover:bg-[#eff6ff] disabled:opacity-65 disabled:cursor-not-allowed"
-                  onClick={() => handleRunNow(card.key)}
-                  disabled={runningKey === card.key || restoreStage !== null}
-                  aria-label={`Run ${card.title}`}
-                >
-                  {runningKey === card.key ? (
-                    <Spinner />
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      {card.key === 'restore'
-                        ? <><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>
-                        : <polygon points="5 3 19 12 5 21 5 3"/>
-                      }
-                    </svg>
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: 3,
+                background: s.accent, borderRadius: `${T.radius.lg}px ${T.radius.lg}px 0 0`,
+              }} />
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{
+                    fontSize: 10, fontWeight: 600, color: T.slate400,
+                    textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6,
+                  }}>
+                    {s.label}
+                  </div>
+                  <div style={{
+                    fontSize: 28, fontWeight: 800, color: T.slate900,
+                    letterSpacing: "-0.5px", lineHeight: 1,
+                  }}>
+                    {s.value}
+                  </div>
+                  {s.sub && (
+                    <div style={{ fontSize: 10, color: T.slate400, marginTop: 4 }}>{s.sub}</div>
                   )}
-                  {runningKey === card.key
-                    ? 'Running…'
-                    : card.key === 'restore'
-                      ? 'Upload File'
-                      : 'Run Now'}
-                </button>
+                </div>
+                <div style={{
+                  width: 36, height: 36, borderRadius: T.radius.sm,
+                  background: s.bg, display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: 16, flexShrink: 0,
+                }}>
+                  {s.icon}
+                </div>
               </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Restore info banner */}
+        <div style={{
+          marginBottom: 16, padding: "12px 16px", borderRadius: T.radius.lg,
+          background: T.blue50, border: `1px solid ${T.blue100}`,
+          fontSize: 12, color: T.blue700, fontFamily: T.font,
+        }}>
+          <span style={{ fontWeight: 700 }}>ℹ️ Restore supports:</span>{" "}
+          <span className="font-mono" style={{ background: T.blue100, padding: "2px 6px", borderRadius: 4 }}>.sql</span> plain SQL dumps and{" "}
+          <span className="font-mono" style={{ background: T.blue100, padding: "2px 6px", borderRadius: 4 }}>.zip</span> full backups.
+          ZIP archives are automatically extracted — the database is imported and media folders restored.
+        </div>
+
+        {/* Backup action cards */}
+        <div style={{
+          display: "grid", gap: 12, marginBottom: 24,
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        }}>
+          {backupCards.map((card) => (
+            <div
+              key={card.key}
+              style={{
+                background: "#fff", borderRadius: T.radius.lg, padding: "16px",
+                border: `1px solid ${T.slate200}`, boxShadow: T.shadow.sm,
+                transition: "all 0.15s", display: "flex", flexDirection: "column",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = T.shadow.hover; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = T.shadow.sm; }}
+            >
+              <div style={{
+                width: 40, height: 40, borderRadius: T.radius.md,
+                background: T.blue50, display: "flex", alignItems: "center",
+                justifyContent: "center", marginBottom: 12,
+              }}>
+                {card.icon}
+              </div>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: T.slate800 }}>{card.title}</h3>
+              <p style={{ margin: "4px 0 12px 0", fontSize: 11, color: T.slate500 }}>{card.desc}</p>
+              <button
+                onClick={() => handleRunNow(card.key)}
+                disabled={runningKey === card.key || restoreStage !== null}
+                style={{
+                  marginTop: "auto", padding: "6px 12px", borderRadius: T.radius.sm,
+                  border: "none", background: T.blue600, color: "#fff",
+                  fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  transition: "background 0.12s", fontFamily: T.font,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  opacity: (runningKey === card.key || restoreStage !== null) ? 0.6 : 1,
+                }}
+                onMouseEnter={e => !(runningKey === card.key || restoreStage !== null) && (e.currentTarget.style.background = T.blue700)}
+                onMouseLeave={e => !(runningKey === card.key || restoreStage !== null) && (e.currentTarget.style.background = T.blue600)}
+              >
+                {runningKey === card.key ? (
+                  <Spinner />
+                ) : (
+                  <>
+                    {card.key === 'restore' ? '📂 Upload File' : '▶ Run Now'}
+                  </>
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={RESTORE_ACCEPT}
+          className="hidden"
+          onChange={handleFilePicked}
+        />
+
+        {/* Backup history table */}
+<div style={{
+  background: "#fff", borderRadius: T.radius.lg,
+  border: `1px solid ${T.slate200}`, overflow: "hidden", boxShadow: T.shadow.sm,
+}}>
+  <div style={{
+    padding: "12px 16px", borderBottom: `1px solid ${T.slate200}`,
+    background: "#fff",
+  }}>
+    <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: T.slate700 }}>Backup History</h3>
+  </div>
+  <div className="w-full overflow-x-auto">
+    {loading ? (
+      <div className="flex items-center justify-center gap-3 py-10 text-[13px] text-gray-500">
+        <Spinner lg />
+        <span>Loading backups…</span>
+      </div>
+    ) : (
+      <table className="w-full border-collapse text-sm min-w-[600px]" style={{ fontFamily: T.font }}>
+        <thead>
+          <tr className="bg-[#e6e6e6] border-b border-[#c2c2c2]">
+            {['Filename', 'Type', 'Size', 'Date', 'Status', 'Actions'].map((h) => (
+              <th
+                key={h}
+                className={`px-4 py-2.5 font-normal text-[13px] text-black text-left whitespace-nowrap ${h === 'Actions' ? 'text-center' : ''}`}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {backups.map((b) => {
+            const tc = TYPE_COLORS[b.type] ?? TYPE_COLORS.Database;
+            return (
+              <tr key={b.id} className="border-b border-[#c2c2c2] last:border-b-0 transition-colors hover:bg-[#f5faf7]">
+                <td className="px-4 py-[9px] align-middle text-[#696868] text-[13px] font-normal">{b.filename}</td>
+                <td className="px-4 py-[9px] align-middle">
+                  <span
+                    className="inline-flex items-center justify-center px-3 py-0.5 rounded-full border text-xs font-medium whitespace-nowrap"
+                    style={{ background: tc.bg, borderColor: tc.border, color: tc.text }}
+                  >
+                    {b.type}
+                  </span>
+                </td>
+                <td className="px-4 py-[9px] align-middle text-[#696868] text-[13px]">{b.size}</td>
+                <td className="px-4 py-[9px] align-middle text-[#696868] text-[13px] whitespace-nowrap">{b.date}</td>
+                <td className="px-4 py-[9px] align-middle">
+                  <span className="inline-flex items-center justify-center px-3 py-0.5 rounded-full border border-[#baeada] bg-[#e4f6f0] text-xs font-medium text-emerald-600 whitespace-nowrap">
+                    ● {b.status}
+                  </span>
+                </td>
+                <td className="px-4 py-[9px] align-middle text-center">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <button
+                      className="w-7 h-7 rounded-md flex items-center justify-center border-none cursor-pointer transition-colors bg-[#eff6ff] text-blue-600 hover:bg-[#dbeafe]"
+                      onClick={() => handleDownload(b)}
+                      title="Download"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </button>
+                    <button
+                      className="w-7 h-7 rounded-md flex items-center justify-center border-none cursor-pointer transition-colors bg-[#fef2f2] text-red-500 hover:bg-[#fee2e2]"
+                      onClick={() => setDeleteTarget(b.id)}
+                      title="Delete"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/>
+                        <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+          {backups.length === 0 && (
+            <tr>
+              <td colSpan={6} className="text-center py-8 text-[#aaaaaa] text-[13px]">
+                No backup records found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    )}
+  </div>
+</div>
+
+        {/* Pagination count */}
+        <div className="flex items-center justify-between mt-5 text-xs text-gray-400">
+          <span>Showing {backups.length} backup{backups.length !== 1 ? "s" : ""}</span>
+          <div className="flex gap-1.5">
+            {[1, 2, 3].map((p) => (
+              <button
+                key={p}
+                className={`w-7 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors
+                  ${p === 1
+                    ? "bg-blue-600 text-white border-none"
+                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                  }`}
+              >
+                {p}
+              </button>
             ))}
           </div>
-
-          {/* Hidden file input — accepts .sql and .zip */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={RESTORE_ACCEPT}
-            className="hidden"
-            onChange={handleFilePicked}
-          />
-
-          {/* ── Backup history ── */}
-          <div className="bg-white border border-[#c2c2c2] rounded-[15px] overflow-hidden">
-            <h3
-              className="font-normal text-[13px] text-black m-0 px-4 py-2.5 border-b border-[#c2c2c2] bg-white"
-              style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
-            >
-              Backup History
-            </h3>
-            <div className="w-full overflow-x-auto">
-              {loading ? (
-                <div className="flex items-center justify-center gap-3 py-10 text-[13px] text-gray-500">
-                  <Spinner lg />
-                  <span>Loading backups…</span>
-                </div>
-              ) : (
-                <table className="w-full border-collapse text-sm min-w-[600px]" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
-                  <thead>
-                    <tr className="bg-[#e6e6e6] border-b border-[#c2c2c2]">
-                      {['Filename', 'Type', 'Size', 'Date', 'Status', 'Actions'].map((h) => (
-                        <th
-                          key={h}
-                          className={`px-4 py-2.5 font-normal text-[13px] text-black text-left whitespace-nowrap ${h === 'Actions' ? 'text-center' : ''}`}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {backups.map((b) => {
-                      const tc = TYPE_COLORS[b.type] ?? TYPE_COLORS.Database;
-                      return (
-                        <tr key={b.id} className="border-b border-[#c2c2c2] last:border-b-0 transition-colors hover:bg-[#f5faf7]">
-                          <td className="px-4 py-[9px] align-middle text-[#696868] text-[13px] font-normal">{b.filename}</td>
-                          <td className="px-4 py-[9px] align-middle">
-                            <span
-                              className="inline-flex items-center justify-center px-3 py-0.5 rounded-full border text-xs font-medium whitespace-nowrap"
-                              style={{ background: tc.bg, borderColor: tc.border, color: tc.text }}
-                            >
-                              {b.type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-[9px] align-middle text-[#696868] text-[13px]">{b.size}</td>
-                          <td className="px-4 py-[9px] align-middle text-[#696868] text-[13px] whitespace-nowrap">{b.date}</td>
-                          <td className="px-4 py-[9px] align-middle">
-                            <span className="inline-flex items-center justify-center px-3 py-0.5 rounded-full border border-[#baeada] bg-[#e4f6f0] text-xs font-medium text-emerald-600 whitespace-nowrap">
-                              ● {b.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-[9px] align-middle text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                className="w-7 h-7 rounded-md flex items-center justify-center border-none cursor-pointer transition-colors bg-[#eff6ff] text-blue-600 hover:bg-[#dbeafe]"
-                                onClick={() => handleDownload(b)}
-                                title="Download"
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                                  <polyline points="7 10 12 15 17 10"/>
-                                  <line x1="12" y1="15" x2="12" y2="3"/>
-                                </svg>
-                              </button>
-                              <button
-                                className="w-7 h-7 rounded-md flex items-center justify-center border-none cursor-pointer transition-colors bg-[#fef2f2] text-red-500 hover:bg-[#fee2e2]"
-                                onClick={() => setDeleteTarget(b.id)}
-                                title="Delete"
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                  <polyline points="3 6 5 6 21 6"/>
-                                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-                                  <path d="M10 11v6M14 11v6"/>
-                                  <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {backups.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="text-center py-8 text-[#aaaaaa] text-[13px]">
-                          No backup records found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-
         </div>
-      </div>
+      </main>
 
       {/* ── Restore confirm modal ── */}
       {pendingRestoreFile && (
@@ -767,41 +900,29 @@ export default function AdminBackup() {
             <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4 text-2xl">
               🗑️
             </div>
-            <h3 className="font-semibold text-[17px] text-[#111111] m-0 mb-2.5" style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}>
+            <h3 className="font-semibold text-[17px] text-[#111111] m-0 mb-2.5" style={{ fontFamily: T.font }}>
               Delete Backup?
             </h3>
-            <p className="text-[13px] text-[#666666] leading-relaxed m-0 mb-6" style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}>
+            <p className="text-[13px] text-[#666666] leading-relaxed m-0 mb-6" style={{ fontFamily: T.font }}>
               This backup file will be permanently removed and cannot be recovered. Are you sure?
             </p>
             <div className="flex gap-2.5 w-full">
               <button
                 className="flex-1 h-[38px] rounded-lg bg-transparent border border-[#cccccc] text-[#333333] text-[13px] font-medium cursor-pointer hover:bg-[#f5f5f5]"
-                style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+                style={{ fontFamily: T.font }}
                 onClick={() => setDeleteTarget(null)}
               >
                 Cancel
               </button>
               <button
                 className="flex-1 h-[38px] rounded-lg bg-red-500 text-white text-[13px] font-medium cursor-pointer border-none hover:opacity-85"
-                style={{ fontFamily: 'Poppins, Helvetica, sans-serif' }}
+                style={{ fontFamily: T.font }}
                 onClick={confirmDelete}
               >
                 Delete
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ── Toast ── */}
-      {toastMsg && (
-        <div
-          className={`fixed bottom-7 left-1/2 -translate-x-1/2 text-white text-[13px] px-[22px] py-2.5 rounded-full shadow-lg z-[300] whitespace-nowrap ${
-            toastType === 'error' ? 'bg-red-600' : 'bg-[#111827]'
-          }`}
-          style={{ fontFamily: 'Inter, Helvetica, sans-serif' }}
-        >
-          {toastMsg}
         </div>
       )}
     </div>
