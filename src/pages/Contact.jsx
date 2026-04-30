@@ -7,7 +7,7 @@ const BASE = "http://127.0.0.1:8000/api";
 
 const CHAT_OPTIONS = [
   { icon: "✉️", label: "Send us an email",      value: "jem8circletrading@gmail.com", href: "mailto:jem8circletrading@gmail.com" },
-  { icon: "📘", label: "Message us on Facebook", value: "facebook.com/jem8circle",      href: "https://www.facebook.com/jem.cirle" },
+  { icon: "📘", label: "Message us on Facebook", value: "facebook.com/jem8circle",      href: "https://www.facebook.com/jem8circle.co" },
   { icon: "💬", label: "Start a live chat",      value: "Available Mon–Fri, 9am–5pm",  href: "/messages" },
 ];
 

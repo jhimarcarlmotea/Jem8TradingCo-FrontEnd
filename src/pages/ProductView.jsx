@@ -24,16 +24,102 @@ const resolveStock = (p) => Number(p?.product_stocks ?? p?.stock ?? 0);
 const resolveImg   = (img, fallback = "") =>
   img?.image_path ? `${BASE}/storage/${img.image_path}` : fallback;
 
-/* ── Star Rating (display) ── */
-function StarRating({ rating, count }) {
+/* ─────────────────────────────────────────────────────────────────────────────
+   RatingDisplay  –  shows average + breakdown bar chart
+   Replaces the old StarRating used in the info column.
+   Always derived from the live `reviewsList` state passed as props.
+───────────────────────────────────────────────────────────────────────────── */
+function RatingDisplay({ avgRating, count }) {
+  const r = parseFloat(avgRating) || 0;
+  return (
+    <div className="flex items-center gap-2">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span
+          key={s}
+          className={`text-lg ${s <= Math.round(r) ? "text-amber-400" : "text-gray-300"}`}
+        >
+          ★
+        </span>
+      ))}
+      <span className="ml-1 text-sm font-bold text-gray-700">{r.toFixed(1)}</span>
+      {count !== undefined && (
+        <span className="text-xs text-gray-400 ml-0.5">({count} review{count !== 1 ? "s" : ""})</span>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   StarRating  –  compact inline display (used inside individual review cards)
+───────────────────────────────────────────────────────────────────────────── */
+function StarRating({ rating }) {
   const r = parseFloat(rating) || 0;
   return (
     <div className="flex items-center gap-1">
-      {[1,2,3,4,5].map((s) => (
-        <span key={s} className={`text-lg ${s <= Math.round(r) ? "text-amber-400" : "text-gray-300"}`}>★</span>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span
+          key={s}
+          className={`text-base ${s <= Math.round(r) ? "text-amber-400" : "text-gray-300"}`}
+        >
+          ★
+        </span>
       ))}
-      <span className="ml-1 text-sm font-bold text-gray-700">{r.toFixed(1)}</span>
-      {count !== undefined && <span className="text-xs text-gray-400 ml-0.5">({count} reviews)</span>}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RatingSummaryBlock  –  big number + bar chart shown at top of reviews tab
+   Derives everything from the live reviewsList array.
+───────────────────────────────────────────────────────────────────────────── */
+function RatingSummaryBlock({ reviewsList }) {
+  const count = reviewsList.length;
+  if (count === 0) return null;
+
+  const avg = reviewsList.reduce((s, r) => s + Number(r.rating ?? r.stars ?? 0), 0) / count;
+
+  // tally per star (5 → 1)
+  const tally = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    n: reviewsList.filter((r) => Math.round(Number(r.rating ?? r.stars ?? 0)) === star).length,
+  }));
+
+  return (
+    <div
+      className="flex items-stretch gap-6 mb-6 p-5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]"
+      aria-label="Rating summary"
+    >
+      {/* Big average number */}
+      <div className="flex flex-col items-center justify-center pr-6 border-r border-[#e8f0eb] min-w-[100px]">
+        <span className="text-[56px] font-bold text-[#4d7b65] leading-none">{avg.toFixed(1)}</span>
+        <RatingDisplay avgRating={avg} count={undefined} />
+        <span className="text-xs text-[#6b7c70] mt-1">
+          {count} review{count !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Per-star bars */}
+      <div className="flex flex-col justify-center gap-1.5 flex-1">
+        {tally.map(({ star, n }) => {
+          const pct = count > 0 ? (n / count) * 100 : 0;
+          return (
+            <div key={star} className="flex items-center gap-2 text-xs">
+              <span className="text-amber-400 font-bold w-3 text-right">{star}</span>
+              <span className="text-amber-400 text-xs">★</span>
+              <div className="flex-1 h-2 rounded-full bg-[#e8f0eb] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${pct}%`,
+                    background: star >= 4 ? "#4d7b65" : star === 3 ? "#f59e0b" : "#ef4444",
+                  }}
+                />
+              </div>
+              <span className="text-gray-400 w-5 text-right">{n}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -42,22 +128,28 @@ function StarRating({ rating, count }) {
 function StarPicker({ value, onChange }) {
   const [hovered, setHovered] = useState(0);
   return (
-    <div className="flex gap-1">
-      {[1,2,3,4,5].map((s) => (
+    <div className="flex gap-1" role="radiogroup" aria-label="Star rating">
+      {[1, 2, 3, 4, 5].map((s) => (
         <button
           key={s}
           type="button"
+          role="radio"
+          aria-checked={value === s}
+          aria-label={`${s} star${s !== 1 ? "s" : ""}`}
           onClick={() => onChange(s)}
           onMouseEnter={() => setHovered(s)}
           onMouseLeave={() => setHovered(0)}
           style={{
-            background: "none", border: "none", cursor: "pointer",
-            fontSize: "32px", padding: "0 2px", lineHeight: 1,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "32px",
+            padding: "0 2px",
+            lineHeight: 1,
             color: s <= (hovered || value) ? "#f59e0b" : "#d1d5db",
             transition: "color 0.1s, transform 0.1s",
             transform: s <= (hovered || value) ? "scale(1.15)" : "scale(1)",
           }}
-          aria-label={`${s} star${s !== 1 ? "s" : ""}`}
         >
           ★
         </button>
@@ -92,12 +184,12 @@ function Skeleton() {
             }}
           />
           <div className="flex flex-col gap-3.5">
-            {[80,100,60,100,40].map((w,i) => (
+            {[80, 100, 60, 100, 40].map((w, i) => (
               <div
                 key={i}
                 style={{
-                  height: i===1 ? "28px" : "14px",
-                  width: `${Math.min(w,100)}%`,
+                  height: i === 1 ? "28px" : "14px",
+                  width: `${Math.min(w, 100)}%`,
                   background: "#e5ede9",
                   borderRadius: "6px",
                   animation: "shimmer 1.4s infinite",
@@ -133,7 +225,7 @@ function RelatedCard({ product }) {
           src={thumb}
           alt={name}
           className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
-          onError={(e) => { e.target.src = ph(300,300,name); }}
+          onError={(e) => { e.target.src = ph(300, 300, name); }}
         />
       </div>
       <div className="p-3.5">
@@ -146,7 +238,11 @@ function RelatedCard({ product }) {
   );
 }
 
-/* ── Review Form ── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   ReviewForm
+   – validates: rating required, comment required
+   – on success: calls onSubmitted(newReview) for optimistic update, then resets
+───────────────────────────────────────────────────────────────────────────── */
 function ReviewForm({ productId, user, onSubmitted }) {
   const [rating,     setRating]     = useState(0);
   const [comment,    setComment]    = useState("");
@@ -154,11 +250,12 @@ function ReviewForm({ productId, user, onSubmitted }) {
   const [success,    setSuccess]    = useState(false);
   const [error,      setError]      = useState(null);
 
-  const STAR_LABELS = ["","Terrible","Poor","Okay","Good","Excellent"];
+  const STAR_LABELS = ["", "Terrible", "Poor", "Okay", "Good", "Excellent"];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!rating) { setError("Please select a star rating."); return; }
+    if (!rating)        { setError("Please select a star rating."); return; }
+    if (!comment.trim()){ setError("Please write a review comment."); return; }
     setSubmitting(true);
     setError(null);
     try {
@@ -167,10 +264,10 @@ function ReviewForm({ productId, user, onSubmitted }) {
         { rating, review_text: comment },
         { withCredentials: true }
       );
+      onSubmitted?.({ rating, review_text: comment, created_at: new Date().toISOString() });
       setSuccess(true);
       setRating(0);
       setComment("");
-      if (onSubmitted) onSubmitted();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to submit review. Please try again.");
     } finally {
@@ -183,7 +280,9 @@ function ReviewForm({ productId, user, onSubmitted }) {
       <div className="mt-8 p-7 rounded-2xl text-center border border-[#a7f3d0] bg-gradient-to-br from-[#f0faf5] to-[#e6f7ef]">
         <div className="text-4xl mb-2.5">🎉</div>
         <h4 className="text-lg font-bold text-[#065f46] mb-2">Thank you for your review!</h4>
-        <p className="text-sm text-[#047857] mb-5">Your feedback helps other customers make better decisions.</p>
+        <p className="text-sm text-[#047857] mb-5">
+          Your feedback helps other customers make better decisions.
+        </p>
         <button
           onClick={() => setSuccess(false)}
           className="px-6 py-2.5 bg-[#4d7b65] text-white rounded-lg font-semibold text-sm cursor-pointer border-none"
@@ -199,6 +298,7 @@ function ReviewForm({ productId, user, onSubmitted }) {
       onSubmit={handleSubmit}
       className="mt-8 p-7 rounded-2xl bg-[#fafcfb] border border-[#e2ede8] shadow-[0_2px_12px_rgba(77,123,101,0.07)]"
     >
+      {/* Author header */}
       <div className="flex items-center gap-3 mb-5">
         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#4d7b65] to-[#2d5a42] text-white flex items-center justify-center text-base font-bold flex-shrink-0 shadow-[0_2px_8px_rgba(77,123,101,0.25)]">
           {(user?.name ?? user?.first_name ?? "?")[0].toUpperCase()}
@@ -208,16 +308,24 @@ function ReviewForm({ productId, user, onSubmitted }) {
           <div className="text-xs text-gray-500 mt-0.5">
             Posting as{" "}
             <strong className="text-gray-700">
-              {[user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.name || user?.email || "you"}
+              {[user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
+                user?.name ||
+                user?.email ||
+                "you"}
             </strong>
-            {user?.email && <span className="text-gray-400 ml-1.5">· {user.email}</span>}
+            {user?.email && (
+              <span className="text-gray-400 ml-1.5">· {user.email}</span>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Star picker */}
       <div className="mb-5">
-        <label className="block mb-2 text-xs font-semibold text-gray-700">Your Rating *</label>
-        <StarPicker value={rating} onChange={setRating} />
+        <label className="block mb-2 text-xs font-semibold text-gray-700">
+          Your Rating <span className="text-red-500">*</span>
+        </label>
+        <StarPicker value={rating} onChange={(v) => { setRating(v); setError(null); }} />
         {rating > 0 && (
           <span className="inline-block mt-1.5 text-xs font-semibold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
             {STAR_LABELS[rating]}
@@ -225,18 +333,25 @@ function ReviewForm({ productId, user, onSubmitted }) {
         )}
       </div>
 
+      {/* Comment */}
       <div className="mb-5">
-        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Your Review *</label>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+          Your Review <span className="text-red-500">*</span>
+        </label>
         <textarea
           value={comment}
-          onChange={(e) => setComment(e.target.value)}
+          onChange={(e) => { setComment(e.target.value); setError(null); }}
           placeholder="Share your experience with this product…"
           required
           rows={4}
           className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm resize-y outline-none transition-colors font-[inherit] focus:border-[#4d7b65] box-border"
         />
+        <div className="text-right text-xs text-gray-400 mt-0.5">
+          {comment.trim().length} characters
+        </div>
       </div>
 
+      {/* Inline validation error */}
       {error && (
         <div className="mb-4 px-3.5 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-medium flex items-center gap-2">
           ⚠️ {error}
@@ -245,24 +360,47 @@ function ReviewForm({ productId, user, onSubmitted }) {
 
       <button
         type="submit"
-        disabled={submitting || !comment.trim()}
+        disabled={submitting || !comment.trim() || !rating}
         className="flex items-center gap-2 py-3 text-sm font-bold text-white transition-all border-none px-7 rounded-xl"
         style={{
-          background: submitting || !comment.trim() ? "#9ca3af" : "linear-gradient(135deg,#4d7b65,#2d5a42)",
-          cursor: submitting || !comment.trim() ? "not-allowed" : "pointer",
-          boxShadow: submitting || !comment.trim() ? "none" : "0 4px 12px rgba(77,123,101,0.3)",
+          background:
+            submitting || !comment.trim() || !rating
+              ? "#9ca3af"
+              : "linear-gradient(135deg,#4d7b65,#2d5a42)",
+          cursor:
+            submitting || !comment.trim() || !rating ? "not-allowed" : "pointer",
+          boxShadow:
+            submitting || !comment.trim() || !rating
+              ? "none"
+              : "0 4px 12px rgba(77,123,101,0.3)",
         }}
       >
-        {submitting
-          ? <><span style={{ display:"inline-block", width:"14px", height:"14px", border:"2px solid rgba(255,255,255,0.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} /> Submitting…</>
-          : <>⭐ Submit Review</>
-        }
+        {submitting ? (
+          <>
+            <span
+              style={{
+                display: "inline-block",
+                width: "14px",
+                height: "14px",
+                border: "2px solid rgba(255,255,255,0.4)",
+                borderTopColor: "#fff",
+                borderRadius: "50%",
+                animation: "spin 0.7s linear infinite",
+              }}
+            />
+            Submitting…
+          </>
+        ) : (
+          <>⭐ Submit Review</>
+        )}
       </button>
     </form>
   );
 }
 
-/* ── Main Page ── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Main Page
+═══════════════════════════════════════════════════════════════════════════ */
 export default function ProductView() {
   const { id }                    = useParams();
   const navigate                  = useNavigate();
@@ -280,41 +418,63 @@ export default function ProductView() {
   const [activeTab,      setActiveTab]      = useState("overview");
   const [reviewRefresh,  setReviewRefresh]  = useState(0);
   const [currentUser,    setCurrentUser]    = useState(null);
+
+  /* ─── reviewsList is the single source of truth for ratings ─── */
   const [reviewsList,    setReviewsList]    = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
+  /* Derived rating values — always computed from live reviewsList */
+  const reviewCount = reviewsList.length;
+  const avgRating   = reviewCount > 0
+    ? reviewsList.reduce((sum, r) => sum + Number(r.rating ?? r.stars ?? 0), 0) / reviewCount
+    : 0;
+
+  /* ── Auth ── */
   useEffect(() => {
-    axios.get(`${BASE}/api/me`, { withCredentials: true })
-      .then(res => {
+    axios
+      .get(`${BASE}/api/me`, { withCredentials: true })
+      .then((res) => {
         const u = res.data?.data ?? res.data?.user ?? res.data;
-        setCurrentUser(u && typeof u === "object" && (u.id || u.user_id) ? u : false);
+        setCurrentUser(
+          u && typeof u === "object" && (u.id || u.user_id) ? u : false
+        );
       })
       .catch(() => setCurrentUser(false));
   }, []);
 
+  /* ── Fetch reviews — re-runs when reviewRefresh increments ── */
   useEffect(() => {
     if (!id) return;
     setReviewsLoading(true);
-    axios.get(`${BASE}/api/products/${id}/reviews`, { withCredentials: true })
+    axios
+      .get(`${BASE}/api/products/${id}/reviews`, { withCredentials: true })
       .then(async (res) => {
-        const list = Array.isArray(res.data) ? res.data : (res.data?.reviews ?? res.data?.data ?? []);
+        const list = Array.isArray(res.data)
+          ? res.data
+          : res.data?.reviews ?? res.data?.data ?? [];
+
         const hydrated = await Promise.all(
           list.map(async (r) => {
             if (r.user) return r;
             if (!r.user_id) return r;
             try {
               const acc = await axios.get(`${BASE}/api/findaccount/${r.user_id}`);
-              const u = acc.data?.data ?? acc.data?.user ?? acc.data;
+              const u   = acc.data?.data ?? acc.data?.user ?? acc.data;
               return { ...r, user: u };
-            } catch { return r; }
+            } catch {
+              return r;
+            }
           })
         );
+        /* Replace the entire list with server-confirmed data.
+           This clears any temp optimistic entries. */
         setReviewsList(hydrated);
       })
       .catch(() => setReviewsList([]))
       .finally(() => setReviewsLoading(false));
   }, [id, reviewRefresh]);
 
+  /* ── Fetch product ── */
   useEffect(() => {
     if (!id) return;
     const fetchProduct = async () => {
@@ -324,37 +484,43 @@ export default function ProductView() {
       setQty(1);
       setActiveTab("overview");
       try {
-      const [res, catRes] = await Promise.all([
-  axios.get(`${BASE}/api/products/${id}`, { withCredentials: true }),
-  axios.get(`${BASE}/api/categories`, { withCredentials: true }),
-]);
-const data = res.data?.product ?? res.data?.data ?? res.data;
-const catList = catRes.data?.categories ?? catRes.data?.data ?? catRes.data ?? [];
+        const [res, catRes] = await Promise.all([
+          axios.get(`${BASE}/api/products/${id}`, { withCredentials: true }),
+          axios.get(`${BASE}/api/categories`,     { withCredentials: true }),
+        ]);
+        const data    = res.data?.product ?? res.data?.data ?? res.data;
+        const catList = catRes.data?.categories ?? catRes.data?.data ?? catRes.data ?? [];
 
-// Attach category name if not already present
-if (data && !data.category && data.category_id) {
-  const matched = Array.isArray(catList)
-    ? catList.find(c => String(c.id ?? c.category_id) === String(data.category_id))
-    : null;
-  if (matched) {
-    data.category = { name: matched.name ?? matched.category_name ?? "" };
-  }
-}
-setProduct(data);
-        const catId = data?.category_id ?? data?.category?.id ?? data?.category?.category_id;
+        if (data && !data.category && data.category_id) {
+          const matched = Array.isArray(catList)
+            ? catList.find(
+                (c) => String(c.id ?? c.category_id) === String(data.category_id)
+              )
+            : null;
+          if (matched)
+            data.category = { name: matched.name ?? matched.category_name ?? "" };
+        }
+        setProduct(data);
+
+        const catId =
+          data?.category_id ?? data?.category?.id ?? data?.category?.category_id;
         if (catId) {
           try {
             const all  = await axios.get(`${BASE}/api/admin/products`, { withCredentials: true });
             const list = all.data?.data ?? all.data?.products ?? all.data;
             const rel  = (Array.isArray(list) ? list : [])
-              .filter(p => {
+              .filter((p) => {
                 const pCat = p.category_id ?? p.category?.id ?? p.category?.category_id;
                 const pId  = p.id ?? p.product_id;
-                return String(pCat) === String(catId) && String(pId) !== String(id);
+                return (
+                  String(pCat) === String(catId) && String(pId) !== String(id)
+                );
               })
               .slice(0, 4);
             setRelated(rel);
-          } catch { setRelated([]); }
+          } catch {
+            setRelated([]);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -383,52 +549,57 @@ setProduct(data);
     );
   }
 
-  const name        = resolveName(product);
-  const price       = resolvePrice(product);
-  const catLabel    = resolveCat(product);
-  const stock       = resolveStock(product);
-  const isOnSale    = product.isSale == 1;
-  const desc        = product.description ?? "";
-  const images      = product.images ?? [];
-  const mainSrc     = images[activeImg]?.image_path
+  const name      = resolveName(product);
+  const price     = resolvePrice(product);
+  const catLabel  = resolveCat(product);
+  const stock     = resolveStock(product);
+  const isOnSale  = product.isSale == 1;
+  const desc      = product.description ?? "";
+  const images    = product.images ?? [];
+  const mainSrc   = images[activeImg]?.image_path
     ? `${BASE}/storage/${images[activeImg].image_path}`
     : ph(600, 600, name);
-  const reviews     = reviewsList.length;
-  const avgRating   = reviews > 0
-    ? reviewsList.reduce((sum, r) => sum + Number(r.rating ?? r.stars ?? 0), 0) / reviews
-    : 0;
-  const productId   = product.product_id ?? product.id;
+
+  const productId = product.product_id ?? product.id;
 
   const callAddToCart = async () =>
-    axios.post(`${BASE}/api/cart/add`, { product_id: productId, quantity: qty }, { withCredentials: true });
+    axios.post(
+      `${BASE}/api/cart/add`,
+      { product_id: productId, quantity: qty },
+      { withCredentials: true }
+    );
 
   const handleAdd = async () => {
     if (cartLoading) return;
     const isBackorder = product.status === "pre_order";
-   
     setCartLoading(true);
     setCartError(null);
     const productToAdd = isBackorder ? { ...product, backorder: true } : product;
     try {
-      // attempt server add; if it fails we'll still add locally for backorders
       await callAddToCart();
       addToCart(productToAdd, qty);
       setAdded(true);
       setTimeout(() => setAdded(false), 2500);
       if (isBackorder) {
-        setCartError("Note: This item is out of stock and will be backordered; delivery may take longer.");
+        setCartError(
+          "Note: This item is out of stock and will be backordered; delivery may take longer."
+        );
         setTimeout(() => setCartError(null), 6000);
       }
     } catch (err) {
       if (isBackorder) {
-        // server likely rejected due to stock, but allow user to place backorder locally
         addToCart(productToAdd, qty);
         setCartError("Added as backorder — delivery may take longer.");
         setTimeout(() => setCartError(null), 6000);
       } else {
         const status = err.response?.status;
-        const msg    = err.response?.data?.message ?? err.response?.data?.error ?? "Failed to add to cart.";
-        setCartError(status === 401 ? "You must be logged in to add items to cart." : msg);
+        const msg =
+          err.response?.data?.message ??
+          err.response?.data?.error ??
+          "Failed to add to cart.";
+        setCartError(
+          status === 401 ? "You must be logged in to add items to cart." : msg
+        );
         setTimeout(() => setCartError(null), 4000);
       }
     } finally {
@@ -436,7 +607,7 @@ setProduct(data);
     }
   };
 
- const handleBuyNow = async () => {
+  const handleBuyNow = async () => {
     if (cartLoading) return;
     setCartLoading(true);
     setCartError(null);
@@ -459,18 +630,41 @@ setProduct(data);
       });
     } catch (err) {
       const status = err.response?.status;
-      const msg    = err.response?.data?.message ?? err.response?.data?.error ?? "Failed to add to cart.";
+      const msg =
+        err.response?.data?.message ??
+        err.response?.data?.error ??
+        "Failed to add to cart.";
       setCartError(status === 401 ? "You must be logged in to buy items." : msg);
       setTimeout(() => setCartError(null), 4000);
       setCartLoading(false);
     }
   };
 
-const isPreOrder  = product.status === "pre_order";
-const stockStatus = isPreOrder
-  ? { label: "Pre-Order", color: "#92400E", bg: "#FEF3C7" }
-  : { label: "In Stock",  color: "#059669", bg: "#D1FAE5" };
+  const isPreOrder  = product.status === "pre_order";
+  const stockStatus = isPreOrder
+    ? { label: "Pre-Order", color: "#92400E", bg: "#FEF3C7" }
+    : { label: "In Stock",  color: "#059669", bg: "#D1FAE5" };
 
+  /* ─────────────────────────────────────────────────────────────────────────
+     handleReviewSubmitted
+     1. Prepend a temporary optimistic entry → avgRating / reviewCount update
+        immediately (no flicker, no reload needed).
+     2. Trigger a background refetch → replaces temp entry with server data.
+  ───────────────────────────────────────────────────────────────────────── */
+  const handleReviewSubmitted = (newReview) => {
+    setReviewsList((prev) => [
+      {
+        ...newReview,
+        review_id: `temp-${Date.now()}`,
+        user: currentUser,
+      },
+      ...prev,
+    ]);
+    // Background sync — clears the temp entry once server responds
+    setReviewRefresh((n) => n + 1);
+    // Auto-switch to the reviews tab so the user sees their new review
+    setActiveTab("reviews");
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -481,9 +675,11 @@ const stockStatus = isPreOrder
         @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
-      {/* ── MAIN ── */}
-<section className="py-12 pb-16 mt-[75px]">
-          <div className="container grid items-start grid-cols-1 px-4 mx-auto md:grid-cols-2 gap-14">
+      {/* ══════════════════════════════════════════════════════════════
+          PRODUCT HERO
+      ══════════════════════════════════════════════════════════════ */}
+      <section className="py-12 pb-16 mt-[75px]">
+        <div className="container grid items-start grid-cols-1 px-4 mx-auto md:grid-cols-2 gap-14">
 
           {/* Image column */}
           <div>
@@ -495,19 +691,25 @@ const stockStatus = isPreOrder
                 onError={(e) => { e.target.src = ph(600, 600, name); }}
               />
               {isOnSale && (
-                <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-full">Sale</span>
+                <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-full">
+                  Sale
+                </span>
               )}
               {product.status === "pre_order" ? (
-                  <span className="absolute top-3 right-3 text-xs font-bold px-3.5 py-1.5 rounded-full"
-                    style={{ background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A" }}>
-                    Pre-Order
-                  </span>
-                ) : (
-                  <span className="absolute top-3 right-3 text-xs font-bold px-3.5 py-1.5 rounded-full"
-                    style={{ background: "#D1FAE5", color: "#059669", border: "1px solid #6EE7B7" }}>
-                    In Stock
-                  </span>
-                )}
+                <span
+                  className="absolute top-3 right-3 text-xs font-bold px-3.5 py-1.5 rounded-full"
+                  style={{ background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A" }}
+                >
+                  Pre-Order
+                </span>
+              ) : (
+                <span
+                  className="absolute top-3 right-3 text-xs font-bold px-3.5 py-1.5 rounded-full"
+                  style={{ background: "#D1FAE5", color: "#059669", border: "1px solid #6EE7B7" }}
+                >
+                  In Stock
+                </span>
+              )}
             </div>
 
             {images.length > 1 && (
@@ -518,16 +720,18 @@ const stockStatus = isPreOrder
                     onClick={() => setActiveImg(i)}
                     className="p-0 overflow-hidden transition-all rounded-lg cursor-pointer"
                     style={{
-                      width: "60px", height: "60px",
+                      width: "60px",
+                      height: "60px",
                       border: i === activeImg ? "2px solid #4d7b65" : "2px solid #e2e8f0",
-                      background: "#f8fafc", flexShrink: 0,
+                      background: "#f8fafc",
+                      flexShrink: 0,
                     }}
                   >
                     <img
                       src={`${BASE}/storage/${img.image_path}`}
-                      alt={`thumb-${i+1}`}
+                      alt={`thumb-${i + 1}`}
                       className="block object-cover w-full h-full"
-                      onError={(e) => { e.target.src = ph(60,60,""); }}
+                      onError={(e) => { e.target.src = ph(60, 60, ""); }}
                     />
                   </button>
                 ))}
@@ -537,23 +741,36 @@ const stockStatus = isPreOrder
 
           {/* Info column */}
           <div className="flex flex-col gap-4">
-
             <h1 className="text-[clamp(22px,3vw,32px)] font-bold text-[#1a2e22] leading-tight m-0">
               {name}
             </h1>
 
-            {reviews > 0
-              ? <StarRating rating={avgRating} count={reviews} />
-              : <div className="mb-2 text-xs text-gray-400">No reviews yet</div>
-            }
+            {/*
+              ★ KEY FIX: Use the derived `avgRating` and `reviewCount` here
+                instead of product.rating (static field from API).
+                Now updates instantly on every review submission.
+            */}
+            {reviewCount > 0 ? (
+              <RatingDisplay avgRating={avgRating} count={reviewCount} />
+            ) : (
+              <div className="text-xs text-gray-400 flex items-center gap-1.5">
+                <span className="text-gray-300 text-base">★★★★★</span>
+                No reviews yet —{" "}
+                <button
+                  onClick={() => setActiveTab("reviews")}
+                  className="text-[#4d7b65] underline bg-transparent border-none cursor-pointer p-0 text-xs font-medium"
+                >
+                  be the first!
+                </button>
+              </div>
+            )}
 
             <div
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3 w-fit"
               style={{ background: stockStatus.bg, color: stockStatus.color }}
             >
-             <span>●</span>
+              <span>●</span>
               {stockStatus.label}
-              
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -567,7 +784,9 @@ const stockStatus = isPreOrder
               )}
             </div>
 
-            {desc && <p className="m-0 text-sm leading-relaxed text-gray-600">{desc}</p>}
+            {desc && (
+              <p className="m-0 text-sm leading-relaxed text-gray-600">{desc}</p>
+            )}
 
             <hr className="border-none border-t border-[#e8f0eb] my-0" />
 
@@ -576,42 +795,63 @@ const stockStatus = isPreOrder
               <span className="text-sm font-semibold text-gray-700">Quantity</span>
               <div className="flex items-center border border-[#D1FAE5] rounded-xl overflow-hidden">
                 <button
-                  onClick={() => setQty(q => Math.max(1, q-1))}
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
                   className="w-[38px] h-[38px] border-none bg-[#f0faf5] text-[#4d7b65] text-lg font-bold cursor-pointer flex items-center justify-center"
-                >−</button>
-                <span className="min-w-[40px] text-center text-sm font-bold text-[#0F172A] bg-white">{qty}</span>
+                >
+                  −
+                </button>
+                <span className="min-w-[40px] text-center text-sm font-bold text-[#0F172A] bg-white">
+                  {qty}
+                </span>
                 <button
-                 onClick={() => setQty(q => q + 1)}
-                  disabled={false}
+                  onClick={() => setQty((q) => q + 1)}
                   className="w-[38px] h-[38px] border-none bg-[#f0faf5] text-[#4d7b65] text-lg font-bold cursor-pointer flex items-center justify-center"
-                  title={stock > 0 ? (qty >= stock ? `Max available: ${stock}` : "Increase quantity") : "Increase quantity"}
-                >+</button>
+                >
+                  +
+                </button>
               </div>
             </div>
 
-            {/* Actions */}
+            {/* CTA buttons */}
             <div className="flex flex-wrap gap-3 mt-2">
               <button
                 onClick={handleAdd}
                 disabled={cartLoading}
                 className="flex-1 min-w-[160px] py-3.5 px-6 text-white border-none rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
                 style={{
-                  background: added ? "#059669" : "linear-gradient(135deg,#4d7b65,#2d5a42)",
+                  background: added
+                    ? "#059669"
+                    : "linear-gradient(135deg,#4d7b65,#2d5a42)",
                   cursor: cartLoading ? "not-allowed" : "pointer",
                   opacity: cartLoading ? 0.7 : 1,
-                  boxShadow: added ? "none" : "0 4px 14px rgba(77,123,101,0.35)",
+                  boxShadow: added
+                    ? "none"
+                    : "0 4px 14px rgba(77,123,101,0.35)",
                 }}
-                onMouseEnter={e => { if(!cartLoading && !added) e.currentTarget.style.transform="translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
-                aria-disabled={cartLoading}
-                title={stock === 0 ? "Out of stock — you can still order; delivery may take longer" : "Add to cart"}
+                onMouseEnter={(e) => {
+                  if (!cartLoading && !added)
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
               >
-              
-                {cartLoading
-                  ? <span style={{ display:"inline-block", width:"18px", height:"18px", border:"2.5px solid rgba(255,255,255,0.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
-                  : <span className="text-lg">{added ? "✓" : "🛒"}</span>
-                    }
-                  {cartLoading ? "Adding..." : added ? "Added to Cart!" : "Add to Cart"}
+                {cartLoading ? (
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "18px",
+                      height: "18px",
+                      border: "2.5px solid rgba(255,255,255,0.4)",
+                      borderTopColor: "#fff",
+                      borderRadius: "50%",
+                      animation: "spin 0.7s linear infinite",
+                    }}
+                  />
+                ) : (
+                  <span className="text-lg">{added ? "✓" : "🛒"}</span>
+                )}
+                {cartLoading ? "Adding..." : added ? "Added to Cart!" : "Add to Cart"}
               </button>
 
               <button
@@ -624,10 +864,13 @@ const stockStatus = isPreOrder
                   opacity: cartLoading ? 0.7 : 1,
                   boxShadow: "0 4px 14px rgba(29,78,216,0.35)",
                 }}
-                onMouseEnter={e => { if(!cartLoading) e.currentTarget.style.transform="translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
-                aria-disabled={cartLoading}
-                title={stock === 0 ? "Out of stock — you can still order; delivery may take longer" : "Buy now"}
+                onMouseEnter={(e) => {
+                  if (!cartLoading)
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
               >
                 <span className="text-lg">⚡</span>
                 {product.status === "pre_order" ? "Pre-Order Now" : "Buy Now"}
@@ -635,31 +878,44 @@ const stockStatus = isPreOrder
             </div>
 
             {totalItems > 0 && (
-              <Link to="/cart" className="text-sm text-[#4d7b65] font-semibold no-underline hover:underline">
+              <Link
+                to="/cart"
+                className="text-sm text-[#4d7b65] font-semibold no-underline hover:underline"
+              >
                 View Cart ({totalItems} item{totalItems !== 1 ? "s" : ""}) →
               </Link>
             )}
 
-            {/* Start chat with admin */}
             <div className="mt-3">
-<StartChatWithAdmin
-  initialMessage={`Hello admin, I'm interested in ${name} (ID ${productId})`}
-  productId={productId}
-  productName={name}
-  productImage={images[0]?.image_path ? `${BASE}/storage/${images[0].image_path}` : null}
-  onStarted={({ chatroomId }) => {
-    const qp = new URLSearchParams();
-    qp.set('chatroom_id', chatroomId);
-    qp.set('product_id', productId);
-    qp.set('product_name', name);
-    navigate(`/messages?${qp.toString()}`);
-  }}
-/>
+              <StartChatWithAdmin
+                initialMessage={`Hello admin, I'm interested in ${name} (ID ${productId})`}
+                productId={productId}
+                productName={name}
+                productImage={
+                  images[0]?.image_path
+                    ? `${BASE}/storage/${images[0].image_path}`
+                    : null
+                }
+                onStarted={({ chatroomId }) => {
+                  const qp = new URLSearchParams();
+                  qp.set("chatroom_id", chatroomId);
+                  qp.set("product_id", productId);
+                  qp.set("product_name", name);
+                  navigate(`/messages?${qp.toString()}`);
+                }}
+              />
             </div>
 
             <div className="flex flex-wrap gap-2 mt-1">
-              {["🚚 Free delivery in Metro Manila","✅ Quality guaranteed","🔄 Easy returns"].map(t => (
-                <span key={t} className="text-xs px-3 py-1.5 bg-[#f0faf5] text-[#2d5a42] rounded-full border border-[#D1FAE5] font-medium">
+              {[
+                "🚚 Free delivery in Metro Manila",
+                "✅ Quality guaranteed",
+                "🔄 Easy returns",
+              ].map((t) => (
+                <span
+                  key={t}
+                  className="text-xs px-3 py-1.5 bg-[#f0faf5] text-[#2d5a42] rounded-full border border-[#D1FAE5] font-medium"
+                >
                   {t}
                 </span>
               ))}
@@ -669,17 +925,28 @@ const stockStatus = isPreOrder
               <div
                 className="flex items-center justify-between gap-2 px-4 py-3 mt-3 text-xs font-medium rounded-xl"
                 style={{
-                  background: cartError.includes("logged in") ? "#EFF6FF" : "#FEF2F2",
-                  border: `1px solid ${cartError.includes("logged in") ? "#BFDBFE" : "#FECACA"}`,
-                  color: cartError.includes("logged in") ? "#1D4ED8" : "#DC2626",
+                  background: cartError.includes("logged in")
+                    ? "#EFF6FF"
+                    : "#FEF2F2",
+                  border: `1px solid ${
+                    cartError.includes("logged in") ? "#BFDBFE" : "#FECACA"
+                  }`,
+                  color: cartError.includes("logged in")
+                    ? "#1D4ED8"
+                    : "#DC2626",
                 }}
               >
                 <span className="flex items-center gap-2">
-                  <span className="text-base">{cartError.includes("logged in") ? "🔒" : "⚠️"}</span>
+                  <span className="text-base">
+                    {cartError.includes("logged in") ? "🔒" : "⚠️"}
+                  </span>
                   {cartError}
                 </span>
                 {cartError.includes("logged in") && (
-                  <Link to="/login" className="font-bold text-[#1D4ED8] whitespace-nowrap no-underline px-2.5 py-1 bg-[#DBEAFE] rounded-md">
+                  <Link
+                    to="/login"
+                    className="font-bold text-[#1D4ED8] whitespace-nowrap no-underline px-2.5 py-1 bg-[#DBEAFE] rounded-md"
+                  >
                     Log in →
                   </Link>
                 )}
@@ -689,11 +956,14 @@ const stockStatus = isPreOrder
         </div>
       </section>
 
-      {/* ── TABS ── */}
+      {/* ══════════════════════════════════════════════════════════════
+          TABS
+      ══════════════════════════════════════════════════════════════ */}
       <section className="bg-[#f8faf9] border-t border-b border-[#e8f0eb] py-12">
         <div className="container px-4 mx-auto">
+          {/* Tab nav */}
           <div className="flex gap-1 border-b-2 border-[#e2e8f0] mb-8">
-            {["overview","specifications","reviews"].map(tab => (
+            {["overview", "specifications", "reviews"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -701,34 +971,52 @@ const stockStatus = isPreOrder
                 style={{
                   fontWeight: activeTab === tab ? 700 : 500,
                   color: activeTab === tab ? "#4d7b65" : "#64748B",
-                  borderBottom: activeTab === tab ? "2px solid #4d7b65" : "2px solid transparent",
+                  borderBottom:
+                    activeTab === tab
+                      ? "2px solid #4d7b65"
+                      : "2px solid transparent",
                   marginBottom: "-2px",
                   background: activeTab === tab ? "#f0faf5" : "transparent",
                 }}
               >
+                {/*
+                  ★ KEY FIX: Tab label uses live reviewCount (from reviewsList state),
+                    so it updates the moment a review is optimistically prepended.
+                */}
                 {tab === "reviews"
-                  ? `Reviews${reviews > 0 ? ` (${reviews})` : ""}`
-                  : tab.charAt(0).toUpperCase() + tab.slice(1)
-                }
+                  ? `Reviews${reviewCount > 0 ? ` (${reviewCount})` : ""}`
+                  : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
 
           <div className="bg-white rounded-xl p-7 min-h-[200px]">
 
-            {/* Overview */}
+            {/* ── Overview tab ── */}
             {activeTab === "overview" && (
               <div className="max-w-2xl">
-                <h3 className="text-lg font-bold text-[#1a2e22] mb-4">Product Overview</h3>
+                <h3 className="text-lg font-bold text-[#1a2e22] mb-4">
+                  Product Overview
+                </h3>
                 <p className="mb-4 text-sm leading-relaxed text-gray-600">
                   {desc || "No description available for this product."}
                 </p>
                 <p className="mb-4 text-sm leading-relaxed text-gray-600">
-                  JEM 8 Circle Trading Co. sources only quality-assured products for your business. This item is available for bulk ordering with discounted pricing for orders of 10 units or more. Contact us for bulk quotations.
+                  JEM 8 Circle Trading Co. sources only quality-assured products for your
+                  business. This item is available for bulk ordering with discounted pricing
+                  for orders of 10 units or more. Contact us for bulk quotations.
                 </p>
                 <div className="flex flex-col gap-2.5 mt-4">
-                  {["Premium quality materials","Suitable for office and commercial use","Available for bulk orders","Direct delivery to your office"].map(f => (
-                    <div key={f} className="text-sm text-gray-700 flex items-center gap-2.5">
+                  {[
+                    "Premium quality materials",
+                    "Suitable for office and commercial use",
+                    "Available for bulk orders",
+                    "Direct delivery to your office",
+                  ].map((f) => (
+                    <div
+                      key={f}
+                      className="text-sm text-gray-700 flex items-center gap-2.5"
+                    >
                       <span className="text-[#4d7b65] font-bold">✓</span> {f}
                     </div>
                   ))}
@@ -736,50 +1024,91 @@ const stockStatus = isPreOrder
               </div>
             )}
 
-            {/* Specifications */}
+            {/* ── Specifications tab ── */}
             {activeTab === "specifications" && (
               <div className="max-w-2xl">
-                <h3 className="text-lg font-bold text-[#1a2e22] mb-4">Specifications</h3>
+                <h3 className="text-lg font-bold text-[#1a2e22] mb-4">
+                  Specifications
+                </h3>
                 <table className="w-full text-sm border-collapse">
- <tbody>
-  {[
-    ["Category", catLabel || "—"],
-    ["Status", stockStatus.label, stockStatus.color],
-    ["On Sale", isOnSale ? "Yes" : "No"],
-    ...(product.unit  ? [["Unit",  product.unit]]  : []),
-    ...(product.size  ? [["Size",  product.size]]  : []),
-    ...(product.color ? [["Color", product.color]] : []),
-    ...(reviews > 0   ? [["Rating", `${avgRating.toFixed(1)} / 5.0 (${reviews} review${reviews !== 1 ? "s" : ""})`]] : []),
-    ...(product.created_at ? [["Listed", new Date(product.created_at).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })]] : []),
-  ].map(([label, value, color], i) => (
-    <tr key={i} className="border-b border-[#f0f4f1]">
-      <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">{label}</td>
-      <td className="px-4 py-3 text-gray-700" style={color ? { color, fontWeight: 600 } : {}}>{value}</td>
-    </tr>
-  ))}
-</tbody>
+                  <tbody>
+                    {[
+                      ["Category", catLabel || "—"],
+                      ["Status",   stockStatus.label, stockStatus.color],
+                      ["On Sale",  isOnSale ? "Yes" : "No"],
+                      ...(product.unit  ? [["Unit",  product.unit]]  : []),
+                      ...(product.size  ? [["Size",  product.size]]  : []),
+                      ...(product.color ? [["Color", product.color]] : []),
+                      /*
+                        ★ KEY FIX: Use derived avgRating / reviewCount — not
+                          product.rating which is static and never changes.
+                      */
+                      ...(reviewCount > 0
+                        ? [[
+                            "Rating",
+                            `${avgRating.toFixed(1)} / 5.0 (${reviewCount} review${
+                              reviewCount !== 1 ? "s" : ""
+                            })`,
+                          ]]
+                        : []),
+                      ...(product.created_at
+                        ? [[
+                            "Listed",
+                            new Date(product.created_at).toLocaleDateString("en-PH", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }),
+                          ]]
+                        : []),
+                    ].map(([label, value, color], i) => (
+                      <tr key={i} className="border-b border-[#f0f4f1]">
+                        <td className="px-4 py-3 font-semibold text-[#1a2e22] w-2/5 bg-[#f8faf9]">
+                          {label}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-gray-700"
+                          style={color ? { color, fontWeight: 600 } : {}}
+                        >
+                          {value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
             )}
 
-            {/* Reviews */}
+            {/* ── Reviews tab ── */}
             {activeTab === "reviews" && (
               <div className="max-w-full">
-                <h3 className="text-lg font-bold text-[#1a2e22] mb-4">Customer Reviews</h3>
+                <h3 className="text-lg font-bold text-[#1a2e22] mb-4">
+                  Customer Reviews
+                </h3>
 
-                {reviews > 0 && (
-                  <div className="flex items-center gap-6 mb-6 p-5 bg-[#f8faf9] rounded-xl border border-[#e8f0eb]">
-                    <div className="text-[56px] font-bold text-[#4d7b65] leading-none">{avgRating.toFixed(1)}</div>
-                    <div>
-                      <StarRating rating={avgRating} />
-                      <div className="text-xs text-[#6b7c70] mt-1">Based on {reviews} review{reviews !== 1 ? "s" : ""}</div>
-                    </div>
-                  </div>
-                )}
+                {/*
+                  ★ KEY FIX: RatingSummaryBlock reads directly from reviewsList.
+                    The big average number, star display, and per-star bar chart
+                    all recalculate the instant handleReviewSubmitted fires.
+                */}
+                <RatingSummaryBlock reviewsList={reviewsList} />
 
-                {reviewsLoading ? (
+                {/* Review list */}
+                {reviewsLoading && reviewsList.length === 0 ? (
                   <div className="py-8 text-sm text-center text-gray-400">
-                    <span style={{ display:"inline-block", width:"20px", height:"20px", border:"2.5px solid #d1d5db", borderTopColor:"#4d7b65", borderRadius:"50%", animation:"spin 0.7s linear infinite", marginRight:"10px", verticalAlign:"middle" }} />
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: "20px",
+                        height: "20px",
+                        border: "2.5px solid #d1d5db",
+                        borderTopColor: "#4d7b65",
+                        borderRadius: "50%",
+                        animation: "spin 0.7s linear infinite",
+                        marginRight: "10px",
+                        verticalAlign: "middle",
+                      }}
+                    />
                     Loading reviews…
                   </div>
                 ) : reviewsList.length === 0 ? (
@@ -789,43 +1118,83 @@ const stockStatus = isPreOrder
                   </div>
                 ) : (
                   reviewsList.map((r, i) => {
-                    const reviewer     = (r.user ? [r.user.first_name, r.user.last_name].filter(Boolean).join(" ") : null) ?? r.user?.name ?? r.name ?? "Anonymous";
+                    const reviewer =
+                      (r.user
+                        ? [r.user.first_name, r.user.last_name]
+                            .filter(Boolean)
+                            .join(" ")
+                        : null) ??
+                      r.user?.name ??
+                      r.name ??
+                      "Anonymous";
                     const reviewRating = Number(r.rating ?? r.stars ?? 0);
                     const reviewText   = r.review_text ?? r.comment ?? r.body ?? "";
                     const reviewDate   = r.created_at
-                      ? new Date(r.created_at).toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" })
+                      ? new Date(r.created_at).toLocaleDateString("en-PH", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })
                       : "";
-                    const repliedDate  = r.replied_at
-                      ? new Date(r.replied_at).toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" })
+                    const repliedDate = r.replied_at
+                      ? new Date(r.replied_at).toLocaleDateString("en-PH", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })
                       : "";
+                    const isOptimistic = String(
+                      r.review_id ?? r.id ?? ""
+                    ).startsWith("temp-");
+
                     return (
-                      <div key={r.review_id ?? r.id ?? i} className="p-5 bg-white rounded-xl border border-[#e8f0eb] mb-3">
-                        {/* Reviewer header */}
+                      <div
+                        key={r.review_id ?? r.id ?? i}
+                        className="p-5 bg-white rounded-xl border border-[#e8f0eb] mb-3 transition-all duration-300"
+                        style={
+                          isOptimistic
+                            ? { opacity: 0.78, borderStyle: "dashed" }
+                            : {}
+                        }
+                      >
                         <div className="flex items-center gap-3 mb-2.5">
                           <div className="w-10 h-10 rounded-full bg-[#3b5234] text-white flex items-center justify-center font-bold text-base flex-shrink-0">
                             {reviewer[0].toUpperCase()}
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-bold text-[#1a2e22]">{reviewer}</div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="text-sm font-bold text-[#1a2e22]">
+                                {reviewer}
+                              </div>
+                              {isOptimistic && (
+                                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                                  Saving…
+                                </span>
+                              )}
+                            </div>
                             <StarRating rating={reviewRating} />
                           </div>
                           {reviewDate && (
-                            <div className="text-xs text-gray-400 whitespace-nowrap">{reviewDate}</div>
+                            <div className="text-xs text-gray-400 whitespace-nowrap">
+                              {reviewDate}
+                            </div>
                           )}
                         </div>
 
-                        {/* Review text */}
                         {reviewText && (
-                          <p className="m-0 text-sm leading-relaxed text-gray-600">{reviewText}</p>
+                          <p className="m-0 text-sm leading-relaxed text-gray-600">
+                            {reviewText}
+                          </p>
                         )}
 
-                        {/* ── Admin Reply ── */}
                         {r.admin_reply && (
                           <div className="mt-3 px-3.5 py-3 rounded-lg bg-[#F0F7FF] border-l-[3px] border-[#155DFC]">
                             <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#155DFC] mb-1.5">
                               <span>💬</span> Admin Reply
                               {repliedDate && (
-                                <span className="ml-1 font-normal text-gray-400">· {repliedDate}</span>
+                                <span className="ml-1 font-normal text-gray-400">
+                                  · {repliedDate}
+                                </span>
                               )}
                             </div>
                             <p className="m-0 text-xs italic leading-relaxed text-gray-700">
@@ -838,22 +1207,26 @@ const stockStatus = isPreOrder
                   })
                 )}
 
-                {/* Write a review */}
+                {/* Review form / login prompt */}
                 <div className="border-t border-[#e2ede8] mt-8 pt-2">
                   {currentUser ? (
                     <ReviewForm
                       productId={productId}
                       user={currentUser}
-                      onSubmitted={() => setReviewRefresh(r => r + 1)}
+                      onSubmitted={handleReviewSubmitted}
                     />
                   ) : currentUser === false ? (
                     <div className="mt-6 p-5 rounded-xl bg-[#f8fafc] border border-dashed border-gray-300 text-center">
                       <div className="mb-2 text-3xl">🔒</div>
-                      <p className="text-sm text-gray-500 mb-3.5">You need to be logged in to write a review.</p>
+                      <p className="text-sm text-gray-500 mb-3.5">
+                        You need to be logged in to write a review.
+                      </p>
                       <Link
                         to="/login"
                         className="inline-block px-5 py-2.5 rounded-lg text-white font-semibold text-sm no-underline"
-                        style={{ background: "linear-gradient(135deg,#4d7b65,#2d5a42)" }}
+                        style={{
+                          background: "linear-gradient(135deg,#4d7b65,#2d5a42)",
+                        }}
                       >
                         Log in to Review →
                       </Link>
@@ -862,24 +1235,24 @@ const stockStatus = isPreOrder
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </section>
 
-      {/* ── RELATED ── */}
+      {/* ── Related products ── */}
       {related.length > 0 && (
         <section className="py-16">
           <div className="container px-4 mx-auto">
             <span className="section-label">More from this Category</span>
             <h2 className="mb-8 section-title">You May Also Like</h2>
             <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-              {related.map((p, i) => <RelatedCard key={p.id ?? i} product={p} />)}
+              {related.map((p, i) => (
+                <RelatedCard key={p.id ?? i} product={p} />
+              ))}
             </div>
           </div>
         </section>
       )}
-
     </div>
   );
 }
