@@ -3,6 +3,20 @@ import axios from "axios";
 import AdminNav from "../components/AdminNav";
 import { Link } from "react-router-dom";
 
+// ── Design tokens ────────────────────────────────────────────────────────────
+const T = {
+  blue50: "#EFF6FF", blue100: "#DBEAFE", blue500: "#3B82F6", blue600: "#2563EB", blue700: "#1D4ED8",
+  green50: "#ECFDF5", green100: "#D1FAE5", green500: "#10B981", green600: "#059669",
+  amber50: "#FFFBEB", amber100: "#FEF3C7", amber500: "#F59E0B", amber600: "#D97706",
+  red50: "#FEF2F2", red100: "#FEE2E2", red500: "#EF4444", red600: "#DC2626",
+  slate50: "#F8FAFC", slate100: "#F1F5F9", slate200: "#E2E8F0", slate300: "#CBD5E1",
+  slate400: "#94A3B8", slate500: "#64748B", slate600: "#475569",
+  slate700: "#374151", slate800: "#1E293B", slate900: "#0F172A",
+  radius: { sm: 8, md: 12, lg: 16, xl: 20 },
+  shadow: { sm: "0 1px 2px rgba(15,23,42,0.05)", md: "0 4px 12px rgba(15,23,42,0.08)", hover: "0 8px 24px rgba(15,23,42,0.12)" },
+  font: "'DM Sans','Nunito',system-ui,sans-serif",
+};
+
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api",
@@ -13,9 +27,12 @@ const api = axios.create({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function StarRating({ rating, max = 5 }) {
   return (
-    <div className="flex gap-0.5">
+    <div style={{ display: "flex", gap: 4 }}>
       {Array.from({ length: max }).map((_, i) => (
-        <span key={i} className={`text-sm ${i < rating ? "text-amber-400" : "text-gray-300"}`}>
+        <span key={i} style={{
+          fontSize: 14,
+          color: i < rating ? T.amber500 : T.slate300,
+        }}>
           ★
         </span>
       ))}
@@ -24,10 +41,30 @@ function StarRating({ rating, max = 5 }) {
 }
 
 const statusConfig = {
-  published: { className: "bg-[#C6FFC9] border border-[#76CD8C] text-[#247132]", label: "Published" },
-  approved:  { className: "bg-[#C6FFC9] border border-[#76CD8C] text-[#247132]", label: "Published" },
-  pending:   { className: "bg-gray-200 border border-[#DFDFDF] text-gray-700",    label: "Pending"   },
-  rejected:  { className: "bg-red-100 border border-red-300 text-red-800",        label: "Rejected"  },
+  published: { 
+    bg: T.green50, 
+    color: T.green600, 
+    border: T.green100,
+    label: "Published" 
+  },
+  approved: { 
+    bg: T.green50, 
+    color: T.green600, 
+    border: T.green100,
+    label: "Published" 
+  },
+  pending: { 
+    bg: T.slate100, 
+    color: T.slate600, 
+    border: T.slate200,
+    label: "Pending" 
+  },
+  rejected: { 
+    bg: T.red100, 
+    color: T.red600, 
+    border: T.red100,
+    label: "Rejected" 
+  },
 };
 
 function getStatusCfg(status) {
@@ -44,15 +81,25 @@ function formatDate(dateStr) {
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ toasts }) {
   return (
-    <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-[9999]">
+    <div style={{
+      position: "fixed", bottom: 24, right: 24,
+      display: "flex", flexDirection: "column", gap: 8,
+      zIndex: 9999,
+    }}>
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`px-4 py-2.5 rounded-lg text-[13px] font-medium shadow-md border ${
-            t.type === "error"
-              ? "bg-red-50 border-red-300 text-red-800"
-              : "bg-emerald-50 border-emerald-300 text-emerald-800"
-          }`}
+          style={{
+            padding: "10px 16px",
+            borderRadius: T.radius.md,
+            fontSize: 13,
+            fontWeight: 500,
+            boxShadow: T.shadow.md,
+            border: `1px solid ${t.type === "error" ? T.red100 : T.green100}`,
+            background: t.type === "error" ? T.red50 : T.green50,
+            color: t.type === "error" ? T.red600 : T.green600,
+            fontFamily: T.font,
+          }}
         >
           {t.type === "error" ? "✗ " : "✓ "}{t.message}
         </div>
@@ -64,20 +111,66 @@ function Toast({ toasts }) {
 // ─── Confirm Modal ────────────────────────────────────────────────────────────
 function ConfirmModal({ message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 bg-black/35 flex items-center justify-center z-[1000]">
-      <div data-overlay className="bg-white rounded-2xl p-7 max-w-sm w-[90%] shadow-2xl">
-        <div className="text-xl mb-2.5">🗑️</div>
-        <p className="mb-5 text-sm leading-relaxed text-gray-700">{message}</p>
-        <div className="flex justify-end gap-2">
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "rgba(15, 23, 42, 0.5)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000,
+    }}>
+      <div style={{
+        background: "#fff",
+        borderRadius: T.radius.xl,
+        padding: 28,
+        maxWidth: "90vw",
+        width: 320,
+        boxShadow: "0 24px 60px rgba(15,23,42,0.18)",
+        fontFamily: T.font,
+      }}>
+        <div style={{ fontSize: 20, marginBottom: 10 }}>🗑️</div>
+        <p style={{ 
+          margin: "0 0 20px 0",
+          fontSize: 14,
+          lineHeight: 1.5,
+          color: T.slate700,
+        }}>
+          {message}
+        </p>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <button
             onClick={onCancel}
-            className="px-4 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
+            style={{
+              padding: "6px 16px",
+              borderRadius: T.radius.md,
+              border: `1px solid ${T.slate300}`,
+              background: "#fff",
+              color: T.slate700,
+              fontSize: 14,
+              cursor: "pointer",
+              transition: "background 0.12s",
+              fontFamily: T.font,
+              fontWeight: 500,
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+            onMouseLeave={e => e.currentTarget.style.background = "#fff"}
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-1.5 rounded-lg border-none bg-red-600 text-white text-sm cursor-pointer font-semibold hover:bg-red-700 transition-colors"
+            style={{
+              padding: "6px 16px",
+              borderRadius: T.radius.md,
+              border: "none",
+              background: T.red600,
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer",
+              fontWeight: 600,
+              transition: "background 0.12s",
+              fontFamily: T.font,
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "#c41c1c"}
+            onMouseLeave={e => e.currentTarget.style.background = T.red600}
           >
             Delete
           </button>
@@ -150,10 +243,10 @@ export default function AdminReviews() {
     : "—";
 
   const statCards = [
-    { label: "Total Reviews",  value: total,     sub: null,       color: "bg-blue-50",    accent: "text-blue-600",   icon: "⭐" },
-    { label: "Average Rating", value: avgRating, sub: "out of 5", color: "bg-amber-50",   accent: "text-amber-600",  icon: "📊" },
-    { label: "Published",      value: published, sub: null,       color: "bg-emerald-50", accent: "text-emerald-600",icon: "✅" },
-    { label: "Pending",        value: pending,   sub: null,       color: "bg-red-50",     accent: "text-red-600",    icon: "⏳" },
+    { label: "Total Reviews",  value: total,     sub: null,       bg: T.blue50,    accent: T.blue600,    icon: "⭐" },
+    { label: "Average Rating", value: avgRating, sub: "out of 5", bg: T.amber50,   accent: T.amber600,   icon: "📊" },
+    { label: "Published",      value: published, sub: null,       bg: T.green50,   accent: T.green600,   icon: "✅" },
+    { label: "Pending",        value: pending,   sub: null,       bg: T.red50,     accent: T.red600,     icon: "⏳" },
   ];
 
   // ── tab filtering ─────────────────────────────────────────────────────────────
@@ -231,7 +324,15 @@ export default function AdminReviews() {
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-[#F0F7F2] font-sans">
+    <div style={{
+      display: "flex", minHeight: "100vh",
+     background: "#F0F4F8", fontFamily: T.font,
+    }}>
+
+      <style>{`
+        .ap-hamburger { display: flex; }
+        @media (min-width: 1024px) { .ap-hamburger { display: none !important; } }
+      `}</style>
       <Toast toasts={toasts} />
 
       {deletingId && (
@@ -244,75 +345,153 @@ export default function AdminReviews() {
 
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <main className="flex-1 min-w-0 px-6 overflow-x-hidden py-7">
+      <main style={{
+  flex: 1, minWidth: 0, padding: "20px 20px",
+  overflowX: "hidden",
+}}>
 
         {/* Top bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              className="lg:hidden bg-transparent border-none text-[22px] cursor-pointer text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100"
-              onClick={() => setSidebarOpen(true)}
-            >
-              ☰
-            </button>
-            <h1 className="m-0 text-xl font-bold text-gray-900">Reviews</h1>
-          </div>
-          <button
-            onClick={fetchReviews}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors"
-          >
-            {loading ? "⟳ Loading…" : "⟳ Refresh"}
-          </button>
-        </div>
+        <div style={{
+  display: "flex", alignItems: "center", justifyContent: "space-between",
+  gap: 12, marginBottom: 20, background: "#fff", borderRadius: T.radius.lg,
+  padding: "12px 16px", border: `1px solid ${T.slate200}`,
+  boxShadow: T.shadow.sm, flexWrap: "wrap",
+}}>
+  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <button
+      onClick={() => setSidebarOpen(true)}
+      className="ap-hamburger"
+      style={{
+        background: "none", border: `1px solid ${T.slate200}`,
+        borderRadius: T.radius.sm, width: 36, height: 36,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: "pointer", fontSize: 18, color: T.slate700,
+      }}
+    >
+      ☰
+    </button>
+    <div>
+      <h1 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.slate900, letterSpacing: "-0.3px" }}>Reviews</h1>
+      <p style={{ margin: "1px 0 0", fontSize: 11, color: T.slate400 }}>Manage customer reviews</p>
+    </div>
+  </div>
+  <button
+    onClick={fetchReviews}
+    style={{
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "8px 14px", borderRadius: T.radius.sm,
+      border: `1px solid ${T.slate200}`, background: "#fff",
+      color: T.slate700, fontSize: 12, fontWeight: 600,
+      cursor: "pointer", transition: "background 0.12s", fontFamily: T.font,
+    }}
+    onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+    onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+  >
+    {loading ? "⟳ Loading…" : "⟳ Refresh"}
+  </button>
+</div>
 
         {/* Stat Cards */}
-        <div className="grid gap-3.5 mb-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-          {statCards.map((s) => (
-            <div key={s.label} className="flex items-center justify-between px-4 py-4 bg-white shadow-sm rounded-xl">
-              <div>
-                <div className="text-[11px] text-gray-400 mb-1">{s.label}</div>
-                <div className={`text-[22px] font-bold ${s.accent}`}>{s.value}</div>
-                {s.sub && <div className="text-[11px] text-gray-400">{s.sub}</div>}
-              </div>
-              <div className={`w-10 h-10 rounded-xl ${s.color} flex items-center justify-center text-lg`}>
-                {s.icon}
-              </div>
-            </div>
-          ))}
+        <div style={{
+  display: "grid", gap: 10, marginBottom: 16,
+  gridTemplateColumns: "repeat(4, 1fr)",
+}}>
+  {statCards.map((s) => (
+    <div
+      key={s.label}
+      style={{
+        background: "#fff", borderRadius: T.radius.lg, padding: "16px",
+        border: `1px solid ${T.slate200}`, boxShadow: T.shadow.sm,
+        position: "relative", overflow: "hidden", transition: "all 0.15s",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = T.shadow.hover; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = T.shadow.sm; }}
+    >
+      {/* Accent top bar */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 3,
+        background: s.accent, borderRadius: `${T.radius.lg}px ${T.radius.lg}px 0 0`,
+      }} />
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+          <div style={{
+            fontSize: 10, fontWeight: 600, color: T.slate400,
+            textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6,
+          }}>
+            {s.label}
+          </div>
+          <div style={{
+            fontSize: 28, fontWeight: 800, color: T.slate900,
+            letterSpacing: "-0.5px", lineHeight: 1,
+          }}>
+            {s.value}
+          </div>
+          {s.sub && (
+            <div style={{ fontSize: 10, color: T.slate400, marginTop: 4 }}>{s.sub}</div>
+          )}
         </div>
+        <div style={{
+          width: 36, height: 36, borderRadius: T.radius.sm,
+          background: s.bg, display: "flex", alignItems: "center",
+          justifyContent: "center", fontSize: 16, flexShrink: 0,
+        }}>
+          {s.icon}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-5 flex-nowrap">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-lg border-none text-sm font-medium cursor-pointer transition-all whitespace-nowrap shrink-0
-                  ${isActive
-                    ? "bg-gray-900 text-white shadow-none"
-                    : "bg-white text-gray-700 shadow-sm hover:bg-gray-50"
-                  }`}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "nowrap" }}>
+  {tabs.map((tab) => {
+    const isActive = activeTab === tab;
+    return (
+      <button
+        key={tab}
+        onClick={() => setActiveTab(tab)}
+        style={{
+          padding: "7px 16px", borderRadius: T.radius.sm,
+          fontSize: 12, fontWeight: 600,
+          cursor: "pointer", transition: "all 0.12s", whiteSpace: "nowrap",
+          flexShrink: 0, fontFamily: T.font,
+          background: isActive ? T.blue600 : "#fff",
+          color: isActive ? "#fff" : T.slate600,
+          border: isActive ? "none" : `1px solid ${T.slate200}`,
+          boxShadow: isActive ? "0 2px 8px rgba(37,99,235,0.25)" : T.shadow.sm,
+        }}
+        onMouseEnter={e => !isActive && (e.currentTarget.style.background = T.slate50)}
+        onMouseLeave={e => !isActive && (e.currentTarget.style.background = "#fff")}
+      >
+        {tab}
+      </button>
+    );
+  })}
+</div>
 
         {/* Loading Skeleton */}
         {loading && (
-          <div className="flex flex-col gap-4">
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 16,
+          }}>
             {[1, 2, 3].map((n) => (
-              <div key={n} className="p-5 bg-white shadow-sm rounded-xl h-28 animate-pulse opacity-60" />
+              <div
+                key={n}
+                style={{
+                  padding: 20, background: "#fff", boxShadow: T.shadow.sm,
+                  borderRadius: T.radius.lg, height: 112, opacity: 0.6,
+                  animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                }}
+              />
             ))}
           </div>
         )}
 
         {/* Review Cards */}
         {!loading && (
-          <div className="flex flex-col gap-4">
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 16,
+          }}>
             {filtered.map((review) => {
               const rid        = review.review_id ?? review.id;
               const cfg        = getStatusCfg(review.status);
@@ -381,82 +560,152 @@ export default function AdminReviews() {
               return (
                 <div
                   key={rid}
-                  className="px-5 py-4 border border-gray-200 shadow-sm bg-white/90 rounded-xl"
+                  style={{
+                    padding: "20px", border: `1px solid ${T.slate200}`,
+                    boxShadow: T.shadow.sm, background: "#fff",
+                    borderRadius: T.radius.lg, fontFamily: T.font,
+                  }}
                 >
                   {/* Header row */}
-                  <div className="flex items-start justify-between flex-wrap gap-2.5 mb-2.5">
-                    <div className="flex items-start gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 text-sm font-bold text-white rounded-full shrink-0 bg-gradient-to-br from-blue-500 to-purple-600">
+                  <div style={{
+                    display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                    flexWrap: "wrap", gap: 10, marginBottom: 10,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        width: 40, height: 40, fontSize: 14, fontWeight: 700,
+                        color: "#fff", borderRadius: "50%", flexShrink: 0,
+                        background: "linear-gradient(135deg, #3B82F6, #8B5CF6)",
+                      }}>
                         {((userName && userName[0]) ? userName[0].toUpperCase() : 'U')}
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-gray-900">{userName}</div>
-                        <div className="text-[11px] text-gray-400">
+                        <div style={{
+                          fontSize: 14, fontWeight: 600, color: T.slate900,
+                        }}>
+                          {userName}
+                        </div>
+                        <div style={{ fontSize: 11, color: T.slate400, marginTop: 2 }}>
                           {userEmail}{userEmail && " · "}{formatDate(review.created_at ?? review.date)}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5">
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <StarRating rating={Number(review.rating)} />
-                      <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold ${cfg.className}`}>
+                      <span style={{
+                        padding: "4px 10px", borderRadius: T.radius.sm,
+                        fontSize: 11, fontWeight: 700,
+                        background: cfg.bg, color: cfg.color,
+                        border: `1px solid ${cfg.border}`,
+                      }}>
                         {cfg.label}
                       </span>
                     </div>
                   </div>
 
                   {/* Product tag */}
-{productName && (
-  <Link
-    to={`/products/${review.product?.id ?? review.product_id}`}
-    className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[rgba(77,123,101,0.12)] border border-[rgba(77,123,101,0.3)] text-gray-700 mb-2 hover:bg-[rgba(77,123,101,0.2)] transition"
-  >
-    📦 {productName}
-  </Link>
-)}
+                  {productName && (
+                    <Link
+                      to={`/products/${review.product?.id ?? review.product_id}`}
+                      style={{
+                        display: "inline-block", padding: "4px 10px",
+                        borderRadius: T.radius.sm, fontSize: 11, fontWeight: 500,
+                        background: "rgba(16,185,129,0.08)",
+                        border: "1px solid rgba(16,185,129,0.3)",
+                        color: T.slate700, marginBottom: 12,
+                        textDecoration: "none", transition: "background 0.12s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(16,185,129,0.15)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "rgba(16,185,129,0.08)"}
+                    >
+                      📦 {productName}
+                    </Link>
+                  )}
 
                   {/* Review text */}
-                  <p className="m-0 mb-3 text-xs font-medium leading-relaxed text-gray-700">
+                  <p style={{
+                    margin: "0 0 12px 0", fontSize: 12, fontWeight: 500,
+                    lineHeight: 1.6, color: T.slate700,
+                  }}>
                     {review.review_text ?? review.review}
                   </p>
 
                   {/* Admin reply */}
                   {review.admin_reply && !isReplying && (
-                    <div className="bg-gray-50 rounded-lg px-3.5 py-3 mb-3 border-l-[3px] border-blue-600">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-blue-600">Admin Reply</span>
+                    <div style={{
+                      background: T.slate50, borderRadius: T.radius.md,
+                      padding: "12px 14px", marginBottom: 12,
+                      borderLeft: `3px solid ${T.blue600}`,
+                    }}>
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        marginBottom: 4,
+                      }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, color: T.blue600,
+                        }}>
+                          Admin Reply
+                        </span>
                         {review.replied_at && (
-                          <span className="text-[10px] text-gray-400">{formatDate(review.replied_at)}</span>
+                          <span style={{ fontSize: 10, color: T.slate400 }}>
+                            {formatDate(review.replied_at)}
+                          </span>
                         )}
                       </div>
-                      <p className="m-0 text-xs leading-relaxed text-gray-600">{review.admin_reply}</p>
+                      <p style={{
+                        margin: 0, fontSize: 12, lineHeight: 1.6,
+                        color: T.slate600,
+                      }}>
+                        {review.admin_reply}
+                      </p>
                     </div>
                   )}
 
                   {/* Reply textarea */}
                   {isReplying && (
-                    <div className="mb-3">
+                    <div style={{ marginBottom: 12 }}>
                       <textarea
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         placeholder="Type your reply..."
                         rows={3}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-xs text-gray-700 resize-y outline-none font-[inherit] focus:border-blue-400 transition-colors"
+                        style={{
+                          width: "100%", padding: "10px 12px",
+                          border: `1px solid ${T.slate300}`, borderRadius: T.radius.md,
+                          fontSize: 12, color: T.slate700, fontFamily: T.font,
+                          outline: "none", boxSizing: "border-box", resize: "vertical",
+                          transition: "border-color 0.12s",
+                        }}
+                        onFocus={e => e.currentTarget.style.borderColor = T.blue500}
+                        onBlur={e => e.currentTarget.style.borderColor = T.slate300}
                       />
-                      <div className="flex gap-2 mt-2">
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                         <button
                           onClick={() => submitReply(rid)}
                           disabled={submitting}
-                          className={`px-4 py-1.5 rounded-md border-none text-white text-xs font-medium transition-colors ${
-                            submitting
-                              ? "bg-blue-300 cursor-not-allowed"
-                              : "bg-blue-600 cursor-pointer hover:bg-blue-700"
-                          }`}
+                          style={{
+                            padding: "6px 16px", borderRadius: T.radius.md,
+                            border: "none", color: "#fff", fontSize: 12,
+                            fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer",
+                            transition: "background 0.12s", fontFamily: T.font,
+                            background: submitting ? T.blue500 : T.blue600,
+                          }}
+                          onMouseEnter={e => !submitting && (e.currentTarget.style.background = "#1e40af")}
+                          onMouseLeave={e => !submitting && (e.currentTarget.style.background = T.blue600)}
                         >
                           {submitting ? "Submitting…" : "Submit Reply"}
                         </button>
                         <button
                           onClick={() => { setReplyingTo(null); setReplyText(""); }}
-                          className="px-4 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-xs cursor-pointer hover:bg-gray-50 transition-colors"
+                          style={{
+                            padding: "6px 16px", borderRadius: T.radius.md,
+                            border: `1px solid ${T.slate300}`, background: "#fff",
+                            color: T.slate700, fontSize: 12, cursor: "pointer",
+                            transition: "background 0.12s", fontFamily: T.font,
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+                          onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                         >
                           Cancel
                         </button>
@@ -465,13 +714,22 @@ export default function AdminReviews() {
                   )}
 
                   {/* Action row */}
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div style={{
+                    display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8,
+                  }}>
 
                     {/* Approve button — shown only when NOT published */}
                     {!isPublished && (
                       <button
                         onClick={() => updateStatus(rid, "approved")}
-                        className="px-3.5 py-1 rounded-md border border-emerald-400 bg-white text-emerald-700 text-xs cursor-pointer hover:bg-emerald-50 transition-colors font-medium"
+                        style={{
+                          padding: "4px 14px", borderRadius: T.radius.sm,
+                          border: `1px solid ${T.green500}`, background: "#fff",
+                          color: T.green600, fontSize: 12, fontWeight: 600,
+                          cursor: "pointer", transition: "background 0.12s", fontFamily: T.font,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = T.green50}
+                        onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                       >
                         ✓ Approve
                       </button>
@@ -481,7 +739,14 @@ export default function AdminReviews() {
                     {isPublished && (
                       <button
                         onClick={() => updateStatus(rid, "pending")}
-                        className="px-3.5 py-1 rounded-md border border-gray-400 bg-white text-gray-600 text-xs cursor-pointer hover:bg-gray-50 transition-colors font-medium"
+                        style={{
+                          padding: "4px 14px", borderRadius: T.radius.sm,
+                          border: `1px solid ${T.slate400}`, background: "#fff",
+                          color: T.slate600, fontSize: 12, fontWeight: 600,
+                          cursor: "pointer", transition: "background 0.12s", fontFamily: T.font,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+                        onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                       >
                         Unpublish
                       </button>
@@ -491,7 +756,14 @@ export default function AdminReviews() {
                     {!isReplying && (
                       <button
                         onClick={() => openReply(review)}
-                        className="px-3.5 py-1 rounded-md border border-gray-300 bg-white text-gray-700 text-xs cursor-pointer hover:bg-gray-50 transition-colors"
+                        style={{
+                          padding: "4px 14px", borderRadius: T.radius.sm,
+                          border: `1px solid ${T.slate300}`, background: "#fff",
+                          color: T.slate700, fontSize: 12, cursor: "pointer",
+                          transition: "background 0.12s", fontFamily: T.font,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+                        onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                       >
                         {review.admin_reply ? "Edit Reply" : "Reply"}
                       </button>
@@ -501,7 +773,14 @@ export default function AdminReviews() {
                     {review.admin_reply && !isReplying && (
                       <button
                         onClick={() => deleteReply(rid)}
-                        className="px-3.5 py-1 rounded-md border border-red-300 bg-white text-red-700 text-xs cursor-pointer hover:bg-red-50 transition-colors"
+                        style={{
+                          padding: "4px 14px", borderRadius: T.radius.sm,
+                          border: `1px solid ${T.red300}`, background: "#fff",
+                          color: T.red600, fontSize: 12, cursor: "pointer",
+                          transition: "background 0.12s", fontFamily: T.font,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = T.red50}
+                        onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                       >
                         Delete Reply
                       </button>
@@ -510,14 +789,27 @@ export default function AdminReviews() {
                     {/* Delete review button */}
                     <button
                       onClick={() => setDeletingId(rid)}
-                      className="px-3.5 py-1 rounded-md border border-[#C90000] bg-white text-[#9F0712] text-xs cursor-pointer hover:bg-red-50 transition-colors"
+                      style={{
+                        padding: "4px 14px", borderRadius: T.radius.sm,
+                        border: `1px solid ${T.red600}`, background: "#fff",
+                        color: T.red600, fontSize: 12, cursor: "pointer",
+                        transition: "background 0.12s", fontFamily: T.font,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.red50}
+                      onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                     >
                       Delete
                     </button>
 
-                    <span className="ml-auto text-xs font-medium text-gray-400">
+                    <span style={{
+                      marginLeft: "auto", fontSize: 12, fontWeight: 600,
+                      color: T.slate400, fontFamily: T.font,
+                    }}>
                       Rating:{" "}
-                      <span className={`font-semibold ${Number(review.rating) >= 4 ? "text-amber-500" : "text-red-700"}`}>
+                      <span style={{
+                        fontWeight: 700,
+                        color: Number(review.rating) >= 4 ? T.amber500 : T.red600,
+                      }}>
                         {review.rating}/5
                       </span>
                     </span>
@@ -527,7 +819,12 @@ export default function AdminReviews() {
             })}
 
             {filtered.length === 0 && (
-              <div className="p-10 text-sm text-center text-gray-400 bg-white shadow-sm rounded-xl">
+              <div style={{
+                padding: 40, fontSize: 14, textAlign: "center",
+                color: T.slate400, background: "#fff",
+                boxShadow: T.shadow.sm, borderRadius: T.radius.lg,
+                fontFamily: T.font,
+              }}>
                 No reviews found.
               </div>
             )}

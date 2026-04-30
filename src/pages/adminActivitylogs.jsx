@@ -2,38 +2,66 @@ import { useState, useEffect, useCallback } from "react";
 import AdminNav from "../components/AdminNav";
 import api from "../api/axios";
 
+// ── Design tokens (matching adminReview.jsx) ─────────────────────────────────
+const T = {
+  blue50: "#EFF6FF", blue100: "#DBEAFE", blue500: "#3B82F6", blue600: "#2563EB", blue700: "#1D4ED8",
+  green50: "#ECFDF5", green100: "#D1FAE5", green500: "#10B981", green600: "#059669",
+  amber50: "#FFFBEB", amber100: "#FEF3C7", amber500: "#F59E0B", amber600: "#D97706",
+  red50: "#FEF2F2", red100: "#FEE2E2", red500: "#EF4444", red600: "#DC2626",
+  violet50: "#F5F3FF", violet100: "#EDE9FE", violet500: "#8B5CF6", violet600: "#7C3AED",
+  orange50: "#FFF7ED", orange100: "#FFEDD5", orange500: "#F97316", orange600: "#EA580C",
+  rose50: "#FFF1F2", rose100: "#FFE4E6", rose500: "#F43F5E", rose600: "#E11D48",
+  emerald50: "#ECFDF5", emerald100: "#D1FAE5", emerald500: "#10B981", emerald600: "#059669",
+  slate50: "#F8FAFC", slate100: "#F1F5F9", slate200: "#E2E8F0", slate300: "#CBD5E1",
+  slate400: "#94A3B8", slate500: "#64748B", slate600: "#475569",
+  slate700: "#374151", slate800: "#1E293B", slate900: "#0F172A",
+  radius: { sm: 8, md: 12, lg: 16, xl: 20 },
+  shadow: { sm: "0 1px 2px rgba(15,23,42,0.05)", md: "0 4px 12px rgba(15,23,42,0.08)", hover: "0 8px 24px rgba(15,23,42,0.12)" },
+  font: "'DM Sans','Nunito',system-ui,sans-serif",
+};
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TABS = ["All", "Orders", "Stock", "Account", "Blogs", "Payments", "Backups"];
 
 const TAB_TO_CATEGORY = {
-  All:      "all",
-  Orders:   "orders",
-  Stock:    "stock",
-  Account:  "account",
-  Blogs:    "blogs",
+  All: "all",
+  Orders: "orders",
+  Stock: "stock",
+  Account: "account",
+  Blogs: "blogs",
   Payments: "payments",
-  Backups:  "backups",
+  Backups: "backups",
 };
 
 const BADGE_STYLES = {
-  orders:   "bg-blue-50 text-blue-600 border-blue-200",
-  stock:    "bg-green-50 text-green-700 border-green-200",
-  blogs:    "bg-orange-50 text-orange-700 border-orange-200",
-  backups:  "bg-violet-50 text-violet-700 border-violet-200",
-  payments: "bg-emerald-50 text-emerald-600 border-emerald-200",
-  account:  "bg-rose-50 text-rose-600 border-rose-200",
-  other:    "bg-gray-50 text-gray-600 border-gray-200",
+  orders: { bg: T.blue50, color: T.blue600, border: T.blue100 },
+  stock: { bg: T.green50, color: T.green600, border: T.green100 },
+  blogs: { bg: T.orange50, color: T.orange600, border: T.orange100 },
+  backups: { bg: T.violet50, color: T.violet600, border: T.violet100 },
+  payments: { bg: T.emerald50, color: T.emerald600, border: T.emerald100 },
+  account: { bg: T.rose50, color: T.rose600, border: T.rose100 },
+  other: { bg: T.slate50, color: T.slate600, border: T.slate200 },
 };
 
 const CATEGORY_ICONS = {
-  orders:   "🛒",
-  stock:    "📦",
-  blogs:    "📝",
-  backups:  "💾",
+  orders: "🛒",
+  stock: "📦",
+  blogs: "📝",
+  backups: "💾",
   payments: "💳",
-  account:  "👤",
-  other:    "📋",
+  account: "👤",
+  other: "📋",
+};
+
+const CATEGORY_GRADIENTS = {
+  orders: "linear-gradient(135deg, #3B82F6, #8B5CF6)",
+  stock: "linear-gradient(135deg, #10B981, #34D399)",
+  blogs: "linear-gradient(135deg, #F97316, #FBBF24)",
+  backups: "linear-gradient(135deg, #8B5CF6, #C084FC)",
+  payments: "linear-gradient(135deg, #059669, #10B981)",
+  account: "linear-gradient(135deg, #F43F5E, #FB7185)",
+  other: "linear-gradient(135deg, #64748B, #94A3B8)",
 };
 
 // ── Timezone for display (Asia/Manila = UTC+8) ────────────────────────────────
@@ -41,56 +69,47 @@ const DISPLAY_TZ = "Asia/Manila";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Convert an ISO 8601 string (with +08:00 offset supplied by the API) into a
- * human-readable date-group label in Asia/Manila timezone.
- *
- * Falls back to the raw `logged_at` string (e.g. "Jul 15 at 2:30 PM") from the
- * API if the ISO string is missing or unparseable.
- */
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    year: "numeric", month: "long", day: "numeric",
+  });
+}
+
 function groupLabel(log) {
-  // Prefer logged_at_iso (ISO 8601 with +08:00 offset) for reliable parsing
   const iso = log.logged_at_iso;
   if (iso) {
     try {
       return new Intl.DateTimeFormat("en-PH", {
         timeZone: DISPLAY_TZ,
         weekday: "long",
-        year:    "numeric",
-        month:   "long",
-        day:     "numeric",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       }).format(new Date(iso));
     } catch {
       // fall through
     }
   }
 
-  // Fallback: derive from logged_at_date (YYYY-MM-DD) if available
   if (log.logged_at_date) {
     try {
-      // Append T00:00:00+08:00 so the parser treats it as Manila midnight
       const d = new Date(`${log.logged_at_date}T00:00:00+08:00`);
       return new Intl.DateTimeFormat("en-PH", {
         timeZone: DISPLAY_TZ,
         weekday: "long",
-        year:    "numeric",
-        month:   "long",
-        day:     "numeric",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       }).format(d);
     } catch {
       return log.logged_at_date;
     }
   }
 
-  // Last resort: server-formatted string (e.g. "Jul 15 at 2:30 PM")
   return log.logged_at ?? "Unknown date";
 }
 
-/**
- * Format a time string for the right-side column.
- * Uses logged_at_time from the API (already Manila-formatted, e.g. "2:30 PM").
- * If that's absent, derives from the ISO string.
- */
 function displayTime(log) {
   if (log.logged_at_time) return log.logged_at_time;
 
@@ -98,9 +117,9 @@ function displayTime(log) {
     try {
       return new Intl.DateTimeFormat("en-PH", {
         timeZone: DISPLAY_TZ,
-        hour:     "numeric",
-        minute:   "2-digit",
-        hour12:   true,
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
       }).format(new Date(log.logged_at_iso));
     } catch {
       // fall through
@@ -110,26 +129,22 @@ function displayTime(log) {
   return "";
 }
 
-/**
- * Format the inline timestamp ("Jul 15 at 2:30 PM") for the log item body.
- */
 function displayInline(log) {
-  // API already returns this formatted: "Jul 15 at 2:30 PM"
   if (log.logged_at) return log.logged_at;
 
   if (log.logged_at_iso) {
     try {
       const date = new Intl.DateTimeFormat("en-PH", {
         timeZone: DISPLAY_TZ,
-        month:    "short",
-        day:      "numeric",
+        month: "short",
+        day: "numeric",
       }).format(new Date(log.logged_at_iso));
 
       const time = new Intl.DateTimeFormat("en-PH", {
         timeZone: DISPLAY_TZ,
-        hour:     "numeric",
-        minute:   "2-digit",
-        hour12:   true,
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
       }).format(new Date(log.logged_at_iso));
 
       return `${date} at ${time}`;
@@ -148,11 +163,6 @@ function buildBadge(log) {
   return log.category?.toUpperCase() ?? "LOG";
 }
 
-/**
- * Group a flat array of log items by their Manila-localised date label.
- * We do the grouping on the frontend using logged_at_iso so we're not dependent
- * on the server-side grouping (which can lag if the server clock is misconfigured).
- */
 function groupLogsByDate(logs) {
   const map = {};
   for (const log of logs) {
@@ -163,86 +173,295 @@ function groupLogsByDate(logs) {
   return map;
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function TabBar({ activeTab, onSelect }) {
+// ── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ toasts }) {
   return (
-    <div className="flex gap-2 flex-wrap mb-7">
-      {TABS.map((tab) => (
-        <button
-          key={tab}
-          onClick={() => onSelect(tab)}
-          className={`px-5 py-2 rounded-lg border text-sm font-[inherit] cursor-pointer shadow-sm transition-all
-            ${activeTab === tab
-              ? "bg-slate-900 text-white border-slate-900 font-semibold"
-              : "bg-white text-slate-500 border-gray-200 font-medium hover:bg-gray-50 hover:text-slate-900 hover:border-slate-300"
-            }`}
+    <div style={{
+      position: "fixed", bottom: 24, right: 24,
+      display: "flex", flexDirection: "column", gap: 8,
+      zIndex: 9999,
+    }}>
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          style={{
+            padding: "10px 16px",
+            borderRadius: T.radius.md,
+            fontSize: 13,
+            fontWeight: 500,
+            boxShadow: T.shadow.md,
+            border: `1px solid ${t.type === "error" ? T.red100 : T.green100}`,
+            background: t.type === "error" ? T.red50 : T.green50,
+            color: t.type === "error" ? T.red600 : T.green600,
+            fontFamily: T.font,
+          }}
         >
-          {tab}
-        </button>
+          {t.type === "error" ? "✗ " : "✓ "}{t.message}
+        </div>
       ))}
     </div>
   );
 }
 
+// ── Confirm Modal ────────────────────────────────────────────────────────────
+function ConfirmModal({ message, onConfirm, onCancel, loading }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "rgba(15, 23, 42, 0.5)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000,
+    }}>
+      <div style={{
+        background: "#fff",
+        borderRadius: T.radius.xl,
+        padding: 28,
+        maxWidth: "90vw",
+        width: 380,
+        boxShadow: "0 24px 60px rgba(15,23,42,0.18)",
+        fontFamily: T.font,
+        textAlign: "center",
+      }}>
+        <div style={{ fontSize: 40, marginBottom: 14 }}>⚠️</div>
+        <h3 style={{ 
+          margin: "0 0 8px 0", fontSize: 16, fontWeight: 700, 
+          color: T.slate900, letterSpacing: "-0.3px",
+        }}>
+          {message.title}
+        </h3>
+        <p style={{ 
+          margin: "0 0 24px 0", fontSize: 13, 
+          color: T.slate500, lineHeight: 1.5,
+        }}>
+          {message.body}
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            style={{
+              padding: "8px 20px",
+              borderRadius: T.radius.md,
+              border: `1px solid ${T.slate300}`,
+              background: "#fff",
+              color: T.slate700,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "background 0.12s",
+              fontFamily: T.font,
+            }}
+            onMouseEnter={e => !loading && (e.currentTarget.style.background = T.slate50)}
+            onMouseLeave={e => !loading && (e.currentTarget.style.background = "#fff")}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              padding: "8px 20px",
+              borderRadius: T.radius.md,
+              border: "none",
+              background: T.red600,
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "background 0.12s",
+              fontFamily: T.font,
+            }}
+            onMouseEnter={e => !loading && (e.currentTarget.style.background = "#c41c1c")}
+            onMouseLeave={e => !loading && (e.currentTarget.style.background = T.red600)}
+          >
+            {loading ? "Processing..." : "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Stat Card Component ──────────────────────────────────────────────────────
+function StatCard({ label, value, icon, bg, accent }) {
+  return (
+    <div
+      style={{
+        background: "#fff", borderRadius: T.radius.lg, padding: "16px",
+        border: `1px solid ${T.slate200}`, boxShadow: T.shadow.sm,
+        position: "relative", overflow: "hidden", transition: "all 0.15s",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = T.shadow.hover; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = T.shadow.sm; }}
+    >
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 3,
+        background: accent, borderRadius: `${T.radius.lg}px ${T.radius.lg}px 0 0`,
+      }} />
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+          <div style={{
+            fontSize: 10, fontWeight: 600, color: T.slate400,
+            textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6,
+          }}>
+            {label}
+          </div>
+          <div style={{
+            fontSize: 28, fontWeight: 800, color: T.slate900,
+            letterSpacing: "-0.5px", lineHeight: 1,
+          }}>
+            {value}
+          </div>
+        </div>
+        <div style={{
+          width: 36, height: 36, borderRadius: T.radius.sm,
+          background: bg, display: "flex", alignItems: "center",
+          justifyContent: "center", fontSize: 16, flexShrink: 0,
+        }}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tab Bar Component ────────────────────────────────────────────────────────
+function TabBar({ activeTab, onSelect, counts }) {
+  return (
+    <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      {TABS.map((tab) => {
+        const isActive = activeTab === tab;
+        return (
+          <button
+            key={tab}
+            onClick={() => onSelect(tab)}
+            style={{
+              padding: "7px 16px", borderRadius: T.radius.sm,
+              fontSize: 12, fontWeight: 600,
+              cursor: "pointer", transition: "all 0.12s", whiteSpace: "nowrap",
+              flexShrink: 0, fontFamily: T.font,
+              background: isActive ? T.blue600 : "#fff",
+              color: isActive ? "#fff" : T.slate600,
+              border: isActive ? "none" : `1px solid ${T.slate200}`,
+              boxShadow: isActive ? "0 2px 8px rgba(37,99,235,0.25)" : T.shadow.sm,
+            }}
+            onMouseEnter={e => !isActive && (e.currentTarget.style.background = T.slate50)}
+            onMouseLeave={e => !isActive && (e.currentTarget.style.background = "#fff")}
+          >
+            {tab}{counts[tab] !== undefined ? ` (${counts[tab]})` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Log Item Component ───────────────────────────────────────────────────────
 function LogItem({ log, onDelete }) {
-  const cat        = log.category ?? "other";
+  const cat = log.category ?? "other";
   const badgeStyle = BADGE_STYLES[cat] ?? BADGE_STYLES.other;
-  const icon       = CATEGORY_ICONS[cat] ?? "📋";
-  const badge      = buildBadge(log);
-  const amountStr  = log.amount ? ` · ₱${Number(log.amount).toFixed(2)}` : "";
+  const icon = CATEGORY_ICONS[cat] ?? "📋";
+  const gradient = CATEGORY_GRADIENTS[cat] ?? CATEGORY_GRADIENTS.other;
+  const badge = buildBadge(log);
+  const amountStr = log.amount ? ` · ₱${Number(log.amount).toFixed(2)}` : "";
 
   return (
-    <div className="flex items-start justify-between px-5 py-4 border-b border-slate-50 last:border-b-0 hover:bg-[#F8FBFF] transition-colors gap-4 max-md:flex-col max-md:gap-3">
-      {/* Left */}
-      <div className="flex items-start gap-3.5 flex-1 min-w-0">
-        {/* Category icon */}
-        <div className="w-[38px] h-[38px] rounded-lg bg-gray-50 border border-slate-100 flex items-center justify-center text-lg shrink-0">
+    <div style={{
+      display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+      padding: "20px", borderBottom: `1px solid ${T.slate100}`,
+      transition: "background 0.12s", gap: 16,
+    }}
+    onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+      
+      {/* Left side */}
+      <div style={{ display: "flex", gap: 14, flex: 1, minWidth: 0 }}>
+        {/* Icon with gradient background */}
+        <div style={{
+          width: 40, height: 40, borderRadius: T.radius.md,
+          background: gradient, display: "flex", alignItems: "center",
+          justifyContent: "center", fontSize: 18, flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        }}>
           {icon}
         </div>
 
         {/* Details */}
-        <div className="flex flex-col gap-1 min-w-0">
-          {/* Actor + action badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-bold text-slate-900">{log.user_name}</span>
-            <span className="text-xs text-slate-400 font-medium capitalize">({log.role ?? "user"})</span>
-            <span className="text-sm text-slate-500">{log.action}</span>
-
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono border ${badgeStyle}`}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.slate900 }}>
+              {log.user_name}
+            </span>
+            <span style={{ fontSize: 11, color: T.slate400, fontWeight: 500 }}>
+              ({log.role ?? "user"})
+            </span>
+            <span style={{ fontSize: 13, color: T.slate600 }}>
+              {log.action}
+            </span>
+            <span style={{
+              display: "inline-flex", alignItems: "center", padding: "2px 8px",
+              borderRadius: T.radius.sm, fontSize: 10, fontWeight: 600,
+              fontFamily: "monospace", background: badgeStyle.bg,
+              color: badgeStyle.color, border: `1px solid ${badgeStyle.border}`,
+            }}>
               {badge}{amountStr}
             </span>
-
             {log.mode_of_payment && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border bg-slate-50 text-slate-500 border-slate-200">
+              <span style={{
+                display: "inline-flex", alignItems: "center", padding: "2px 8px",
+                borderRadius: T.radius.sm, fontSize: 10, fontWeight: 500,
+                background: T.slate50, color: T.slate500, border: `1px solid ${T.slate200}`,
+              }}>
                 via {log.mode_of_payment}
               </span>
             )}
           </div>
 
-          {/* Auto-generated description */}
           {log.description && (
-            <p className="text-xs text-slate-500 m-0">{log.description}</p>
+            <p style={{ margin: "0 0 6px 0", fontSize: 12, color: T.slate500, lineHeight: 1.5 }}>
+              {log.description}
+            </p>
           )}
 
-          {/* Timestamp + category pill */}
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[11px] text-slate-400 font-mono">{displayInline(log)}</span>
-            <span className="inline-flex items-center px-2 py-px rounded bg-gray-50 border border-gray-200 text-[10px] font-bold text-slate-400 tracking-wide uppercase">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, color: T.slate400, fontFamily: "monospace" }}>
+              {displayInline(log)}
+            </span>
+            <span style={{
+              display: "inline-flex", alignItems: "center", padding: "2px 8px",
+              borderRadius: T.radius.sm, fontSize: 9, fontWeight: 700,
+              background: T.slate50, color: T.slate400, border: `1px solid ${T.slate200}`,
+              textTransform: "uppercase", letterSpacing: "0.3px",
+            }}>
               {cat}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Right */}
-      <div className="flex flex-col items-end gap-2.5 shrink-0 max-md:flex-row max-md:items-center max-md:w-full max-md:justify-between">
-        <span className="text-xs font-medium text-slate-400 font-mono whitespace-nowrap">
+      {/* Right side */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+        <span style={{ fontSize: 11, color: T.slate400, fontFamily: "monospace", fontWeight: 500 }}>
           {displayTime(log)}
         </span>
         <button
-          onClick={() => onDelete(log.id)}
-          className="px-3.5 py-1 rounded-md border border-red-200 bg-red-50 text-xs font-semibold text-red-500 cursor-pointer whitespace-nowrap hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+          onClick={() => onDelete(log)}
+          style={{
+            padding: "4px 12px", borderRadius: T.radius.sm,
+            border: `1px solid ${T.red200}`, background: T.red50,
+            fontSize: 11, fontWeight: 600, color: T.red600,
+            cursor: "pointer", transition: "all 0.12s", fontFamily: T.font,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = T.red600;
+            e.currentTarget.style.color = "#fff";
+            e.currentTarget.style.borderColor = T.red600;
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = T.red50;
+            e.currentTarget.style.color = T.red600;
+            e.currentTarget.style.borderColor = T.red200;
+          }}
         >
           Delete
         </button>
@@ -251,17 +470,29 @@ function LogItem({ log, onDelete }) {
   );
 }
 
+// ── Log Group Component ──────────────────────────────────────────────────────
 function LogGroup({ date, items, onDelete }) {
   return (
     <div>
       {/* Date divider */}
-      <div className="flex items-center gap-3.5 mb-3.5">
-        <span className="text-sm font-semibold text-slate-500 whitespace-nowrap tracking-tight">{date}</span>
-        <div className="flex-1 h-px bg-gray-200" />
+      <div style={{
+        display: "flex", alignItems: "center", gap: 14, marginBottom: 12,
+      }}>
+        <span style={{
+          fontSize: 13, fontWeight: 600, color: T.slate500,
+          letterSpacing: "-0.2px", whiteSpace: "nowrap",
+        }}>
+          {date}
+        </span>
+        <div style={{ flex: 1, height: 1, background: T.slate200 }} />
       </div>
 
       {/* Log card */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div style={{
+        background: "#fff", borderRadius: T.radius.lg,
+        border: `1px solid ${T.slate200}`, boxShadow: T.shadow.sm,
+        overflow: "hidden",
+      }}>
         {items.map((log) => (
           <LogItem key={log.id} log={log} onDelete={onDelete} />
         ))}
@@ -270,25 +501,47 @@ function LogGroup({ date, items, onDelete }) {
   );
 }
 
+// ── Pagination Component ──────────────────────────────────────────────────────
 function Pagination({ pagination, page, onPrev, onNext }) {
   if (!pagination || pagination.last_page <= 1) return null;
 
   return (
-    <div className="flex items-center justify-center gap-3 pt-2">
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      gap: 12, marginTop: 24,
+    }}>
       <button
         disabled={page <= 1}
         onClick={onPrev}
-        className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+        style={{
+          padding: "6px 16px", borderRadius: T.radius.sm,
+          border: `1px solid ${T.slate200}`, background: "#fff",
+          fontSize: 12, fontWeight: 500, color: T.slate600,
+          cursor: page <= 1 ? "not-allowed" : "pointer",
+          opacity: page <= 1 ? 0.5 : 1,
+          transition: "background 0.12s", fontFamily: T.font,
+        }}
+        onMouseEnter={e => page > 1 && (e.currentTarget.style.background = T.slate50)}
+        onMouseLeave={e => page > 1 && (e.currentTarget.style.background = "#fff")}
       >
         ← Prev
       </button>
-      <span className="text-sm text-slate-400 font-mono">
+      <span style={{ fontSize: 12, color: T.slate400, fontFamily: "monospace" }}>
         {pagination.current_page} / {pagination.last_page}
       </span>
       <button
         disabled={page >= pagination.last_page}
         onClick={onNext}
-        className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+        style={{
+          padding: "6px 16px", borderRadius: T.radius.sm,
+          border: `1px solid ${T.slate200}`, background: "#fff",
+          fontSize: 12, fontWeight: 500, color: T.slate600,
+          cursor: page >= pagination.last_page ? "not-allowed" : "pointer",
+          opacity: page >= pagination.last_page ? 0.5 : 1,
+          transition: "background 0.12s", fontFamily: T.font,
+        }}
+        onMouseEnter={e => page < pagination.last_page && (e.currentTarget.style.background = T.slate50)}
+        onMouseLeave={e => page < pagination.last_page && (e.currentTarget.style.background = "#fff")}
       >
         Next →
       </button>
@@ -296,64 +549,52 @@ function Pagination({ pagination, page, onPrev, onNext }) {
   );
 }
 
-function ConfirmModal({ onClose, onConfirm, loading, icon, title, body, confirmLabel }) {
-  return (
-    <div
-      onClick={() => !loading && onClose()}
-      className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-5"
-      style={{ animation: "overlayIn 0.2s ease" }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-[18px] p-8 w-full max-w-[380px] text-center shadow-[0_16px_48px_rgba(15,23,42,0.14),0_4px_16px_rgba(15,23,42,0.06)] border border-slate-100"
-        style={{ animation: "modalIn 0.2s ease" }}
-      >
-        <span className="text-[40px] block mb-3.5">{icon}</span>
-        <h3 className="text-base font-bold text-slate-900 m-0 mb-2 tracking-tight">{title}</h3>
-        <p className="text-sm text-slate-400 m-0 mb-6 leading-relaxed">{body}</p>
-        <div className="flex gap-2.5 justify-center">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-5 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-slate-500 cursor-pointer hover:bg-gray-50 hover:text-slate-900 transition-colors font-[inherit] disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="px-5 py-2 rounded-lg border-none bg-red-500 text-sm font-semibold text-white cursor-pointer shadow-[0_2px_8px_rgba(239,68,68,0.3)] hover:bg-red-600 hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(239,68,68,0.4)] transition-all font-[inherit] disabled:opacity-50"
-          >
-            {loading ? "Please wait…" : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
-
+// ── Main Component ───────────────────────────────────────────────────────────
 export default function AdminActivityLog() {
-  const [sidebarOpen,   setSidebarOpen]   = useState(false);
-  const [activeTab,     setActiveTab]     = useState("All");
-  const [search,        setSearch]        = useState("");
-
-  // Raw flat list from API — we do client-side grouping for reliable TZ display
-  const [logs,          setLogs]          = useState([]);
-  // Grouped map derived from logs
-  const [grouped,       setGrouped]       = useState({});
-
-  const [pagination,    setPagination]    = useState(null);
-  const [page,          setPage]          = useState(1);
-  const [loading,       setLoading]       = useState(false);
-  const [error,         setError]         = useState(null);
-  const [deleteId,      setDeleteId]      = useState(null);
-  const [deletingAll,   setDeletingAll]   = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("All");
+  const [search, setSearch] = useState("");
+  const [logs, setLogs] = useState([]);
+  const [grouped, setGrouped] = useState({});
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [toasts, setToasts] = useState([]);
 
-  // ── Fetch ───────────────────────────────────────────────────────────────────
+  // Toast helper
+  const toast = useCallback((message, type = "success") => {
+    const id = Date.now();
+    setToasts((p) => [...p, { id, message, type }]);
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 3500);
+  }, []);
 
+  // Category counts
+  const categoryCounts = TABS.reduce((acc, tab) => {
+    if (tab === "All") {
+      acc[tab] = logs.length;
+    } else {
+      const category = TAB_TO_CATEGORY[tab];
+      acc[tab] = logs.filter(log => log.category === category).length;
+    }
+    return acc;
+  }, {});
+
+  const totalLogs = logs.length;
+
+  // Stats for stat cards
+  const uniqueUsers = new Set(logs.map(log => log.user_name)).size;
+  const statCards = [
+    { label: "Total Activities", value: totalLogs, icon: "📊", bg: T.blue50, accent: T.blue600 },
+    { label: "Unique Users", value: uniqueUsers, icon: "👥", bg: T.violet50, accent: T.violet600 },
+    { label: "Categories", value: Object.keys(grouped).length, icon: "🏷️", bg: T.amber50, accent: T.amber600 },
+    { label: "Pages", value: pagination?.last_page || 1, icon: "📄", bg: T.green50, accent: T.green600 },
+  ];
+
+  // Fetch logs
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -367,176 +608,278 @@ export default function AdminActivityLog() {
       });
 
       if (res.data.status === "success") {
-        // The server returns grouped logs — flatten them so we can re-group
-        // on the frontend using the ISO timestamp for correct TZ handling.
         const serverGrouped = res.data.data.grouped ?? {};
         const flat = Object.values(serverGrouped).flat();
-
-        // Re-group using client-side Manila TZ conversion
         setLogs(flat);
         setGrouped(groupLogsByDate(flat));
         setPagination(res.data.data.pagination ?? null);
       }
     } catch (err) {
-      setError(err.response?.data?.message ?? err.message);
+      const errorMsg = err.response?.data?.message ?? err.message;
+      setError(errorMsg);
+      toast(errorMsg, "error");
     } finally {
       setLoading(false);
     }
-  }, [activeTab, search, page]);
+  }, [activeTab, search, page, toast]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
-
-  // Reset page when filter changes
   useEffect(() => { setPage(1); }, [activeTab, search]);
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
-
+  // Delete single log
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteTarget) return;
     setActionLoading(true);
     try {
-      await api.delete(`/admin/activity-logs/${deleteId}`);
-      setDeleteId(null);
+      await api.delete(`/admin/activity-logs/${deleteTarget.id}`);
+      toast("Activity log deleted successfully.");
+      setDeleteTarget(null);
       fetchLogs();
     } catch (err) {
-      alert(`Delete failed: ${err.response?.data?.message ?? err.message}`);
+      toast(err.response?.data?.message ?? "Delete failed.", "error");
     } finally {
       setActionLoading(false);
     }
   };
 
+  // Delete all logs in current category
   const handleDeleteAll = async () => {
     setActionLoading(true);
     try {
       await api.delete(`/admin/activity-logs`, {
         params: { category: TAB_TO_CATEGORY[activeTab] ?? "all" },
       });
-      setDeletingAll(false);
+      toast(`All ${activeTab !== "All" ? activeTab : ""} logs cleared successfully.`);
+      setDeleteAllConfirm(false);
       fetchLogs();
     } catch (err) {
-      alert(`Clear failed: ${err.response?.data?.message ?? err.message}`);
+      toast(err.response?.data?.message ?? "Clear failed.", "error");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const totalLogs = logs.length;
-
-  // ── Render ──────────────────────────────────────────────────────────────────
-
   return (
-    <div className="flex min-h-screen bg-[#EAF2ED] font-sans">
+    <div style={{
+      display: "flex", minHeight: "100vh",
+      background: "#F0F4F8", fontFamily: T.font,
+    }}>
+      <style>{`
+        .ap-hamburger { display: flex; }
+        @media (min-width: 1024px) { .ap-hamburger { display: none !important; } }
+      `}</style>
+
+      <Toast toasts={toasts} />
+
+      {/* Delete single confirmation modal */}
+      {deleteTarget && (
+        <ConfirmModal
+          message={{
+            title: "Delete this activity?",
+            body: "This action is permanent and cannot be undone.",
+          }}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+          loading={actionLoading}
+        />
+      )}
+
+      {/* Delete all confirmation modal */}
+      {deleteAllConfirm && (
+        <ConfirmModal
+          message={{
+            title: `Clear ${activeTab !== "All" ? activeTab : "all"} logs?`,
+            body: `This will permanently delete ${activeTab === "All" ? "every activity log" : `all ${activeTab} logs`}. This cannot be undone.`,
+          }}
+          onConfirm={handleDeleteAll}
+          onCancel={() => setDeleteAllConfirm(false)}
+          loading={actionLoading}
+        />
+      )}
+
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <main className="flex-1 px-6 py-7 overflow-x-hidden min-w-0">
-
-          {/* Top bar */}
-          <div className="flex items-center justify-between mb-6 flex-wrap gap-3.5">
-            <div className="flex items-center gap-3.5">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden bg-white border border-gray-200 text-base cursor-pointer text-slate-500 px-2.5 py-1.5 rounded-md shadow-sm hover:bg-gray-50 hover:text-slate-900 transition-all"
-              >
-                ☰
-              </button>
-              <h1 className="text-xl font-bold text-slate-900 m-0 tracking-tight">Activity Log</h1>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              {/* Search */}
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">🔍</span>
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search Activity..."
-                  className="py-2 pl-8 pr-4 rounded-lg border border-gray-200 text-sm font-[inherit] text-slate-900 outline-none bg-white w-60 shadow-sm placeholder-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/8 transition-all max-md:w-40"
-                />
-              </div>
-
-              {/* Clear */}
-              <button
-                onClick={() => setDeletingAll(true)}
-                className="px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-sm font-semibold text-red-500 cursor-pointer whitespace-nowrap hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
-              >
-                🗑 Clear {activeTab !== "All" ? activeTab : "All"}
-              </button>
+      <main style={{
+        flex: 1, minWidth: 0, padding: "20px 20px",
+        overflowX: "hidden",
+      }}>
+        {/* Top bar */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, marginBottom: 20, background: "#fff", borderRadius: T.radius.lg,
+          padding: "12px 16px", border: `1px solid ${T.slate200}`,
+          boxShadow: T.shadow.sm, flexWrap: "wrap",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="ap-hamburger"
+              style={{
+                background: "none", border: `1px solid ${T.slate200}`,
+                borderRadius: T.radius.sm, width: 36, height: 36,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", fontSize: 18, color: T.slate700,
+              }}
+            >
+              ☰
+            </button>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.slate900, letterSpacing: "-0.3px" }}>Activity Log</h1>
+              <p style={{ margin: "1px 0 0", fontSize: 11, color: T.slate400 }}>Track all system activities and user actions</p>
             </div>
           </div>
 
-          {/* Tabs */}
-          <TabBar activeTab={activeTab} onSelect={setActiveTab} />
-
-          {/* States */}
-          {loading && (
-            <div className="text-center text-slate-400 text-sm py-16 animate-pulse">
-              Loading activity logs…
-            </div>
-          )}
-
-          {!loading && error && (
-            <div className="text-center text-red-400 text-sm py-16">
-              ⚠️ {error}
-              <button onClick={fetchLogs} className="ml-3 underline text-blue-500 hover:text-blue-700">
-                Retry
-              </button>
-            </div>
-          )}
-
-          {!loading && !error && totalLogs === 0 && (
-            <div className="text-center text-slate-400 text-sm py-16">No activity found.</div>
-          )}
-
-          {/* Log groups */}
-          {!loading && !error && totalLogs > 0 && (
-            <div className="flex flex-col gap-6">
-              {Object.entries(grouped).map(([date, items]) => (
-                <LogGroup key={date} date={date} items={items} onDelete={setDeleteId} />
-              ))}
-
-              <Pagination
-                pagination={pagination}
-                page={page}
-                onPrev={() => setPage((p) => Math.max(1, p - 1))}
-                onNext={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {/* Search */}
+            <div style={{ position: "relative" }}>
+              <span style={{
+                position: "absolute", left: 10, top: "50%",
+                transform: "translateY(-50%)", fontSize: 12, color: T.slate400,
+              }}>
+                🔍
+              </span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search activity..."
+                style={{
+                  padding: "6px 10px 6px 30px", borderRadius: T.radius.sm,
+                  border: `1px solid ${T.slate200}`, fontSize: 12,
+                  fontFamily: T.font, outline: "none", width: 200,
+                  transition: "border-color 0.12s",
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = T.blue500}
+                onBlur={e => e.currentTarget.style.borderColor = T.slate200}
               />
             </div>
-          )}
-        </main>
 
-      {/* Delete single modal */}
-      {deleteId && (
-        <ConfirmModal
-          icon="🗑️"
-          title="Delete this activity?"
-          body="This action is permanent and cannot be undone."
-          confirmLabel="Delete"
-          loading={actionLoading}
-          onClose={() => setDeleteId(null)}
-          onConfirm={handleDelete}
-        />
-      )}
+            {/* Clear button */}
+            <button
+              onClick={() => setDeleteAllConfirm(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: T.radius.sm,
+                border: `1px solid ${T.red200}`, background: T.red50,
+                color: T.red600, fontSize: 12, fontWeight: 600,
+                cursor: "pointer", transition: "all 0.12s", fontFamily: T.font,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = T.red600;
+                e.currentTarget.style.color = "#fff";
+                e.currentTarget.style.borderColor = T.red600;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = T.red50;
+                e.currentTarget.style.color = T.red600;
+                e.currentTarget.style.borderColor = T.red200;
+              }}
+            >
+              🗑️ Clear {activeTab !== "All" ? activeTab : "All"}
+            </button>
 
-      {/* Clear all modal */}
-      {deletingAll && (
-        <ConfirmModal
-          icon="⚠️"
-          title={`Clear ${activeTab !== "All" ? activeTab : "all"} logs?`}
-          body={
-            <>
-              This will permanently delete{" "}
-              <strong className="text-slate-600">
-                {activeTab === "All" ? "every activity log" : `all ${activeTab} logs`}
-              </strong>
-              . This cannot be undone.
-            </>
-          }
-          confirmLabel="Yes, Clear"
-          loading={actionLoading}
-          onClose={() => setDeletingAll(false)}
-          onConfirm={handleDeleteAll}
-        />
-      )}
+            {/* Refresh button */}
+            <button
+              onClick={fetchLogs}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: T.radius.sm,
+                border: `1px solid ${T.slate200}`, background: "#fff",
+                color: T.slate700, fontSize: 12, fontWeight: 500,
+                cursor: "pointer", transition: "background 0.12s", fontFamily: T.font,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = T.slate50}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+            >
+              {loading ? "⟳ Loading..." : "⟳ Refresh"}
+            </button>
+          </div>
+        </div>
+
+        {/* Stat Cards */}
+        <div style={{
+          display: "grid", gap: 10, marginBottom: 20,
+          gridTemplateColumns: "repeat(4, 1fr)",
+        }}>
+          {statCards.map((s) => (
+            <StatCard key={s.label} {...s} />
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <TabBar activeTab={activeTab} onSelect={setActiveTab} counts={categoryCounts} />
+
+        {/* Loading state */}
+        {loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                style={{
+                  padding: 20, background: "#fff", boxShadow: T.shadow.sm,
+                  borderRadius: T.radius.lg, height: 120, opacity: 0.6,
+                  animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <div style={{
+            background: T.red50, border: `1px solid ${T.red200}`,
+            borderRadius: T.radius.lg, padding: "14px 18px",
+            marginBottom: 16, display: "flex", alignItems: "center",
+            justifyContent: "space-between", flexWrap: "wrap", gap: 12,
+          }}>
+            <span style={{ fontSize: 13, color: T.red700 }}>⚠️ {error}</span>
+            <button
+              onClick={fetchLogs}
+              style={{
+                padding: "4px 12px", borderRadius: T.radius.sm,
+                border: `1px solid ${T.red300}`, background: "#fff",
+                color: T.red600, fontSize: 12, cursor: "pointer",
+                transition: "background 0.12s", fontFamily: T.font,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = T.red50}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && totalLogs === 0 && (
+          <div style={{
+            padding: 60, fontSize: 14, textAlign: "center",
+            color: T.slate400, background: "#fff",
+            boxShadow: T.shadow.sm, borderRadius: T.radius.lg,
+            fontFamily: T.font,
+          }}>
+            No activity logs found.
+          </div>
+        )}
+
+        {/* Log groups */}
+        {!loading && !error && totalLogs > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {Object.entries(grouped).map(([date, items]) => (
+              <LogGroup key={date} date={date} items={items} onDelete={setDeleteTarget} />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && !error && totalLogs > 0 && (
+          <Pagination
+            pagination={pagination}
+            page={page}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(pagination?.last_page || 1, p + 1))}
+          />
+        )}
+      </main>
     </div>
   );
 }

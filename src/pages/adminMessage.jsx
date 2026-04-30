@@ -441,7 +441,7 @@ export default function AdminMessages() {
   }, [selected?.messages?.length, selectedId]);
 
   return (
-    <div className="flex h-screen bg-[#F0F7F2] font-sans">
+    <div className="flex h-screen bg-[#F0F4F8] font-sans">
       <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 px-5 py-6 overflow-x-hidden min-w-0 flex flex-col h-full">

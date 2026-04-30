@@ -12,10 +12,56 @@ const axiosConfig = {
   },
 };
 
-const getInitials = (name) =>
-  name.split(' ').filter(Boolean).slice(-2).map((n) => n[0]).join('').toUpperCase();
+// ── Design tokens (matches AdminOrders) ──────────────────────────────────────
+const T = {
+  blue50: '#EFF6FF', blue100: '#DBEAFE', blue500: '#3B82F6', blue600: '#2563EB', blue700: '#1D4ED8',
+  green50: '#ECFDF5', green100: '#D1FAE5', green500: '#10B981', green600: '#059669',
+  amber50: '#FFFBEB', amber100: '#FEF3C7', amber500: '#F59E0B', amber600: '#D97706',
+  purple50: '#F5F3FF', purple100: '#EDE9FE', purple600: '#7C3AED',
+  red50: '#FEF2F2', red100: '#FEE2E2', red500: '#EF4444', red600: '#DC2626',
+  slate50: '#F8FAFC', slate100: '#F1F5F9', slate200: '#E2E8F0', slate300: '#CBD5E1',
+  slate400: '#94A3B8', slate500: '#64748B', slate600: '#475569',
+  slate700: '#374151', slate800: '#1E293B', slate900: '#0F172A',
+  radius: { sm: 8, md: 12, lg: 16, xl: 20 },
+  shadow: { sm: '0 1px 2px rgba(15,23,42,0.05)', md: '0 4px 12px rgba(15,23,42,0.08)', hover: '0 8px 24px rgba(15,23,42,0.12)' },
+  font: "'DM Sans','Nunito',system-ui,sans-serif",
+};
+
+const cardStyle = {
+  background: '#fff',
+  borderRadius: T.radius.lg,
+  border: `1px solid ${T.slate200}`,
+  boxShadow: T.shadow.sm,
+  overflow: 'hidden',
+};
+
+const inputStyle = {
+  width: '100%', padding: '8px 12px',
+  border: `1px solid ${T.slate200}`, borderRadius: T.radius.sm,
+  fontSize: 13, color: T.slate900, background: '#fff',
+  outline: 'none', boxSizing: 'border-box', fontFamily: T.font,
+  transition: 'border-color 0.15s',
+};
+
+const labelStyle = {
+  display: 'block', fontSize: 10, fontWeight: 700,
+  color: T.slate400, marginBottom: 6,
+  textTransform: 'uppercase', letterSpacing: '0.5px',
+};
+
+const btnBase = {
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  padding: '8px 14px', borderRadius: T.radius.sm,
+  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  transition: 'all 0.12s', border: 'none', fontFamily: T.font,
+};
 
 const AVATAR_COLORS = ['#c2c2c2', '#a8d5ba', '#aac4e8', '#f5c6a0', '#d4b3f0', '#f9c0c0'];
+
+const TEAMS = [
+  { key: 'leadership', label: '👥 Leadership' },
+  { key: 'appdev',     label: '💻 App Dev Team' },
+];
 
 const getId = (member) => member?.leadership_id ?? member?.id;
 
@@ -25,166 +71,148 @@ const resolveImg = (member) => {
   return p.startsWith('http') ? p : `${BASE}/storage/${p}`;
 };
 
+const getInitials = (name) =>
+  name.split(' ').filter(Boolean).slice(-2).map((n) => n[0]).join('').toUpperCase();
+
 const parseError = (err) => {
   const data = err.response?.data;
   if (!data) return 'An unexpected error occurred.';
-  if (typeof data.message === 'object') {
-    return Object.values(data.message).flat().join('\n');
-  }
+  if (typeof data.message === 'object') return Object.values(data.message).flat().join('\n');
   return data.message ?? 'An unexpected error occurred.';
 };
 
-const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-lg text-[13px] text-slate-900 bg-white outline-none box-border font-[inherit] placeholder-slate-400 focus:border-blue-500 transition-colors disabled:opacity-50";
-const labelCls = "block text-[11px] font-semibold text-slate-600 mb-1.5 uppercase tracking-wide";
-
-const TEAMS = [
-  { key: 'leadership', label: '👥 Leadership'   },
-  { key: 'appdev',     label: '💻 App Dev Team'  },
-];
-
-// ─── Silhouette placeholder ───────────────────────────────────────────────────
+// ── Silhouette Placeholder ────────────────────────────────────────────────────
 const SilhouettePlaceholder = () => (
-  <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'var(--green-light, #edf4f0)' }}>
+  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#edf4f0' }}>
     <svg viewBox="0 0 100 100" width="62%" height="62%" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="36" r="22" fill="#4d7b65" fillOpacity="0.28"/>
-      <ellipse cx="50" cy="86" rx="36" ry="22" fill="#4d7b65" fillOpacity="0.18"/>
+      <circle cx="50" cy="36" r="22" fill="#4d7b65" fillOpacity="0.28" />
+      <ellipse cx="50" cy="86" rx="36" ry="22" fill="#4d7b65" fillOpacity="0.18" />
     </svg>
   </div>
 );
 
-// ─── Overlay ──────────────────────────────────────────────────────────────────
-function Overlay({ children, onClose, narrow }) {
-  return (
+// ── Overlay ───────────────────────────────────────────────────────────────────
+const Overlay = ({ children, onClose, narrow }) => (
+  <div
+    onClick={onClose}
+    style={{
+      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)',
+      backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', zIndex: 1000, padding: 16,
+    }}
+  >
     <div
-      onClick={onClose}
-      className="fixed inset-0 bg-slate-900/55 backdrop-blur-[4px] flex items-center justify-center z-[1000] p-3 sm:p-4"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        background: '#fff', width: '100%',
+        maxWidth: narrow ? 420 : 500,
+        borderRadius: T.radius.xl,
+        boxShadow: '0 24px 60px rgba(15,23,42,0.18)',
+        maxHeight: '94vh', overflowY: 'auto',
+      }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`bg-white w-full rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-h-[94vh] overflow-y-auto ${narrow ? 'max-w-[400px]' : 'max-w-[500px]'}`}
-      >
-        {children}
-      </div>
+      {children}
     </div>
-  );
-}
+  </div>
+);
 
-function ModalHeader({ title, subtitle, onClose }) {
-  return (
-    <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-white border-b sm:px-6 sm:py-5 border-slate-100 rounded-t-2xl">
-      <div className="flex-1 min-w-0 pr-3">
-        <h2 className="m-0 text-[15px] sm:text-[17px] font-bold text-slate-900 truncate">{title}</h2>
-        {subtitle && <p className="m-0 mt-0.5 text-xs text-slate-400 truncate">{subtitle}</p>}
-      </div>
-      <button
-        onClick={onClose}
-        className="flex items-center justify-center flex-shrink-0 w-8 h-8 text-lg transition-colors border rounded-lg cursor-pointer border-slate-200 bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
-      >×</button>
+// ── Modal Header ──────────────────────────────────────────────────────────────
+const ModalHeader = ({ title, subtitle, onClose }) => (
+  <div style={{
+    position: 'sticky', top: 0, zIndex: 10,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '16px 20px', background: '#fff',
+    borderBottom: `1px solid ${T.slate100}`,
+    borderRadius: `${T.radius.xl}px ${T.radius.xl}px 0 0`,
+  }}>
+    <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+      <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: T.slate900 }}>{title}</h2>
+      {subtitle && <p style={{ margin: '2px 0 0', fontSize: 11, color: T.slate400 }}>{subtitle}</p>}
     </div>
-  );
-}
+    <button
+      onClick={onClose}
+      style={{
+        width: 32, height: 32, borderRadius: T.radius.sm,
+        border: `1px solid ${T.slate200}`, background: T.slate50,
+        color: T.slate500, fontSize: 16, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.12s', fontFamily: T.font,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = T.slate100)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = T.slate50)}
+    >×</button>
+  </div>
+);
 
-// ─── Member Card (Mobile) ─────────────────────────────────────────────────────
-function MemberCard({ member, idx, onView, onEdit, onDelete, onToggle }) {
+// ── Avatar Cell ───────────────────────────────────────────────────────────────
+function AvatarCell({ member, idx }) {
   const imgSrc = resolveImg(member);
   return (
-    <div className="overflow-hidden bg-white border shadow-sm rounded-xl border-slate-100">
-      <div className="p-3">
-        <div className="flex items-center gap-3 mb-2.5">
-          <div
-            className="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden border rounded-full border-slate-100 relative"
-            style={{ backgroundColor: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length] }}
-          >
-            {imgSrc
-              ? <img src={imgSrc} alt={member.name} className="object-cover w-full h-full" onError={(e) => { e.target.style.display = 'none'; }} />
-              : <span className="text-sm font-bold text-slate-600">{getInitials(member.name)}</span>
-            }
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-slate-900 text-[13px] leading-snug truncate">{member.name}</div>
-            <div className="text-xs truncate text-slate-400">{member.position}</div>
-          </div>
-          <button
-            onClick={onToggle}
-            className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 cursor-pointer transition-colors
-              ${member.status
-                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
-              }`}
-          >
-            {member.status ? '● Visible' : '○ Hidden'}
-          </button>
-        </div>
-        <div className="flex gap-1.5 pt-2.5 border-t border-slate-100">
-          <button onClick={onView}   className="flex-1 py-1.5 text-[11px] font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors">👁 View</button>
-          <button onClick={onEdit}   className="flex-1 py-1.5 text-[11px] font-semibold border border-blue-200 rounded-lg bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100 transition-colors">✏️ Edit</button>
-          <button onClick={onDelete} className="flex-1 py-1.5 text-[11px] font-semibold border border-red-200 rounded-lg bg-red-50 text-red-600 cursor-pointer hover:bg-red-100 transition-colors">🗑️ Delete</button>
-        </div>
-      </div>
+    <div style={{
+      width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+      background: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length],
+      border: `1px solid ${T.slate200}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 12, fontWeight: 700, color: T.slate600,
+      overflow: 'hidden', position: 'relative',
+    }}>
+      {imgSrc
+        ? <img src={imgSrc} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+        : getInitials(member.name)
+      }
     </div>
   );
 }
 
-// ─── Skeletons ────────────────────────────────────────────────────────────────
-function MobileSkeletons() {
-  return Array.from({ length: 4 }).map((_, i) => (
-    <div key={i} className="overflow-hidden bg-white border rounded-xl border-slate-100">
-      <div className="p-3">
-        <div className="flex items-center gap-3 mb-2.5">
-          <div className="flex-shrink-0 w-12 h-12 rounded-full animate-pulse bg-slate-100" />
-          <div className="flex-1 space-y-1.5">
-            <div className="w-32 h-3.5 rounded-md animate-pulse bg-slate-100" />
-            <div className="h-3 rounded-md w-44 animate-pulse bg-slate-100" />
-          </div>
-          <div className="w-16 h-6 rounded-full animate-pulse bg-slate-100" />
-        </div>
-        <div className="flex gap-1.5 pt-2.5 border-t border-slate-100">
-          <div className="flex-1 rounded-lg h-7 animate-pulse bg-slate-100" />
-          <div className="flex-1 rounded-lg h-7 animate-pulse bg-slate-100" />
-          <div className="flex-1 rounded-lg h-7 animate-pulse bg-slate-100" />
-        </div>
-      </div>
-    </div>
-  ));
-}
-
+// ── Skeletons ─────────────────────────────────────────────────────────────────
 function DesktopSkeletons() {
   return Array.from({ length: 5 }).map((_, i) => (
-    <tr key={i} className="border-b border-slate-50">
-      <td className="px-4 py-3.5"><div className="w-6 h-3.5 rounded-md animate-pulse bg-slate-100" /></td>
-      <td className="px-4 py-3.5"><div className="rounded-full w-11 h-11 animate-pulse bg-slate-100" /></td>
-      <td className="px-4 py-3.5"><div className="w-36 h-3.5 rounded-md animate-pulse bg-slate-100" /></td>
-      <td className="px-4 py-3.5"><div className="w-48 h-3.5 rounded-md animate-pulse bg-slate-100" /></td>
-      <td className="px-4 py-3.5"><div className="w-16 h-6 rounded-full animate-pulse bg-slate-100" /></td>
-      <td className="px-4 py-3.5">
-        <div className="flex gap-1.5">
-          <div className="w-8 rounded-md h-7 animate-pulse bg-slate-100" />
-          <div className="w-8 rounded-md h-7 animate-pulse bg-slate-100" />
-          <div className="w-8 rounded-md h-7 animate-pulse bg-slate-100" />
-        </div>
-      </td>
+    <tr key={i} style={{ borderBottom: `1px solid ${T.slate100}` }}>
+      {[40, 60, 50, '18%', '18%', 100, 90, 100].map((w, j) => (
+        <td key={j} style={{ padding: '12px 14px' }}>
+          <div style={{ width: j === 2 ? 38 : '80%', height: j === 2 ? 38 : 12, borderRadius: j === 2 ? '50%' : 6, background: T.slate100, animation: 'pulse 1.5s infinite' }} />
+        </td>
+      ))}
     </tr>
   ));
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+function MobileSkeletons() {
+  return Array.from({ length: 4 }).map((_, i) => (
+    <div key={i} style={{ background: '#fff', borderRadius: T.radius.lg, border: `1px solid ${T.slate200}`, padding: 14, boxShadow: T.shadow.sm }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', background: T.slate100, flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ width: '60%', height: 12, borderRadius: 6, background: T.slate100, marginBottom: 6 }} />
+          <div style={{ width: '80%', height: 10, borderRadius: 6, background: T.slate100 }} />
+        </div>
+        <div style={{ width: 60, height: 22, borderRadius: 20, background: T.slate100 }} />
+      </div>
+      <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: `1px solid ${T.slate100}` }}>
+        {[1, 2, 3].map((j) => <div key={j} style={{ flex: 1, height: 28, borderRadius: T.radius.sm, background: T.slate100 }} />)}
+      </div>
+    </div>
+  ));
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 const AdminLeadership = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [members, setMembers]         = useState([]);
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState(null);
-  const [activeTeam, setActiveTeam]   = useState('leadership');
+  const [sidebarOpen, setSidebarOpen]     = useState(false);
+  const [members, setMembers]             = useState([]);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState(null);
+  const [activeTeam, setActiveTeam]       = useState('leadership');
 
-  const [showModal, setShowModal]       = useState(false);
-  const [editTarget, setEditTarget]     = useState(null);
-  const [viewTarget, setViewTarget]     = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showModal, setShowModal]         = useState(false);
+  const [editTarget, setEditTarget]       = useState(null);
+  const [viewTarget, setViewTarget]       = useState(null);
+  const [deleteTarget, setDeleteTarget]   = useState(null);
 
-  const [form, setForm]             = useState({ name: '', position: '', status: true, team: 'leadership' });
-  const [imgFile, setImgFile]       = useState(null);
-  const [imgPreview, setImgPreview] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting]     = useState(false);
+  const [form, setForm]                   = useState({ name: '', position: '', status: true, team: 'leadership' });
+  const [imgFile, setImgFile]             = useState(null);
+  const [imgPreview, setImgPreview]       = useState(null);
+  const [submitting, setSubmitting]       = useState(false);
+  const [deleting, setDeleting]           = useState(false);
 
   const filteredMembers = members.filter((m) => (m.team ?? 'leadership') === activeTeam);
 
@@ -215,12 +243,7 @@ const AdminLeadership = () => {
 
   const openEdit = (member) => {
     setEditTarget(member);
-    setForm({
-      name:     member.name,
-      position: member.position,
-      status:   !!member.status,
-      team:     member.team ?? 'leadership',
-    });
+    setForm({ name: member.name, position: member.position, status: !!member.status, team: member.team ?? 'leadership' });
     setImgFile(null);
     setImgPreview(resolveImg(member));
     setShowModal(true);
@@ -233,12 +256,12 @@ const AdminLeadership = () => {
     setImgPreview(URL.createObjectURL(file));
   };
 
-  const buildFormData = (isEdit = false) => {
+  const buildFormData = () => {
     const fd = new FormData();
-    fd.append('name',     form.name);
+    fd.append('name', form.name);
     fd.append('position', form.position);
-    fd.append('status',   form.status ? 1 : 0);
-    fd.append('team',     form.team);
+    fd.append('status', form.status ? 1 : 0);
+    fd.append('team', form.team);
     if (imgFile) fd.append('leadership_img', imgFile);
     return fd;
   };
@@ -247,43 +270,28 @@ const AdminLeadership = () => {
     if (!form.name.trim() || !form.position.trim()) { alert('Name and Position are required.'); return; }
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append('name',     form.name);
-      fd.append('position', form.position);
-      fd.append('status',   form.status ? 1 : 0);
-      fd.append('team',     form.team);
-      if (imgFile) fd.append('leadership_img', imgFile);
-
-      console.log('Adding member with team:', form.team);
-
-      const res = await axios.post(`${BASE}/api/admin-leadership`, fd, {
+      const res = await axios.post(`${BASE}/api/admin-leadership`, buildFormData(), {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
       setMembers((prev) => [...prev, res.data.data]);
       setShowModal(false);
-    } catch (err) {
-      alert(parseError(err));
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (err) { alert(parseError(err)); }
+    finally { setSubmitting(false); }
   };
 
   const handleEdit = async () => {
     if (!form.name.trim() || !form.position.trim()) { alert('Name and Position are required.'); return; }
     setSubmitting(true);
     try {
-      const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, buildFormData(true), {
+      const res = await axios.post(`${BASE}/api/admin-leadership/${getId(editTarget)}`, buildFormData(), {
         ...axiosConfig,
         headers: { ...axiosConfig.headers, 'Content-Type': 'multipart/form-data' },
       });
       setMembers((prev) => prev.map((m) => getId(m) === getId(editTarget) ? res.data.data : m));
       setShowModal(false);
-    } catch (err) {
-      alert(parseError(err));
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (err) { alert(parseError(err)); }
+    finally { setSubmitting(false); }
   };
 
   const toggleVisible = async (member) => {
@@ -309,185 +317,375 @@ const AdminLeadership = () => {
       await axios.delete(`${BASE}/api/admin-leadership/${getId(deleteTarget)}`, axiosConfig);
       setMembers((prev) => prev.filter((m) => getId(m) !== getId(deleteTarget)));
       setDeleteTarget(null);
-    } catch (err) {
-      alert(parseError(err));
-    } finally {
-      setDeleting(false);
-    }
+    } catch (err) { alert(parseError(err)); }
+    finally { setDeleting(false); }
   };
 
   const saveForm = () => editTarget === null ? handleAdd() : handleEdit();
 
+  const summaryStats = [
+    { label: 'Total Members', value: loading ? '—' : members.length,                         icon: '👥', accent: T.blue600,   bg: T.blue50,   border: T.blue100   },
+    { label: 'Leadership',    value: loading ? '—' : members.filter((m) => (m.team ?? 'leadership') === 'leadership').length, icon: '🏆', accent: T.purple600, bg: T.purple50, border: T.purple100 },
+    { label: 'App Dev Team',  value: loading ? '—' : members.filter((m) => m.team === 'appdev').length, icon: '💻', accent: T.amber600,  bg: T.amber50,  border: T.amber100  },
+    { label: 'Visible',       value: loading ? '—' : members.filter((m) => m.status).length,  icon: '✅', accent: T.green600,  bg: T.green50,  border: T.green100  },
+    { label: 'Hidden',        value: loading ? '—' : members.filter((m) => !m.status).length, icon: '🙈', accent: T.slate500,  bg: T.slate50,  border: T.slate200  },
+  ];
+
   return (
-    <div className="flex min-h-screen bg-[#F0F7F2] font-sans">
-      <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .al-sidebar { display: none; }
+        @media (min-width: 1024px) { .al-sidebar { display: block; } }
+        .al-hamburger { display: flex !important; }
+        @media (min-width: 1024px) { .al-hamburger { display: none !important; } }
+        .al-tbl-row:hover td { background: ${T.slate50} !important; }
+        .al-stat-card:hover { transform: translateY(-2px); box-shadow: ${T.shadow.hover} !important; }
+        .al-btn-action:hover { opacity: 0.75; }
+        .al-mobile-card { display: block; }
+        .al-desktop-table { display: none; }
+        @media (min-width: 768px) { .al-mobile-card { display: none; } .al-desktop-table { display: block; } }
+      `}</style>
 
-      <main className="flex-1 w-0 min-w-0 pb-10 overflow-x-hidden">
+      <div style={{ display: 'flex', minHeight: '100vh', background: '#F0F4F8', fontFamily: T.font }}>
 
-        {/* Top Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-4 pb-0 sm:pt-5 sm:px-7">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="text-xl bg-transparent border-none cursor-pointer lg:hidden text-slate-700">☰</button>
-            <h1 className="m-0 text-[18px] sm:text-xl font-bold text-slate-900">Leadership Management</h1>
-          </div>
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 border-none rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors whitespace-nowrap"
-          >
-            + Add Member
-          </button>
+        {/* Sidebar */}
+        <div className="al-sidebar">
+          <AdminNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3.5 px-3 sm:px-7 py-4 sm:py-5">
-          {[
-            { label: 'Total Members', value: loading ? '—' : members.length,                        sub: 'All team members' },
-            { label: 'Visible',       value: loading ? '—' : members.filter((m) => m.status).length, sub: 'Shown on site'    },
-            { label: 'Hidden',        value: loading ? '—' : members.filter((m) => !m.status).length, sub: 'Not displayed'   },
-          ].map((s) => (
-            <div key={s.label} className="px-3 py-3 bg-white border shadow-sm sm:px-4 sm:py-4 rounded-xl border-slate-100">
-              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 sm:mb-1.5 leading-tight">{s.label}</div>
-              <div className="text-[22px] sm:text-[26px] font-extrabold text-slate-900 leading-none">{s.value}</div>
-              <div className="text-[9px] sm:text-[10px] text-slate-400 mt-1 font-semibold tracking-wide">{s.sub}</div>
+        <main style={{ flex: 1, minWidth: 0, padding: '20px', overflowX: 'hidden' }}>
+
+          {/* ── Top Bar ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 12, marginBottom: 20, background: '#fff',
+            borderRadius: T.radius.lg, padding: '12px 16px',
+            border: `1px solid ${T.slate200}`, boxShadow: T.shadow.sm,
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="al-hamburger"
+                style={{
+                  background: 'none', border: `1px solid ${T.slate200}`,
+                  borderRadius: T.radius.sm, width: 36, height: 36,
+                  alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', fontSize: 18, color: T.slate700,
+                }}
+              >☰</button>
+              <div>
+                <h1 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.slate900, letterSpacing: '-0.3px' }}>Leadership Management</h1>
+                <p style={{ margin: '1px 0 0', fontSize: 11, color: T.slate400 }}>Manage team members and visibility</p>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Team Tabs */}
-        <div className="px-3 sm:px-7 mb-4 flex gap-2">
-          {TEAMS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTeam(t.key)}
-              className={`px-4 py-2 rounded-lg text-[13px] font-semibold border transition-colors cursor-pointer
-                ${activeTeam === t.key
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-            >
-              {t.label}
-              <span className={`ml-2 text-[11px] px-1.5 py-0.5 rounded-full font-bold
-                ${activeTeam === t.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                {members.filter((m) => (m.team ?? 'leadership') === t.key).length}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mx-3 sm:mx-7 mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-[13px] flex items-center justify-between">
-            <span>⚠️ {error}</span>
-            <button onClick={fetchMembers} className="text-xs text-blue-600 underline bg-transparent border-none cursor-pointer">Retry</button>
-          </div>
-        )}
-
-        {/* Mobile cards */}
-        {!loading && filteredMembers.length > 0 && (
-          <div className="block px-3 pb-4 sm:hidden">
-            <div className="grid grid-cols-1 gap-3">
-              {filteredMembers.map((member, idx) => (
-                <MemberCard
-                  key={getId(member)}
-                  member={member} idx={idx}
-                  onView={()   => setViewTarget(member)}
-                  onEdit={()   => openEdit(member)}
-                  onDelete={()  => setDeleteTarget(member)}
-                  onToggle={()  => toggleVisible(member)}
-                />
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={fetchMembers}
+                style={{ ...btnBase, background: '#fff', color: T.slate700, border: `1px solid ${T.slate200}` }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = T.slate50)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+              >↻ Refresh</button>
+              <button
+                onClick={openAdd}
+                style={{ ...btnBase, background: T.blue600, color: '#fff', boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = T.blue700)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = T.blue600)}
+              >+ Add Member</button>
             </div>
           </div>
-        )}
 
-        {loading && <div className="block px-3 pb-4 space-y-3 sm:hidden"><MobileSkeletons /></div>}
-
-        {!loading && filteredMembers.length === 0 && !error && (
-          <div className="mx-3 sm:mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="py-12 text-sm text-center text-slate-400">
-              No {activeTeam === 'appdev' ? 'App Dev' : 'Leadership'} members found.
-            </div>
+          {/* ── Stat Cards ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 16 }}>
+            {summaryStats.map((stat) => (
+              <div key={stat.label} className="al-stat-card" style={{
+                background: '#fff', borderRadius: T.radius.lg, padding: '16px',
+                border: `1px solid ${stat.border}`, boxShadow: T.shadow.sm,
+                position: 'relative', overflow: 'hidden', transition: 'all 0.15s',
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: stat.accent, borderRadius: `${T.radius.lg}px ${T.radius.lg}px 0 0` }} />
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: T.slate400, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>{stat.label}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: T.slate900, letterSpacing: '-0.5px', lineHeight: 1 }}>{stat.value}</div>
+                  </div>
+                  <div style={{ width: 36, height: 36, borderRadius: T.radius.sm, background: stat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                    {stat.icon}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
 
-        {/* Desktop table */}
-        {!loading && filteredMembers.length > 0 && (
-          <div className="hidden sm:block mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
-                <thead className="border-b bg-slate-50 border-slate-100">
-                  <tr>
-                    {['#', 'Image', 'Full Name', 'Position', 'Visible', 'Action'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMembers.map((member, idx) => {
-                    const imgSrc = resolveImg(member);
-                    return (
-                      <tr key={getId(member)} className="border-b border-slate-50 last:border-b-0 hover:[&_td]:bg-[#F8FAFF] transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs align-middle text-slate-400">{idx + 1}</td>
-                        <td className="px-4 py-3 align-middle">
-                          <div
-                            className="relative flex items-center justify-center flex-shrink-0 overflow-hidden border rounded-full w-11 h-11 border-slate-100"
-                            style={{ backgroundColor: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length] }}
-                          >
-                            {imgSrc
-                              ? <img src={imgSrc} alt={member.name} className="object-cover w-full h-full" onError={(e) => { e.target.style.display = 'none'; }} />
-                              : <span className="text-xs font-bold text-slate-600">{getInitials(member.name)}</span>
-                            }
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 font-semibold align-middle text-slate-900">{member.name}</td>
-                        <td className="px-4 py-3 align-middle text-slate-500">{member.position}</td>
-                        <td className="px-4 py-3 align-middle">
-                          <button
-                            onClick={() => toggleVisible(member)}
-                            className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border cursor-pointer transition-colors whitespace-nowrap
-                              ${member.status
-                                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                                : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
-                              }`}
-                          >
-                            {member.status ? '● Visible' : '○ Hidden'}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 align-middle">
-                          <div className="flex gap-1.5">
-                            <button onClick={() => setViewTarget(member)}   className="px-3 py-1 text-xs font-semibold transition-colors border rounded-md cursor-pointer border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100">View</button>
-                            <button onClick={() => openEdit(member)}        className="px-3 py-1 text-xs font-semibold text-blue-700 transition-colors border border-blue-200 rounded-md cursor-pointer bg-blue-50 hover:bg-blue-100">Edit</button>
-                            <button onClick={() => setDeleteTarget(member)} className="px-3 py-1 text-xs font-semibold text-red-600 transition-colors border border-red-200 rounded-md cursor-pointer bg-red-50 hover:bg-red-100">Delete</button>
-                          </div>
-                        </td>
+          {/* ── Table Card ── */}
+          <div style={cardStyle}>
+
+            {/* Filter bar */}
+            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${T.slate100}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {/* Team Tabs */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {TEAMS.map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setActiveTeam(t.key)}
+                      style={{
+                        ...btnBase,
+                        padding: '6px 14px', fontSize: 12,
+                        background: activeTeam === t.key ? T.blue600 : '#fff',
+                        color: activeTeam === t.key ? '#fff' : T.slate600,
+                        border: `1px solid ${activeTeam === t.key ? T.blue600 : T.slate200}`,
+                        transition: 'all 0.12s',
+                      }}
+                    >
+                      {t.label}
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
+                        background: activeTeam === t.key ? 'rgba(255,255,255,0.2)' : T.slate100,
+                        color: activeTeam === t.key ? '#fff' : T.slate500,
+                      }}>
+                        {members.filter((m) => (m.team ?? 'leadership') === t.key).length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1 }} />
+
+                <span style={{ fontSize: 11, color: T.slate400 }}>
+                  {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''} in {activeTeam === 'appdev' ? 'App Dev Team' : 'Leadership'}
+                </span>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && !loading && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                margin: 16, padding: '12px 14px', fontSize: 12, color: T.red600,
+                border: `1px solid ${T.red100}`, borderRadius: T.radius.md,
+                background: T.red50,
+              }}>
+                ⚠️ {error}
+                <button onClick={fetchMembers} style={{ ...btnBase, padding: '4px 10px', background: '#fff', color: T.red600, border: `1px solid ${T.red100}`, fontSize: 11 }}>Retry</button>
+              </div>
+            )}
+
+            {/* Loading skeleton */}
+            {loading && (
+              <>
+                {/* Mobile */}
+                <div className="al-mobile-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <MobileSkeletons />
+                </div>
+                {/* Desktop */}
+                <div className="al-desktop-table">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: T.slate50, borderBottom: `1px solid ${T.slate200}` }}>
+                        {['#', 'Photo', 'Full Name', 'Position', 'Team', 'Visible', 'Actions'].map((h) => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: T.slate500, textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                    </thead>
+                    <tbody><DesktopSkeletons /></tbody>
+                  </table>
+                </div>
+              </>
+            )}
 
-        {loading && (
-          <div className="hidden sm:block mx-7 bg-white rounded-[14px] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
-                <thead className="border-b bg-slate-50 border-slate-100">
-                  <tr>{['#', 'Image', 'Full Name', 'Position', 'Visible', 'Action'].map((h) => <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 tracking-[0.06em] uppercase whitespace-nowrap">{h}</th>)}</tr>
-                </thead>
-                <tbody><DesktopSkeletons /></tbody>
-              </table>
-            </div>
-          </div>
-        )}
+            {/* Empty state */}
+            {!loading && filteredMembers.length === 0 && !error && (
+              <div style={{ padding: '60px 0', textAlign: 'center', color: T.slate400 }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>👥</div>
+                <div style={{ fontSize: 13 }}>No {activeTeam === 'appdev' ? 'App Dev' : 'Leadership'} members found.</div>
+              </div>
+            )}
 
-        {!loading && filteredMembers.length > 0 && (
-          <div className="px-3 sm:px-7 pt-2.5 text-xs text-slate-400">
-            {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''} in {activeTeam === 'appdev' ? 'App Dev Team' : 'Leadership'}
+            {/* Mobile Cards */}
+            {!loading && filteredMembers.length > 0 && (
+              <div className="al-mobile-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {filteredMembers.map((member, idx) => {
+                  const imgSrc = resolveImg(member);
+                  return (
+                    <div key={getId(member)} style={{ background: '#fff', borderRadius: T.radius.lg, border: `1px solid ${T.slate200}`, padding: 14, boxShadow: T.shadow.sm }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <div style={{
+                          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                          background: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length],
+                          border: `1px solid ${T.slate200}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 13, fontWeight: 700, color: T.slate600, overflow: 'hidden',
+                        }}>
+                          {imgSrc
+                            ? <img src={imgSrc} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            : getInitials(member.name)
+                          }
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, color: T.slate900, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.name}</div>
+                          <div style={{ fontSize: 11, color: T.slate400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.position}</div>
+                        </div>
+                        <button
+                          onClick={() => toggleVisible(member)}
+                          style={{
+                            fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                            background: member.status ? T.green50 : T.slate100,
+                            color: member.status ? T.green600 : T.slate500,
+                            border: `1px solid ${member.status ? T.green100 : T.slate200}`,
+                            cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                          }}
+                        >
+                          {member.status ? '● Visible' : '○ Hidden'}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, paddingTop: 10, borderTop: `1px solid ${T.slate100}` }}>
+                        {[
+                          { label: '👁 View',   onClick: () => setViewTarget(member),   bg: T.blue50,  color: T.blue600,  border: T.blue100 },
+                          { label: '✏️ Edit',  onClick: () => openEdit(member),         bg: '#fff',    color: T.slate700, border: T.slate200 },
+                          { label: '🗑️ Delete', onClick: () => setDeleteTarget(member), bg: T.red50,   color: T.red600,   border: T.red100 },
+                        ].map((btn) => (
+                          <button
+                            key={btn.label}
+                            onClick={btn.onClick}
+                            className="al-btn-action"
+                            style={{
+                              flex: 1, padding: '6px 4px', borderRadius: T.radius.sm,
+                              fontSize: 11, fontWeight: 600,
+                              background: btn.bg, color: btn.color,
+                              border: `1px solid ${btn.border}`,
+                              cursor: 'pointer', fontFamily: T.font,
+                              transition: 'opacity 0.12s', textAlign: 'center',
+                            }}
+                          >{btn.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Desktop Table */}
+            {!loading && filteredMembers.length > 0 && (
+              <div className="al-desktop-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: T.slate50, borderBottom: `1px solid ${T.slate200}` }}>
+                      {['#', 'Photo', 'Full Name', 'Position', 'Team', 'Visible', 'Actions'].map((h) => (
+                        <th key={h} style={{
+                          padding: '10px 14px', textAlign: h === 'Actions' ? 'center' : 'left',
+                          fontWeight: 600, fontSize: 10, color: T.slate500,
+                          textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMembers.map((member, idx) => {
+                      const imgSrc = resolveImg(member);
+                      return (
+                        <tr key={getId(member)} className="al-tbl-row" style={{ borderBottom: `1px solid ${T.slate100}`, background: idx % 2 === 0 ? '#fff' : `${T.slate50}60`, transition: 'background 0.1s' }}>
+
+                          {/* # */}
+                          <td style={{ padding: '12px 14px', color: T.slate400, fontSize: 11, fontFamily: 'monospace', width: 48 }}>{idx + 1}</td>
+
+                          {/* Photo */}
+                          <td style={{ padding: '12px 14px', width: 60 }}>
+                            <div style={{
+                              width: 38, height: 38, borderRadius: '50%',
+                              background: imgSrc ? 'transparent' : AVATAR_COLORS[idx % AVATAR_COLORS.length],
+                              border: `1px solid ${T.slate200}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 12, fontWeight: 700, color: T.slate600, overflow: 'hidden',
+                            }}>
+                              {imgSrc
+                                ? <img src={imgSrc} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                                : getInitials(member.name)
+                              }
+                            </div>
+                          </td>
+
+                          {/* Full Name */}
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: T.slate900 }}>{member.name}</div>
+                          </td>
+
+                          {/* Position */}
+                          <td style={{ padding: '12px 14px', color: T.slate500, fontSize: 12 }}>{member.position}</td>
+
+                          {/* Team */}
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{
+                              display: 'inline-block', fontSize: 10, fontWeight: 700,
+                              padding: '3px 10px', borderRadius: 20,
+                              background: member.team === 'appdev' ? T.amber50 : T.blue50,
+                              color: member.team === 'appdev' ? T.amber600 : T.blue600,
+                              border: `1px solid ${member.team === 'appdev' ? T.amber100 : T.blue100}`,
+                            }}>
+                              {member.team === 'appdev' ? '💻 App Dev' : '👥 Leadership'}
+                            </span>
+                          </td>
+
+                          {/* Visible */}
+                          <td style={{ padding: '12px 14px' }}>
+                            <button
+                              onClick={() => toggleVisible(member)}
+                              style={{
+                                fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                                background: member.status ? T.green50 : T.slate100,
+                                color: member.status ? T.green600 : T.slate500,
+                                border: `1px solid ${member.status ? T.green100 : T.slate200}`,
+                                cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.12s',
+                              }}
+                            >
+                              {member.status ? '● Visible' : '○ Hidden'}
+                            </button>
+                          </td>
+
+                          {/* Actions */}
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                              {[
+                                { label: '👁 View',   onClick: () => setViewTarget(member),   bg: T.blue50,  color: T.blue600,  border: T.blue100 },
+                                { label: '✏️ Edit',  onClick: () => openEdit(member),         bg: '#fff',    color: T.slate700, border: T.slate200 },
+                                { label: '🗑️',       onClick: () => setDeleteTarget(member), bg: T.red50,   color: T.red600,   border: T.red100 },
+                              ].map((btn) => (
+                                <button
+                                  key={btn.label}
+                                  onClick={btn.onClick}
+                                  className="al-btn-action"
+                                  style={{
+                                    padding: '4px 8px', borderRadius: T.radius.sm,
+                                    fontSize: 10, fontWeight: 600,
+                                    background: btn.bg, color: btn.color,
+                                    border: `1px solid ${btn.border}`,
+                                    cursor: 'pointer', fontFamily: T.font,
+                                    transition: 'opacity 0.12s', whiteSpace: 'nowrap',
+                                  }}
+                                >{btn.label}</button>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Footer count */}
+                <div style={{ padding: '12px 16px', borderTop: `1px solid ${T.slate100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: T.slate400 }}>
+                    {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''} in {activeTeam === 'appdev' ? 'App Dev Team' : 'Leadership'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </main>
+        </main>
+      </div>
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
@@ -497,95 +695,124 @@ const AdminLeadership = () => {
             subtitle={editTarget ? editTarget.name : undefined}
             onClose={() => setShowModal(false)}
           />
-          <div className="px-4 py-5 sm:px-6">
+          <div style={{ padding: '20px 20px 24px' }}>
 
             {/* Image upload */}
-            <label className={labelCls}>Photo <span className="text-slate-400 normal-case font-normal">(optional)</span></label>
-            <label
-              htmlFor="lm-img-upload"
-              className="flex items-center gap-3 border-2 border-dashed border-slate-300 rounded-xl p-3.5 cursor-pointer bg-slate-50 hover:border-blue-500 transition-colors mb-3"
-            >
-              {imgPreview ? (
-                <img src={imgPreview} alt="preview" className="flex-shrink-0 object-cover border-2 rounded-full w-14 h-14 border-slate-200" />
-              ) : (
-                <div className="flex items-center justify-center flex-shrink-0 w-14 h-14 rounded-full bg-slate-200 overflow-hidden relative">
-                  <SilhouettePlaceholder />
-                </div>
-              )}
-              <div>
-                <div className="text-[13px] font-semibold text-slate-700">
-                  {imgPreview ? 'Click to change photo' : 'Click to upload photo'}
-                </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">JPEG, PNG — max 40 MB · Optional</div>
-              </div>
-              <input id="lm-img-upload" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleImgChange} className="hidden" />
-            </label>
-            {imgPreview && (
-              <button
-                type="button"
-                onClick={() => { setImgPreview(null); setImgFile(null); }}
-                className="text-[12px] text-red-600 bg-transparent border-none cursor-pointer mb-4 p-0 hover:text-red-700"
+            <div style={{ marginBottom: 16 }}>
+              <div style={labelStyle}>Photo <span style={{ color: T.slate400, textTransform: 'none', fontWeight: 400 }}>(optional)</span></div>
+              <label htmlFor="lm-img-upload" style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                border: `2px dashed ${T.slate300}`, borderRadius: T.radius.md,
+                padding: '12px 14px', cursor: 'pointer', background: T.slate50,
+                transition: 'border-color 0.15s',
+              }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.blue500)}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.slate300)}
               >
-                ✕ Remove photo
-              </button>
-            )}
+                <div style={{ width: 52, height: 52, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, position: 'relative', background: imgPreview ? 'transparent' : T.slate200, border: `2px solid ${T.slate200}` }}>
+                  {imgPreview
+                    ? <img src={imgPreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <SilhouettePlaceholder />
+                  }
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.slate700 }}>{imgPreview ? 'Click to change photo' : 'Click to upload photo'}</div>
+                  <div style={{ fontSize: 11, color: T.slate400, marginTop: 2 }}>JPEG, PNG — max 40 MB · Optional</div>
+                </div>
+                <input id="lm-img-upload" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleImgChange} style={{ display: 'none' }} />
+              </label>
+              {imgPreview && (
+                <button type="button" onClick={() => { setImgPreview(null); setImgFile(null); }}
+                  style={{ marginTop: 6, fontSize: 11, color: T.red600, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  ✕ Remove photo
+                </button>
+              )}
+            </div>
 
             {/* Team selector */}
-            <div className="mb-4">
-              <label className={labelCls}>Team</label>
-              <div className="flex gap-2">
+            <div style={{ marginBottom: 16 }}>
+              <div style={labelStyle}>Team</div>
+              <div style={{ display: 'flex', gap: 8 }}>
                 {TEAMS.map((t) => (
                   <button
                     key={t.key}
                     type="button"
                     onClick={() => setForm((p) => ({ ...p, team: t.key }))}
-                    className={`flex-1 py-2 rounded-lg text-[12px] font-semibold border transition-colors cursor-pointer
-                      ${form.team === t.key
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                  >
-                    {t.label}
-                  </button>
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: T.radius.sm,
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      background: form.team === t.key ? T.blue600 : '#fff',
+                      color: form.team === t.key ? '#fff' : T.slate600,
+                      border: `1px solid ${form.team === t.key ? T.blue600 : T.slate200}`,
+                      transition: 'all 0.12s', fontFamily: T.font,
+                    }}
+                  >{t.label}</button>
                 ))}
               </div>
             </div>
 
-            <div className="mb-4">
-              <label className={labelCls}>Full Name</label>
+            {/* Name */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={labelStyle}>Full Name</div>
               <input
-                className={inputCls}
+                style={inputStyle}
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 placeholder="e.g. Ms. Shella R. Acibar"
+                onFocus={(e) => (e.target.style.borderColor = T.blue500)}
+                onBlur={(e) => (e.target.style.borderColor = T.slate200)}
               />
             </div>
 
-            <div className="mb-4">
-              <label className={labelCls}>Position</label>
+            {/* Position */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={labelStyle}>Position</div>
               <input
-                className={inputCls}
+                style={inputStyle}
                 value={form.position}
                 onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))}
                 placeholder="e.g. Co-Owner of Jem 8 Circle"
+                onFocus={(e) => (e.target.style.borderColor = T.blue500)}
+                onBlur={(e) => (e.target.style.borderColor = T.slate200)}
               />
             </div>
 
-            <div className="flex items-center justify-between px-1 mb-6">
-              <span className={labelCls} style={{ margin: 0 }}>Visible on site</span>
+            {/* Visible toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, padding: '10px 14px', background: T.slate50, borderRadius: T.radius.sm, border: `1px solid ${T.slate200}` }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.slate700 }}>Visible on site</div>
+                <div style={{ fontSize: 11, color: T.slate400, marginTop: 1 }}>Member will appear on the public page</div>
+              </div>
               <button
                 type="button"
                 onClick={() => setForm((p) => ({ ...p, status: !p.status }))}
-                className={`relative w-11 h-6 rounded-full border-none cursor-pointer transition-colors flex-shrink-0 ${form.status ? 'bg-blue-600' : 'bg-slate-300'}`}
+                style={{
+                  position: 'relative', width: 44, height: 24, borderRadius: 12,
+                  border: 'none', cursor: 'pointer', flexShrink: 0,
+                  background: form.status ? T.blue600 : T.slate300,
+                  transition: 'background 0.2s',
+                }}
               >
-                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.status ? 'left-5' : 'left-0.5'}`} />
+                <span style={{
+                  position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%',
+                  background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                  transition: 'left 0.2s',
+                  left: form.status ? 22 : 2,
+                }} />
               </button>
             </div>
 
-            <div className="flex gap-2.5">
-              <button onClick={() => setShowModal(false)} disabled={submitting} className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-              <button onClick={saveForm} disabled={submitting} className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${submitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 cursor-pointer hover:bg-blue-700'}`}>
-                {submitting ? (editTarget === null ? 'Adding…' : 'Saving…') : (editTarget === null ? 'Add Member' : 'Save Changes')}
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowModal(false)} disabled={submitting} style={{ ...btnBase, flex: 1, justifyContent: 'center', padding: '10px 0', background: '#fff', color: T.slate700, border: `1px solid ${T.slate200}` }}>
+                Cancel
+              </button>
+              <button onClick={saveForm} disabled={submitting} style={{
+                ...btnBase, flex: 2, justifyContent: 'center', padding: '10px 0',
+                background: submitting ? T.slate300 : T.blue600, color: '#fff',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+              }}>
+                {submitting ? (editTarget === null ? 'Adding…' : 'Saving…') : (editTarget === null ? 'Add Member' : '💾 Save Changes')}
               </button>
             </div>
           </div>
@@ -598,24 +825,68 @@ const AdminLeadership = () => {
         return (
           <Overlay onClose={() => setViewTarget(null)} narrow>
             <ModalHeader title="Member Details" onClose={() => setViewTarget(null)} />
-            <div className="px-4 py-6 text-center sm:px-6">
-              <div className="relative flex items-center justify-center w-20 h-20 mx-auto mb-4 overflow-hidden border-2 rounded-full border-slate-100" style={{ backgroundColor: imgSrc ? 'transparent' : '#a8d5ba' }}>
+            <div style={{ padding: '20px 20px 24px', textAlign: 'center' }}>
+              {/* Avatar */}
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%', margin: '0 auto 14px',
+                background: imgSrc ? 'transparent' : '#a8d5ba',
+                border: `2px solid ${T.slate200}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', position: 'relative',
+              }}>
                 {imgSrc
-                  ? <img src={imgSrc} alt={viewTarget.name} className="object-cover w-full h-full" onError={(e) => { e.target.style.display = 'none'; }} />
+                  ? <img src={imgSrc} alt={viewTarget.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
                   : <SilhouettePlaceholder />
                 }
               </div>
-              <div className="font-bold text-slate-900 text-[16px] mb-1">{viewTarget.name}</div>
-              <div className="text-slate-400 text-[13px] mb-1">{viewTarget.position}</div>
-              <div className="text-[11px] text-slate-400 mb-4">
-                {viewTarget.team === 'appdev' ? '💻 App Dev Team' : '👥 Leadership'}
+
+              <div style={{ fontWeight: 700, fontSize: 16, color: T.slate900, marginBottom: 4 }}>{viewTarget.name}</div>
+              <div style={{ fontSize: 13, color: T.slate400, marginBottom: 8 }}>{viewTarget.position}</div>
+
+              {/* Team badge */}
+              <div style={{ marginBottom: 12 }}>
+                <span style={{
+                  display: 'inline-block', fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
+                  background: viewTarget.team === 'appdev' ? T.amber50 : T.blue50,
+                  color: viewTarget.team === 'appdev' ? T.amber600 : T.blue600,
+                  border: `1px solid ${viewTarget.team === 'appdev' ? T.amber100 : T.blue100}`,
+                }}>
+                  {viewTarget.team === 'appdev' ? '💻 App Dev Team' : '👥 Leadership'}
+                </span>
               </div>
-              <span className={`inline-flex text-[11px] font-semibold px-3 py-1 rounded-full border ${viewTarget.status ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>
+
+              {/* Visibility */}
+              <span style={{
+                display: 'inline-block', fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
+                background: viewTarget.status ? T.green50 : T.slate100,
+                color: viewTarget.status ? T.green600 : T.slate500,
+                border: `1px solid ${viewTarget.status ? T.green100 : T.slate200}`,
+              }}>
                 {viewTarget.status ? '● Visible' : '○ Hidden'}
               </span>
-              <div className="flex gap-2.5 mt-6">
-                <button onClick={() => setViewTarget(null)} className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors">Close</button>
-                <button onClick={() => { openEdit(viewTarget); setViewTarget(null); }} className="flex-1 py-2.5 border-none rounded-lg bg-blue-600 text-white text-[13px] font-semibold cursor-pointer hover:bg-blue-700 transition-colors">✏️ Edit</button>
+
+              {/* Info rows */}
+              <div style={{ margin: '16px 0', padding: '12px 14px', background: T.slate50, border: `1px solid ${T.slate200}`, borderRadius: T.radius.md, textAlign: 'left' }}>
+                {[
+                  { label: 'Full Name', value: viewTarget.name },
+                  { label: 'Position', value: viewTarget.position },
+                  { label: 'Team', value: viewTarget.team === 'appdev' ? 'App Dev Team' : 'Leadership' },
+                  { label: 'Status', value: viewTarget.status ? 'Visible' : 'Hidden' },
+                ].map((row) => (
+                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '4px 0', borderBottom: `1px solid ${T.slate100}` }}>
+                    <span style={{ color: T.slate400, fontWeight: 600 }}>{row.label}</span>
+                    <span style={{ color: T.slate800, fontWeight: 500 }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setViewTarget(null)} style={{ ...btnBase, flex: 1, justifyContent: 'center', padding: '10px 0', background: '#fff', color: T.slate700, border: `1px solid ${T.slate200}` }}>
+                  Close
+                </button>
+                <button onClick={() => { openEdit(viewTarget); setViewTarget(null); }} style={{ ...btnBase, flex: 2, justifyContent: 'center', padding: '10px 0', background: T.blue600, color: '#fff' }}>
+                  ✏️ Edit Member
+                </button>
               </div>
             </div>
           </Overlay>
@@ -625,21 +896,29 @@ const AdminLeadership = () => {
       {/* ── Delete Modal ── */}
       {deleteTarget && (
         <Overlay onClose={() => setDeleteTarget(null)} narrow>
-          <div className="px-6 py-8 text-center sm:px-7">
-            <div className="mb-3 text-5xl">🗑️</div>
-            <h3 className="m-0 mb-2 text-[18px] font-bold text-slate-900">Delete Member?</h3>
-            <p className="m-0 mb-1.5 text-sm text-slate-500">"<strong className="text-slate-700">{deleteTarget.name}</strong>"</p>
-            <p className="m-0 mb-6 text-[13px] text-slate-400">This action cannot be undone.</p>
-            <div className="flex gap-2.5">
-              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="flex-1 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 text-[13px] font-semibold cursor-pointer hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-              <button onClick={confirmDelete} disabled={deleting} className={`flex-1 py-2.5 border-none rounded-lg text-white text-[13px] font-semibold transition-colors ${deleting ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 cursor-pointer hover:bg-red-700'}`}>
+          <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 14 }}>🗑️</div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: T.slate900 }}>Delete Member?</h3>
+            <p style={{ margin: '0 0 6px', fontSize: 13, color: T.slate500 }}>
+              "<strong style={{ color: T.slate700 }}>{deleteTarget.name}</strong>"
+            </p>
+            <p style={{ margin: '0 0 24px', fontSize: 12, color: T.slate400 }}>This action cannot be undone.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting} style={{ ...btnBase, flex: 1, justifyContent: 'center', padding: '10px 0', background: '#fff', color: T.slate700, border: `1px solid ${T.slate200}` }}>
+                Cancel
+              </button>
+              <button onClick={confirmDelete} disabled={deleting} style={{
+                ...btnBase, flex: 2, justifyContent: 'center', padding: '10px 0',
+                background: deleting ? T.red100 : T.red600, color: '#fff',
+                cursor: deleting ? 'not-allowed' : 'pointer',
+              }}>
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>
         </Overlay>
       )}
-    </div>
+    </>
   );
 };
 
