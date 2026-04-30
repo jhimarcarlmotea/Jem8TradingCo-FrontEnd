@@ -607,7 +607,7 @@ export function Footer() {
   return (
     <footer className="bg-[#f5f3ef] text-[#4a4a4a]">
       <div className="max-w-[1280px] mx-auto px-5 py-14">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
 
           {/* Brand col */}
           <div>
@@ -669,59 +669,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Newsletter */}
-          <div>
-            <div className="font-bold text-[#1e3d2b] text-sm uppercase tracking-wider mb-4">
-              Stay Updated
-            </div>
-            <p className="text-[13px] text-[#6b6b6b] leading-relaxed mb-4">
-              Get the latest product updates, promotions, and supply tips delivered to your inbox.
-            </p>
-
-            {/* Success / Already subscribed state */}
-            {(status === "success" || status === "exists") ? (
-              <div className="px-3 py-3 rounded-lg bg-[#e8f5ed] border border-[#b6dfc9] text-[#2e6b45] text-[13px] font-medium mb-3">
-                {message}
-              </div>
-            ) : (
-              <>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (status === "error") { setStatus("idle"); setMessage(""); }
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
-                    disabled={status === "loading"}
-                    className={`flex-1 px-3 py-2 rounded-lg bg-white border text-[13px] text-[#4a4a4a] placeholder-[#b0a99e] outline-none transition-colors disabled:opacity-60
-                      ${status === "error" ? "border-red-400 focus:border-red-400" : "border-[#d6d0c8] focus:border-[#2e6b45]"}`}
-                    placeholder="your@email.com"
-                  />
-                  <button
-                    onClick={handleSubscribe}
-                    disabled={status === "loading"}
-                    className="px-4 py-2 rounded-lg bg-[#2e6b45] text-white border-none cursor-pointer text-[13px] font-semibold whitespace-nowrap hover:bg-[#245537] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {status === "loading" ? "..." : "Subscribe"}
-                  </button>
-                </div>
-
-                {/* Error message */}
-                {status === "error" && (
-                  <p className="text-[11px] text-red-500 mb-2">{message}</p>
-                )}
-              </>
-            )}
-
-            <p className="text-[11px] text-[#9e9890]">
-              We won't spam. Read our{" "}
-              <Link to="/Privacypolicy?tab=email" className="text-[#2e6b45] no-underline hover:underline">
-                email policy
-              </Link>
-            </p>
-          </div>
+          {/* Newsletter removed */}
 
         </div>
       </div>
