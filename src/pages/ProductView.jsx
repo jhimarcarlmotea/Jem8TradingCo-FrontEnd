@@ -642,18 +642,19 @@ const stockStatus = isPreOrder
 
             {/* Start chat with admin */}
             <div className="mt-3">
-              <StartChatWithAdmin
-                initialMessage={`Hello admin, I'm interested in ${name} (ID ${productId})`}
-                productId={productId}
-                productName={name}
-                onStarted={({ chatroomId }) => {
-                  const qp = new URLSearchParams();
-                  qp.set('chatroom_id', chatroomId);
-                  qp.set('product_id', productId);
-                  qp.set('product_name', name);
-                  navigate(`/messages?${qp.toString()}`);
-                }}
-              />
+<StartChatWithAdmin
+  initialMessage={`Hello admin, I'm interested in ${name} (ID ${productId})`}
+  productId={productId}
+  productName={name}
+  productImage={images[0]?.image_path ? `${BASE}/storage/${images[0].image_path}` : null}
+  onStarted={({ chatroomId }) => {
+    const qp = new URLSearchParams();
+    qp.set('chatroom_id', chatroomId);
+    qp.set('product_id', productId);
+    qp.set('product_name', name);
+    navigate(`/messages?${qp.toString()}`);
+  }}
+/>
             </div>
 
             <div className="flex flex-wrap gap-2 mt-1">

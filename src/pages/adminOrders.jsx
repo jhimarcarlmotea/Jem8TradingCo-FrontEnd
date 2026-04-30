@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import axios from "axios";
 import AdminNav from "../components/AdminNav";
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const api = axios.create({
   baseURL: "http://127.0.0.1:8000/api",
@@ -429,15 +431,19 @@ function ViewOrderModal({ delivery, onClose }) {
 // EXPORT UTILITIES
 // ══════════════════════════════════════════════════════════════════════════════
 
-function loadXLSX() {
-  return new Promise((resolve, reject) => {
-    if (window.XLSX) { resolve(window.XLSX); return; }
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-    script.onload = () => resolve(window.XLSX);
-    script.onerror = () => reject(new Error("Failed to load XLSX"));
-    document.head.appendChild(script);
-  });
+// Old XLSX loader removed. Using ExcelJS + file-saver for browser export.
+
+// Dynamic SheetJS loader used by the Excel export routine. Loads from the
+// official SheetJS CDN at runtime and returns the module namespace or null
+// when loading fails (network blocked / offline).
+async function loadXLSX() {
+  try {
+    const mod = await import("https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs");
+    return mod;
+  } catch (e) {
+    console.error("Failed to load XLSX module:", e);
+    return null;
+  }
 }
 
 // ── PDF Export ─────────────────────────────────────────────────────────────────
@@ -694,29 +700,6 @@ function exportOrderToPDF(delivery) {
     color: #111;
     width: 12%;
     white-space: nowrap;
-  }
-  .tot-blank {
-    background: #aff0ff;
-    height: 10px;
-  }
-
-  /* ── DISCLAIMER ── */
-  .disclaimer-wrap {
-    border: 1.5px solid #333;
-    border-top: none;
-    padding: 6px 8px;
-  }
-  .disc-title {
-    font-weight: bold;
-    font-size: 8.5pt;
-    color: #111;
-    margin-bottom: 3px;
-  }
-  .disc-text {
-    font-size: 7.5pt;
-    color: #333;
-    line-height: 1.4;
-    margin-bottom: 3px;
   }
 
   /* ── SIGNATURE BLOCK ── */
@@ -1054,7 +1037,7 @@ async function exportOrderToExcel(delivery) {
   });
   // If template lacks explicit column widths, set sane defaults for B (description) and K (amount)
   ws['!cols'] = ws['!cols'] || [];
-  if (!ws['!cols'][1]) ws['!cols'][1] = { wch: 60 }; // B
+  if (!ws['!cols'][1]) ws['!cols'][1] = { wch: 30 }; // B (conservative default to allow wrapping)
   if (!ws['!cols'][2]) ws['!cols'][2] = { wch: 18 }; // C
  
   // ── Totals (compute immediately after the NF row so layout is compact)
@@ -1076,11 +1059,39 @@ async function exportOrderToExcel(delivery) {
   wb.Sheets[newName] = ws;
   delete wb.Sheets[oldName];
  
-  XLSX.writeFile(wb, `Quotation_Order_${orderId}.xlsx`, { bookType: 'xlsx', cellStyles: true });
 
   // Ensure disclaimer and long text cells wrap: detect cells containing known disclaimer fragments
   try {
     const keys = Object.keys(ws);
+    // helper: insert soft line breaks at word boundaries to avoid overflow
+    const softWrap = (text, lineLen) => {
+      if (!text) return text;
+      const words = String(text).split(/(\s+)/); // keep spaces
+      let line = "";
+      const out = [];
+      for (const w of words) {
+        // if adding this word would exceed lineLen, break
+        if ((line + w).replace(/\t/g, '    ').length > lineLen) {
+          if (line.trim()) out.push(line.trimRight());
+          // if the single word itself is longer than lineLen, hard-break it
+          if (w.length > lineLen) {
+            let start = 0;
+            while (start < w.length) {
+              out.push(w.slice(start, start + lineLen));
+              start += lineLen;
+            }
+            line = "";
+            continue;
+          }
+          line = w.trimStart();
+        } else {
+          line += w;
+        }
+      }
+      if (line.trim()) out.push(line.trimRight());
+      return out.join('\n');
+    };
+
     for (const k of keys) {
       const cell = ws[k];
       if (!cell || typeof cell.v !== 'string') continue;
@@ -1089,12 +1100,29 @@ async function exportOrderToExcel(delivery) {
         // enforce wrap and top alignment
         cell.s = cell.s || {};
         cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { wrapText: true, vertical: 'top' });
-        // set row height for this row
+
+        // Insert explicit line breaks so Excel displays wrapped lines
+        try {
+          let newV = String(v);
+          // break sentences into separate lines
+          newV = newV.replace(/\.\s+/g, '.\n');
+          // break after semicolons
+          newV = newV.replace(/;\s+/g, ';\n');
+          // ensure 'However' begins on a new line
+          newV = newV.replace(/\n?However/g, '\nHowever');
+          // normalize multiple newlines
+          newV = newV.replace(/\n{2,}/g, '\n\n');
+          cell.v = newV;
+        } catch (e) {
+          // ignore transform errors
+        }
+
+        // set row height for this row to allow wrapped text to be visible
         const match = k.match(/(\d+)$/);
         if (match) {
           const rowIdx = Number(match[1]);
           ws['!rows'] = ws['!rows'] || [];
-          ws['!rows'][rowIdx - 1] = Object.assign({}, ws['!rows'][rowIdx - 1] || {}, { hpt: 30 });
+          ws['!rows'][rowIdx - 1] = Object.assign({}, ws['!rows'][rowIdx - 1] || {}, { hpt: 80 });
         }
       }
     }
@@ -1186,6 +1214,132 @@ async function exportOrderToExcel(delivery) {
     }
   } catch (e) {
     // ignore
+  }
+  // Ensure all text cells have wrap enabled and reasonable row heights before saving
+  try {
+    ws['!rows'] = ws['!rows'] || [];
+    ws['!cols'] = ws['!cols'] || [];
+    const keys = Object.keys(ws);
+    // helper: column letter -> zero-based index
+    const colLetterToIndexLocal = (col) => {
+      let idx = 0;
+      for (let i = 0; i < col.length; i++) idx = idx * 26 + (col.charCodeAt(i) - 64);
+      return idx - 1;
+    };
+    for (const k of keys) {
+      if (!k || k[0] === '!') continue;
+      const cell = ws[k];
+      if (!cell) continue;
+      const isStringCell = cell.t === 's' || typeof cell.v === 'string';
+      if (!isStringCell) continue;
+      cell.s = cell.s || {};
+      cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { wrapText: true, vertical: 'top' });
+      const m = k.match(/([A-Z]+)(\d+)$/);
+      if (m) {
+        const colLetters = m[1];
+        const rowIdx = Number(m[2]);
+        let text = String(cell.v || '');
+        const explicitLines = text.split(/\r?\n/).length;
+
+        // Determine available width in characters for this cell. If the cell
+        // is inside a merge, use the merged span width; otherwise use the
+        // single-column width. Fall back to a conservative default.
+        let availChars = 40; // default fallback
+        try {
+          const colIdx = colLetterToIndexLocal(colLetters);
+          // if merges exist, see if this cell is within a merged range
+          const merges = ws['!merges'] || [];
+          let spanCols = 1;
+          for (const mm of merges) {
+            const startCol = mm.s.c;
+            const endCol = mm.e.c;
+            const startRow = mm.s.r + 1;
+            const endRow = mm.e.r + 1;
+            if (rowIdx >= startRow && rowIdx <= endRow && colIdx >= startCol && colIdx <= endCol) {
+              spanCols = (endCol - startCol + 1);
+              break;
+            }
+          }
+
+          // Sum widths of spanned columns (wch = characters width)
+          const cols = ws['!cols'] || [];
+          let totalW = 0;
+          for (let c = colIdx; c < colIdx + spanCols; c++) {
+            const cw = (cols[c] && cols[c].wch) || 0;
+            totalW += cw;
+          }
+          if (totalW > 0) availChars = Math.floor(totalW);
+        } catch (e) {
+          // ignore and use fallback
+        }
+
+        // Estimate lines required using available characters per line.
+        const approxCharsPerLine = Math.max(20, availChars);
+        // For key text columns (B, C) force soft-wrapping at word boundaries
+        try {
+          if (['B','C'].includes(colLetters)) {
+            text = softWrap(text, approxCharsPerLine);
+            cell.v = text;
+          }
+        } catch (e) {
+          // ignore
+        }
+        const extraLines = Math.ceil(text.length / approxCharsPerLine);
+        const lines = Math.max(explicitLines, extraLines);
+        const hpt = Math.min(400, Math.max(18, lines * 14));
+        ws['!rows'] = ws['!rows'] || [];
+        ws['!rows'][rowIdx - 1] = Object.assign({}, ws['!rows'][rowIdx - 1] || {}, { hpt });
+      }
+    }
+
+    // Ensure minimum column widths for key columns (B: description, C: client info/address)
+    if (!ws['!cols'][1] || !ws['!cols'][1].wch || ws['!cols'][1].wch < 20) ws['!cols'][1] = Object.assign({}, ws['!cols'][1] || {}, { wch: 30 });
+    if (!ws['!cols'][2] || !ws['!cols'][2].wch || ws['!cols'][2].wch < 12) ws['!cols'][2] = Object.assign({}, ws['!cols'][2] || {}, { wch: 18 });
+
+    // Write workbook to array then load into ExcelJS so we can reliably set
+    // alignment and row heights (Excel desktop honors these settings).
+    const outArray = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
+    try {
+      const workbookExcel = new ExcelJS.Workbook();
+      await workbookExcel.xlsx.load(outArray);
+      const sheet = workbookExcel.worksheets[0];
+
+      // Apply wrap alignment for all populated cells and transfer row heights
+      const keysAll = Object.keys(ws || {});
+      for (const k of keysAll) {
+        if (!k || k[0] === '!') continue;
+        const match = k.match(/([A-Z]+)(\d+)$/);
+        if (!match) continue;
+        try {
+          const excelCell = sheet.getCell(k);
+          excelCell.alignment = Object.assign({}, excelCell.alignment || {}, { wrapText: true, vertical: 'top' });
+        } catch (e) {
+          // ignore per-cell failures
+        }
+      }
+
+      if (ws['!rows'] && Array.isArray(ws['!rows'])) {
+        for (let i = 0; i < ws['!rows'].length; i++) {
+          const r = ws['!rows'][i];
+          if (r && r.hpt) {
+            const row = sheet.getRow(i + 1);
+            // Increase height slightly to add padding so wrapped text doesn't overlap
+            const newHeight = Math.max(r.hpt * 1.35, r.hpt + 12, 22);
+            row.height = newHeight;
+          }
+        }
+      }
+
+      const finalBuf = await workbookExcel.xlsx.writeBuffer();
+      const blob = new Blob([finalBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Quotation_Order_${orderId}.xlsx`);
+    } catch (e) {
+      console.error('ExcelJS post-processing failed, falling back to SheetJS write:', e);
+      XLSX.writeFile(wb, `Quotation_Order_${orderId}.xlsx`, { bookType: 'xlsx', cellStyles: true });
+    }
+  } catch (e) {
+    console.error('Failed to write XLSX file', e);
+    alert('Failed to generate XLSX file.');
   }
 }
 
@@ -1700,4 +1854,96 @@ export default function AdminOrders() {
       </div>
     </>
   );
+}
+
+// Generic browser-friendly Excel export using ExcelJS + file-saver
+export async function exportToExcel(data = [], filename = `export-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.xlsx`) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Sheet1');
+
+  // derive columns from union of object keys in order of appearance
+  const keys = data && data.length
+    ? Array.from(data.reduce((set, obj) => {
+        Object.keys(obj || {}).forEach((k) => set.add(k));
+        return set;
+      }, new Set()))
+    : [];
+
+  if (!keys.length) {
+    worksheet.addRow(['No data to export']);
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    });
+    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+    const buf = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, filename);
+    return;
+  }
+
+  worksheet.columns = keys.map((k) => ({ header: String(k), key: k, width: 10 }));
+
+  // add rows using object form so keys map correctly
+  for (const rowObj of data) worksheet.addRow(rowObj);
+
+  // compute optimal column widths based on longest line in each column
+  const maxColLengths = worksheet.columns.map((col, colIndex) => {
+    const headerText = String(col.header ?? '');
+    let max = headerText.length;
+    for (let r = 2; r <= worksheet.rowCount; r++) {
+      const cell = worksheet.getRow(r).getCell(colIndex + 1);
+      const val = cell.value;
+      let text = '';
+      if (val == null) text = '';
+      else if (typeof val === 'object' && val.richText) text = val.richText.map((t) => t.text).join('');
+      else text = String(val);
+      const longestLine = text.split(/\r?\n/).reduce((a, b) => Math.max(a, b.length), 0);
+      max = Math.max(max, longestLine);
+    }
+    return max;
+  });
+
+  worksheet.columns.forEach((col, i) => {
+    const calculated = Math.min(Math.max(8, Math.ceil(maxColLengths[i] + 2)), 60);
+    col.width = calculated;
+  });
+
+  // freeze header
+  worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  // header styling using getRow(1)
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = Math.max(20, headerRow.height || 20);
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+    cell.border = {
+      top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+    };
+  });
+
+  // style all data cells: wrap, vertical middle, borders
+  for (let r = 2; r <= worksheet.rowCount; r++) {
+    const row = worksheet.getRow(r);
+    row.alignment = { wrapText: true, vertical: 'middle' };
+    for (let c = 1; c <= worksheet.columnCount; c++) {
+      const cell = row.getCell(c);
+      const prev = cell.alignment || {};
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: prev.horizontal || 'left' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    }
+    row.commit();
+  }
+
+  headerRow.commit();
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, filename);
 }
