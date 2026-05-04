@@ -468,6 +468,11 @@
   max-height: 480px;
 }
 
+
+/* message row and bubble layout using Flexbox
+   - wrapper .msg-bubble acts as the row container (may receive inline styles)
+   - inner content (the actual bubble) is the first child div; constrain its width
+   - .msg-bubble--me used for messages from current user */
 .msg-bubble-row { display: flex; align-items: flex-end; gap: 8px; }
 .msg-bubble-row--me { flex-direction: row-reverse; }
 
@@ -485,29 +490,86 @@
   flex-shrink: 0;
   align-self: flex-end;
 }
+
+/* Ensure the outer wrapper doesn't force full-width (override inline width:100%) */
 .msg-bubble {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  width: auto !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* The actual visible bubble is typically the first child div inside .msg-bubble
+   Constrain that inner element so bubbles don't stretch full width */
+.msg-bubble > div,
+.msg-bubble > .msg-bubble__content {
+  /* Responsive fixed-like width: scales between 220px and 320px (40% viewport) */
+  width: clamp(220px, 40%, 320px);
   max-width: 65%;
+  min-width: 180px;
+  min-height: 56px; /* equalize vertical size */
+  display: flex;
+  align-items: center; /* vertically center short content */
+  word-break: break-word;
+  white-space: normal;
   background: #fff;
   border: 1px solid #e8f0eb;
   border-radius: 18px 18px 18px 4px;
   padding: 12px 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  color: #1e293b;
 }
+
+/* Constrain the inner "bubble" (the padded div inside the column) so
+   product cards and other rich content can't overflow the visible bubble.
+   Use overflow hidden so round corners clip child backgrounds. */
+.msg-bubble > div > div,
+.msg-bubble > .msg-bubble__content > div {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: block;
+}
+
+/* Styles for messages from current user (align right / reversed corners) */
 .msg-bubble--me {
+  margin-left: auto; /* pushes the message to the right */
+  flex-direction: row-reverse;
+}
+.msg-bubble--me > div,
+.msg-bubble--me > .msg-bubble__content {
+  /* match sizing for sent messages */
+  width: clamp(220px, 40%, 320px);
+  max-width: 65%;
+  min-width: 180px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
   background: var(--clr-primary);
   border-color: var(--clr-primary);
   border-radius: 18px 18px 4px 18px;
   box-shadow: 0 2px 8px rgba(77,123,101,0.2);
+  color: #fff;
 }
-.msg-bubble p {
+
+/* Make sure any product card inside the bubble doesn't exceed available space */
+.msg-bubble .ProductMsgCard,
+.msg-bubble [style*="Product Inquiry"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.msg-bubble > div p {
   font-family: var(--font-body);
   font-size: 14px;
-  color: #1a2e22;
+  color: inherit;
   margin: 0;
   line-height: 1.55;
 }
-.msg-bubble--me p { color: #fff; }
-.msg-bubble__time {
+.msg-bubble > div .msg-bubble__time {
   display: block;
   font-family: var(--font-body);
   font-size: 10px;
@@ -515,8 +577,14 @@
   margin-top: 5px;
   text-align: right;
 }
-.msg-bubble--me .msg-bubble__time { color: rgba(255,255,255,0.65); }
+.msg-bubble--me > div .msg-bubble__time { color: rgba(255,255,255,0.65); }
 .msg-bubble__img { max-width: 200px; border-radius: 10px; margin-bottom: 8px; display: block; }
+
+/* Responsive: allow slightly larger bubbles on small screens */
+@media (max-width: 640px) {
+  .msg-bubble > div,
+  .msg-bubble > .msg-bubble__content { max-width: 80%; }
+}
 
 /* input row */
 .msg-chat__input-row {

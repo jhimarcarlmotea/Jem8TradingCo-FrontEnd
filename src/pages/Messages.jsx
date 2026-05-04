@@ -1830,33 +1830,36 @@ export default function Messages() {
                 display: "flex",
                 flexDirection: "column",
                 gap: 6,
-                alignItems: "flex-end",
+                alignItems: "stretch",
               }}
             >
               {messagesToRender.map((msg, msgIdx) => {
                 const currentUserId = getUserId(currentUser);
                 const currentIsAdmin = isAdminUser(currentUser);
 
+                // Prefer explicit indicators, then fall back to role inference.
                 let isFromMe = false;
                 if (msg) {
+                  // If server or message explicitly marks admin, treat as received (left)
+                  const senderIsAdmin = !!(
+                    msg.is_admin ||
+                    msg.sender === "admin" ||
+                    msg.from === "admin" ||
+                    (msg.user && (msg.user.is_admin || msg.user.role === "admin"))
+                  );
+
+                  // If current user id is known, match against common id fields.
                   if (currentUserId) {
-                    if (currentIsAdmin) {
-                      isFromMe = !!(
-                        msg.is_admin ||
-                        msg.sender === "admin" ||
-                        msg.from === "admin"
-                      );
-                    } else {
-                      isFromMe = !!(
-                        msg.from === "me" ||
-                        msg.user_id == currentUserId ||
-                        msg.account_id == currentUserId ||
-                        msg.sender_id == currentUserId ||
-                        (msg.account && msg.account.id == currentUserId)
-                      );
-                    }
+                    isFromMe = !!(
+                      msg.from === "me" ||
+                      msg.user_id == currentUserId ||
+                      msg.account_id == currentUserId ||
+                      msg.sender_id == currentUserId ||
+                      (msg.account && msg.account.id == currentUserId)
+                    );
                   } else {
-                    isFromMe = !!(msg.from === "me");
+                    // If we don't know current user, assume non-admin messages are from the user.
+                    isFromMe = !senderIsAdmin || msg.from === "me";
                   }
                 }
 
@@ -1885,14 +1888,19 @@ export default function Messages() {
                           display: "flex",
                           alignItems: "flex-end",
                           gap: 10,
-                          flexDirection: isFromMe ? "row-reverse" : "row",
+                          flexDirection: "row",
+                          justifyContent: hasProductCard
+                            ? "flex-end"
+                            : isFromMe
+                            ? "flex-end"
+                            : "flex-start",
                           marginBottom: 2,
                           width: "100%",
                           boxSizing: "border-box",
                         }}
                   >
                     {/* Sender avatar (only for received messages) */}
-                    {!isFromMe && (
+                    {!isFromMe && !hasProductCard && (
                       (() => {
                         const senderIsAdmin = !!(
                           msg.is_admin ||
@@ -1957,7 +1965,7 @@ export default function Messages() {
                         display: "flex",
                         flexDirection: "column",
                         maxWidth: "68%",
-                        alignItems: isFromMe ? "flex-end" : "flex-start",
+                        alignItems: isFromMe ? "flex-end" : hasProductCard ? "flex-end" : "flex-start",
                       }}
                     >
                       {/* Image attachment (legacy img field) */}
