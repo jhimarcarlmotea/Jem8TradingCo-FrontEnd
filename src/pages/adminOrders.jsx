@@ -1205,8 +1205,7 @@ async function exportOrderToExcel(delivery) {
   const vatBaseRow = subtotalRow + 1;
   const vatRow = subtotalRow + 2;
   const totalRow = subtotalRow + 4;
-  const itemsStart = 15;
-  const sumEnd = Math.max(lastItemRow, itemsStart);
+  
 
   setFormula(`K${subtotalRow}`, `SUM(K${itemsStart}:K${sumEnd})`);
   setFormula(`K${vatBaseRow}`, `K${subtotalRow}/1.12`);
