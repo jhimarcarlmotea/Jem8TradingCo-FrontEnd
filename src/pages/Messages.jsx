@@ -1830,6 +1830,7 @@ export default function Messages() {
                 display: "flex",
                 flexDirection: "column",
                 gap: 6,
+                alignItems: "flex-end",
               }}
             >
               {messagesToRender.map((msg, msgIdx) => {
@@ -1881,12 +1882,14 @@ export default function Messages() {
                     }
                     className="msg-bubble"
                     style={{
-                      display: "flex",
-                      alignItems: "flex-end",
-                      gap: 10,
-                      flexDirection: isFromMe ? "row-reverse" : "row",
-                      marginBottom: 2,
-                    }}
+                          display: "flex",
+                          alignItems: "flex-end",
+                          gap: 10,
+                          flexDirection: isFromMe ? "row-reverse" : "row",
+                          marginBottom: 2,
+                          width: "100%",
+                          boxSizing: "border-box",
+                        }}
                   >
                     {/* Sender avatar (only for received messages) */}
                     {!isFromMe && (
