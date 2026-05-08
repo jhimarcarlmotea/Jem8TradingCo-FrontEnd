@@ -420,7 +420,9 @@ async function startChatWithAdmin(initialText = "Hello admin") {
 ───────────────────────────────────────────── */
 export default function Messages() {
   const [threads, setThreads] = useState(INITIAL_THREADS);
+  const [loading, setLoading] = useState(true);
   const [activeThread, setActiveThread] = useState(null);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("Inbox");
   const [input, setInput] = useState("");
   const [pendingFile, setPendingFile] = useState(null);
@@ -763,6 +765,7 @@ export default function Messages() {
   /* ── Load chat rooms on mount ── */
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
     (async () => {
       try {
         let meResp = null;
@@ -951,6 +954,8 @@ export default function Messages() {
         } else {
           console.warn("Failed to load chat rooms:", msg);
         }
+      } finally {
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
@@ -962,7 +967,8 @@ export default function Messages() {
   useEffect(() => {
     if (!activeThread || unauthenticated) return;
     let mounted = true;
-
+    setMessagesLoading(true);
+    let firstFetchDone = false;
     const poll = async () => {
       try {
         if (isTypingRef.current) return;
@@ -1009,7 +1015,10 @@ export default function Messages() {
               : t
           )
         );
-
+        if (!firstFetchDone) {
+          firstFetchDone = true;
+          setMessagesLoading(false);
+        }
         if (!prevLast || (newLast && newLast !== prevLast)) {
           try {
             bottomRef.current?.scrollIntoView({
@@ -1020,6 +1029,10 @@ export default function Messages() {
         }
       } catch (err) {
         console.warn("Polling messages failed:", err);
+        if (!firstFetchDone) {
+          firstFetchDone = true;
+          setMessagesLoading(false);
+        }
       }
     };
 
@@ -1469,17 +1482,41 @@ export default function Messages() {
             {/* Thread list */}
             <div style={{ flex: 1, overflowY: "auto" }}>
               {filteredThreads.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "48px 20px",
-                    color: "#94a3b8",
-                    fontSize: 13,
-                  }}
-                >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
-                  No conversations found.
-                </div>
+                loading ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "48px 20px",
+                      color: "#94a3b8",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        margin: "0 auto 12px",
+                        border: "3px solid #e6efe9",
+                        borderTopColor: "#4d7b65",
+                        borderRadius: 99,
+                        animation: "spin 0.8s linear infinite",
+                      }}
+                    />
+                    Loading conversations…
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "48px 20px",
+                      color: "#94a3b8",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+                    No conversations found.
+                  </div>
+                )
               ) : (
                 filteredThreads.map((t, threadIdx) => {
                   const lastMsg = t.messages[t.messages.length - 1];
@@ -1833,7 +1870,13 @@ export default function Messages() {
                 alignItems: "stretch",
               }}
             >
-              {messagesToRender.map((msg, msgIdx) => {
+              {messagesLoading && messagesToRender.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>
+                  <div style={{ width: 36, height: 36, margin: "8px auto", border: "3px solid #e6efe9", borderTopColor: "#4d7b65", borderRadius: 99, animation: "spin 0.8s linear infinite" }} />
+                  Loading messages…
+                </div>
+              ) : (
+                messagesToRender.map((msg, msgIdx) => {
                 const currentUserId = getUserId(currentUser);
                 const currentIsAdmin = isAdminUser(currentUser);
 
@@ -2095,7 +2138,7 @@ export default function Messages() {
                     </div>
                   </div>
                 );
-              })}
+              }))}
               <div ref={bottomRef} />
             </div>
 

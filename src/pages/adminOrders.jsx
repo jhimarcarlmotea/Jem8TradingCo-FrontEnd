@@ -98,6 +98,22 @@ function getExportedSet() {
 // New ExcelJS-based exporter using Reports.tsx style
 async function exportOrderToExcelJS(delivery) {
   try {
+    // Try dynamic import of ExcelJS and file-saver to avoid build-time dependency issues.
+    let ExcelJS = null;
+    let saveAs = null;
+    try {
+      const mod = await import('exceljs');
+      ExcelJS = mod && (mod.default || mod);
+    } catch (e) {
+      ExcelJS = null;
+    }
+    try {
+      const fs = await import('file-saver');
+      saveAs = fs && (fs.saveAs || fs.default || null);
+    } catch (e) {
+      saveAs = null;
+    }
+
     const checkout = delivery.checkout || {};
     const user = checkout.user || {};
     const items = checkout.items || [];
@@ -105,6 +121,8 @@ async function exportOrderToExcelJS(delivery) {
     const paid = Number(checkout.paid_amount || 0);
     const shipping = Number(checkout.shipping_fee || 0);
     const subtotal = Math.max(0, paid - shipping);
+    // If ExcelJS is not available, fall back to CSV export later.
+    if (!ExcelJS) throw new Error('exceljs-not-available');
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(`Order_${orderId}`);
@@ -122,24 +140,28 @@ async function exportOrderToExcelJS(delivery) {
     ws.getCell(`A${ciStart}`).value = 'Client Name:';
     ws.mergeCells(`B${ciStart}:F${ciStart}`);
     ws.getCell(`B${ciStart}`).value = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    ws.getCell(`B${ciStart}`).alignment = { wrapText: true, vertical: 'top' };
     ws.getCell(`G${ciStart}`).value = 'Date:';
     ws.getCell(`A${ciStart}`).font = { bold: true };
 
     ws.getCell(`A${ciStart+1}`).value = 'Company Name:';
     ws.mergeCells(`B${ciStart+1}:F${ciStart+1}`);
     ws.getCell(`B${ciStart+1}`).value = user.company_name || '';
+    ws.getCell(`B${ciStart+1}`).alignment = { wrapText: true, vertical: 'top' };
     ws.getCell(`G${ciStart+1}`).value = 'Deliver:';
     ws.getCell(`A${ciStart+1}`).font = { bold: true };
 
     ws.getCell(`A${ciStart+2}`).value = 'Contact Details:';
     ws.mergeCells(`B${ciStart+2}:F${ciStart+2}`);
     ws.getCell(`B${ciStart+2}`).value = [user.email, user.phone_number].filter(Boolean).join(' | ');
+    ws.getCell(`B${ciStart+2}`).alignment = { wrapText: true, vertical: 'top' };
     ws.getCell(`G${ciStart+2}`).value = 'Validity:';
     ws.getCell(`A${ciStart+2}`).font = { bold: true };
 
     ws.getCell(`A${ciStart+3}`).value = 'Address:';
     ws.mergeCells(`B${ciStart+3}:F${ciStart+3}`);
     ws.getCell(`B${ciStart+3}`).value = resolveCheckoutAddress(checkout) || '';
+    ws.getCell(`B${ciStart+3}`).alignment = { wrapText: true, vertical: 'top' };
     ws.getCell(`G${ciStart+3}`).value = 'Payment & Terms';
     ws.getCell(`A${ciStart+3}`).font = { bold: true };
     // fill payment method
@@ -160,14 +182,15 @@ async function exportOrderToExcelJS(delivery) {
     const cols = ['No','Description','Size/Variant','Qty','Unit','Unit Price','Amount'];
     // set column widths before laying out signature/footer so merges align
     ws.columns = [
-      { width: 6 },
-      { width: 36 },
+      { width: 16 }, // first column preserved
       { width: 18 },
-      { width: 8 },
-      { width: 10 },
-      { width: 14 },
-      { width: 14 },
+      { width: 18 },
+      { width: 16 },
+      { width: 18 },
+      { width: 16 },
+      { width: 34 },
     ];
+    try { ws.getColumn(2).alignment = { wrapText: true, vertical: 'top' }; } catch (e) {}
     cols.forEach((c, i) => {
       const cell = ws.getCell(headerRow, i+1);
       cell.value = c;
@@ -178,10 +201,10 @@ async function exportOrderToExcelJS(delivery) {
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
     });
 
-    // Fixed item table height to match template: rows 15..31 (17 rows)
+    // Item table rows: only produce as many rows as there are items (no excess blank rows)
     const ITEM_START = headerRow + 1; // 15
-    const ITEM_MAX = 17;
-    for (let r = 0; r < ITEM_MAX; r++) {
+    const ITEM_COUNT = Math.max(1, (items && items.length) || 0);
+    for (let r = 0; r < ITEM_COUNT; r++) {
       const rowNumber = ITEM_START + r;
       const it = items[r] || null;
       if (it) {
@@ -211,8 +234,8 @@ async function exportOrderToExcelJS(delivery) {
         ws.getCell(rowNumber, c).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
       }
     }
-    // place "Nothing Follows" at fixed row after items per template
-    let rowIdx = ITEM_START + ITEM_MAX; // NF row
+    // place "Nothing Follows" immediately after the last item row
+    let rowIdx = ITEM_START + ITEM_COUNT; // NF row
 
     ws.mergeCells(`A${rowIdx}:G${rowIdx}`);
     ws.getCell(`A${rowIdx}`).value = '***Nothing Follows***';
@@ -248,6 +271,24 @@ async function exportOrderToExcelJS(delivery) {
     }
     ws.getCell(`G${rowIdx}`).fill = cyanFill;
     ws.getCell(`G${rowIdx}`).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    // Insert VAT row (12% of subtotal)
+    rowIdx++;
+    const VAT_RATE = 0.12;
+    const vatAmount = Math.round((subtotal * VAT_RATE) * 100) / 100; // two-decimal rounding
+    ws.getCell(`F${rowIdx}`).value = `VAT (${Math.round(VAT_RATE * 100)}%)`;
+    ws.getCell(`G${rowIdx}`).value = vatAmount;
+    ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00';
+    ws.getCell(`F${rowIdx}`).font = { bold: false };
+    // styling for VAT row (same cyan fill and borders)
+    for (let col = 1; col <= 6; col++) {
+      const letter = String.fromCharCode(64 + col);
+      const cell = ws.getCell(`${letter}${rowIdx}`);
+      cell.fill = cyanFill;
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    }
+    ws.getCell(`G${rowIdx}`).fill = cyanFill;
+    ws.getCell(`G${rowIdx}`).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    // Total Paid row (after VAT)
     rowIdx++;
     ws.getCell(`F${rowIdx}`).value = 'Total Paid';
     ws.getCell(`G${rowIdx}`).value = paid;
@@ -305,6 +346,13 @@ async function exportOrderToExcelJS(delivery) {
     });
     ws.getRow(sigHeaderRow).height = 18;
 
+    // ensure the merged partner cells for A:B, C:D, E:F are also centered
+    ['A','B','C','D','E','F','G'].forEach((col) => {
+      try {
+        ws.getCell(`${col}${sigHeaderRow}`).alignment = { horizontal: 'center', vertical: 'middle', indent: 0 };
+      } catch (e) {}
+    });
+
     // Empty signature rows (2 rows spacing) and signature lines (bottom border)
     const sigRow1 = sigHeaderRow + 1;
     const sigRow2 = sigHeaderRow + 2;
@@ -360,20 +408,71 @@ async function exportOrderToExcelJS(delivery) {
     ws.getCell(`F${rowIdx}`).alignment = { vertical: 'top', horizontal: 'right', wrapText: true };
 
     ws.columns = [
-      { width: 6 },
-      { width: 36 },
+      { width: 16 },
       { width: 18 },
-      { width: 8 },
-      { width: 10 },
-      { width: 14 },
-      { width: 14 },
+      { width: 18 },
+      { width: 16 },
+      { width: 18 },
+      { width: 16 },
+      { width: 34 },
     ];
+    try { ws.getColumn(2).alignment = { wrapText: true, vertical: 'top' }; } catch (e) {}
 
     const buf = await wb.xlsx.writeBuffer();
-    saveAs(new Blob([buf]), `Quotation_Order_${orderId}.xlsx`);
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    if (saveAs) {
+      saveAs(blob, `Quotation_Order_${orderId}.xlsx`);
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Quotation_Order_${orderId}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
   } catch (e) {
     console.error('exportOrderToExcelJS failed', e);
-    alert('Failed to export Excel file.');
+    // Fallback: generate a simple CSV export so admin can still download order data.
+    try {
+      const checkout = delivery.checkout || {};
+      const user = checkout.user || {};
+      const items = checkout.items || [];
+      const orderId = checkout.checkout_id || delivery.delivery_id || "order";
+
+      const rows = [];
+      rows.push(["Quotation"]);
+      rows.push([]);
+      rows.push(["Client Name", `${user.first_name || ''} ${user.last_name || ''}`.trim()]);
+      rows.push(["Company", user.company_name || '']);
+      rows.push(["Contact", [user.email, user.phone_number].filter(Boolean).join(' | ')]);
+      rows.push(["Address", resolveCheckoutAddress ? resolveCheckoutAddress(checkout) || '' : '']);
+      rows.push([]);
+      rows.push(["No","Description","Size/Variant","Qty","Unit","Unit Price","Amount"]);
+      for (let i = 0; i < Math.max(items.length, 1); i++) {
+        const it = items[i] || {};
+        const product = it.product || {};
+        const qty = Number(it.quantity || 1);
+        const price = Number(it.price ?? product.price ?? 0);
+        const amount = qty * price;
+        rows.push([String(i + 1).padStart(2, '0'), product.product_name || it.name || '', product.size || product.variant || '', qty, product.unit || 'pc', price.toFixed(2), amount.toFixed(2)]);
+      }
+
+      const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Quotation_Order_${orderId}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e2) {
+      console.error('CSV fallback failed', e2);
+      alert('Failed to export Excel file.');
+    }
   }
 }
 
