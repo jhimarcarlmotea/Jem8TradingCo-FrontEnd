@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import StartChatWithAdmin from "../components/StartChatWithAdmin";
-import axios from "axios";
-
-const BASE = "http://127.0.0.1:8000/api";
+import ContactForm from "../components/ContactForm";
 
 const CHAT_OPTIONS = [
   { icon: "✉️", label: "Send us an email",      value: "jem8circletrading@gmail.com", href: "mailto:jem8circletrading@gmail.com" },
@@ -19,50 +17,9 @@ const CALL_OPTIONS = [
 ];
 
 export default function Contact() {
-  const [form, setForm]       = useState({ firstName: "", lastName: "", email: "", phone: "", message: "" });
-  const [sent, setSent]       = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError]     = useState(null);
-
-  const handleChange = (e) => {
-    const name = e.target.name;
-    let val = e.target.value;
-    if (name === 'phone') {
-      // keep digits only and limit to 11 characters
-      val = String(val).replace(/\D/g, '').slice(0, 11);
-    }
-    setForm((f) => ({ ...f, [name]: val }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSending(true);
-    setError(null);
-
-    try {
-      await axios.post(`${BASE}/contact`, {
-        first_name:   form.firstName,
-        last_name:    form.lastName,
-        email:        form.email,
-        phone_number: form.phone || undefined,
-        message:      form.message,
-      });
-
-      setSent(true);
-      setForm({ firstName: "", lastName: "", email: "", phone: "", message: "" });
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        "Something went wrong. Please try again."
-      );
-    } finally {
-      setSending(false);
-    }
-  };
-
   const navigate = useNavigate();
 
-  const valid = form.firstName && form.lastName && form.email && form.message;
+  
 
   return (
     <div className="pt-[72px]">
@@ -91,95 +48,7 @@ export default function Contact() {
           {/* LEFT */}
           <div>
 
-            {/* Form Card */}
-            <div className="bg-white border border-[#e8f0eb] rounded-2xl p-8 mb-6">
-              <h2 className="font-serif text-2xl text-[#2d5a3d] mb-6 pb-3 border-b-2 border-[#d1e8da]">
-                Send Us a Message
-              </h2>
-
-              {sent ? (
-                <div className="flex flex-col items-center gap-3 py-6 text-center">
-                  <div className="text-5xl">✅</div>
-                  <h3 className="font-serif text-2xl text-[#1a2e22]">Message Sent!</h3>
-                  <p className="text-[#4b5563] text-sm">Thank you for reaching out. Our team will get back to you within 1 business day.</p>
-                  <button
-                    className="mt-2 px-6 py-2.5 border border-[#4d7b65] rounded-xl text-sm font-semibold text-[#4d7b65] hover:bg-[#4d7b65] hover:text-white transition-all"
-                    onClick={() => setSent(false)}
-                  >
-                    Send Another Message
-                  </button>
-                </div>
-              ) : (
-                <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-[#374151]">First Name *</label>
-                      <input
-                        name="firstName" value={form.firstName} onChange={handleChange}
-                        placeholder="Juan" required
-                        className="px-3.5 py-2.5 border border-[#c5ddd0] rounded-xl text-sm text-[#1a2e22] bg-[#fafcfb] outline-none focus:border-[#4d7b65] focus:ring-2 focus:ring-[#4d7b65]/10 focus:bg-white transition-all placeholder-[#9ca3af]"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-[#374151]">Last Name *</label>
-                      <input
-                        name="lastName" value={form.lastName} onChange={handleChange}
-                        placeholder="dela Cruz" required
-                        className="px-3.5 py-2.5 border border-[#c5ddd0] rounded-xl text-sm text-[#1a2e22] bg-[#fafcfb] outline-none focus:border-[#4d7b65] focus:ring-2 focus:ring-[#4d7b65]/10 focus:bg-white transition-all placeholder-[#9ca3af]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-[#374151]">Email Address *</label>
-                    <input
-                      name="email" type="email" value={form.email} onChange={handleChange}
-                      placeholder="juan@company.com" required
-                      className="px-3.5 py-2.5 border border-[#c5ddd0] rounded-xl text-sm text-[#1a2e22] bg-[#fafcfb] outline-none focus:border-[#4d7b65] focus:ring-2 focus:ring-[#4d7b65]/10 focus:bg-white transition-all placeholder-[#9ca3af]"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-[#374151]">Phone Number</label>
-                    <input
-                      name="phone" type="tel" value={form.phone} onChange={handleChange}
-                      placeholder="+63 912 345 6789"
-                      inputMode="numeric"
-                      maxLength={11}
-                      className="px-3.5 py-2.5 border border-[#c5ddd0] rounded-xl text-sm text-[#1a2e22] bg-[#fafcfb] outline-none focus:border-[#4d7b65] focus:ring-2 focus:ring-[#4d7b65]/10 focus:bg-white transition-all placeholder-[#9ca3af]"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-[#374151]">Message *</label>
-                    <textarea
-                      name="message" value={form.message} onChange={handleChange}
-                      placeholder="Tell us how we can help you…"
-                      rows={5} required
-                      className="w-full px-3.5 py-3 border border-[#c5ddd0] rounded-xl text-sm text-[#1a2e22] bg-[#fafcfb] resize-y outline-none focus:border-[#4d7b65] focus:ring-2 focus:ring-[#4d7b65]/10 focus:bg-white transition-all placeholder-[#9ca3af] box-border"
-                    />
-                  </div>
-
-                  {error && (
-                    <div className="px-4 py-3 text-sm text-red-600 border border-red-200 bg-red-50 rounded-xl">
-                      ⚠️ {error}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={sending || !valid}
-                    className={`self-start inline-flex items-center gap-2 px-8 py-3.5 bg-[#2d5a3d] text-white border-2 border-[#2d5a3d] rounded-xl text-sm font-bold tracking-wide transition-all
-                      ${!valid ? "opacity-50 cursor-default" : ""}
-                      ${sending ? "opacity-75 cursor-wait" : ""}
-                      ${valid && !sending ? "hover:bg-[#3d6552] hover:border-[#3d6552] hover:-translate-y-px hover:shadow-lg hover:shadow-[#4d7b65]/30" : ""}
-                    `}
-                  >
-                    {sending ? "Sending…" : "📨 Send Message"}
-                  </button>
-                </form>
-              )}
-            </div>
+            <ContactForm />
 
             {/* Chat Card */}
             <div className="bg-white border border-[#e8f0eb] rounded-2xl p-8">

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Header, Footer } from "../components/Layout";
 import { useCart } from "../context/CartContext";
 import axios from "axios";
+import ProductRequestForm from "../components/ProductRequestForm";
 
 // ── CATEGORY THEME MAP ──────────────────────────────────────────────────────
 const CATEGORY_THEMES = {
@@ -381,6 +382,7 @@ export default function Products() {
       Used to pass real rating data into every ProductCard.
   */
   const [productRatings, setProductRatings] = useState({});
+  const [showReqModal, setShowReqModal] = useState(false);
 
   const [searchParams] = useSearchParams();
 
@@ -556,6 +558,25 @@ export default function Products() {
 
       <ToastContainer toasts={toasts} />
 
+      {showReqModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowReqModal(false)} />
+          <div className="relative z-10 w-full max-w-3xl mx-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6">
+              <button
+                onClick={() => setShowReqModal(false)}
+                aria-label="Close product request"
+                className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+                style={{ background: 'none', border: 'none', padding: 0 }}
+              >
+                ✕
+              </button>
+              <ProductRequestForm products={products} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── HERO ── */}
       <section
         className="relative px-0 overflow-hidden hero-bg-layer"
@@ -594,10 +615,13 @@ export default function Products() {
               >
                 🛒 Browse Products
               </button>
-              <Link to="/contact" className="inline-flex items-center gap-[8px] px-[28px] py-[13px] bg-transparent rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:-translate-y-[2px] no-underline"
-                style={{ border: `2px solid ${theme.accent}`, color: theme.accent, transition: "border-color 0.4s, color 0.4s" }}>
+              <button
+                className="inline-flex items-center gap-[8px] px-[28px] py-[13px] bg-transparent rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:-translate-y-[2px]"
+                style={{ border: `2px solid ${theme.accent}`, color: theme.accent, transition: "border-color 0.4s, color 0.4s" }}
+                onClick={() => setShowReqModal(true)}
+              >
                 Request a Quote →
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -708,6 +732,8 @@ export default function Products() {
               </div>
             </div>
           </div>
+
+          {/* product request form is shown in a modal via `showReqModal` */}
 
           {error && (
             <div className="text-center py-[60px] px-[20px] text-[#DC2626]">
