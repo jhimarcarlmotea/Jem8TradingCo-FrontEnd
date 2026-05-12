@@ -85,7 +85,7 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
 
     (async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/products`, { params: { query: debouncedQuery } });
+        const res = await axios.get(`${API_BASE}/api/products/search`, { params: { query: debouncedQuery } });
         const fetched = res.data?.data || res.data || [];
         console.debug('ProductRequestForm: fetched products', fetched);
         if (!cancelled) setProducts(fetched);
@@ -174,7 +174,7 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
         }
         if (!resolvedId) {
           try {
-            const res = await axios.get(`${API_BASE}/api/products`, { params: { query: productQuery } });
+            const res = await axios.get(`${API_BASE}/api/products/search`, { params: { query: productQuery } });
             const fetched = res.data?.data || res.data || [];
             if (Array.isArray(fetched) && fetched.length > 0) {
               resolvedId = fetched[0]?.id ?? fetched[0]?.product_id ?? fetched[0]?.productId ?? null;
@@ -212,6 +212,8 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
 
     const fd = new FormData();
     fd.append('product_available', productAvailable ? '1' : '0');
+    // include initial status for backend/admin review
+    fd.append('status', 'pending');
     if (productAvailable && productId) fd.append('product_id', productId);
     if (!productAvailable) fd.append('product_name', productName);
     if (description) fd.append('description', description);

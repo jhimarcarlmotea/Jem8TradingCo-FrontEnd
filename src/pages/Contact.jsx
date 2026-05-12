@@ -109,7 +109,7 @@ export default function Contact() {
               {[
                 { icon: "📍", title: "Our Office",     body: "Unit 202P, Cityland 10 Tower 1\nHV Dela Costa St., Salcedo Village\nMakati City, Metro Manila 1227" },
                 { icon: "📧", title: "Email Us",       body: "sales1.jem8circle@gmail.com\nsales2.jem8circle@gmail.com\nsales3.jem8circle@gmail.com\nsales4.jem8circle@gmail.com\nsales8.jem8circle@gmail.com" },
-                { icon: "🕐", title: "Business Hours", body: "Monday – Friday: 9:00 AM – 5:00 PM\nSaturday: 9:00 AM – 12:00 PM\nSunday & Holidays: Closed" },
+                { icon: "🕐", title: "Business Hours", body: "Monday – Friday: 9:00 AM – 5:00 PM\nWeekends & Holidays: Closed" },
               ].map((info) => (
                 <div
                   key={info.title}

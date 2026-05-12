@@ -1744,6 +1744,13 @@ export default function AdminOrders() {
   const [viewTarget,   setViewTarget]   = useState(null);
   const [selectedIds,  setSelectedIds]  = useState(new Set());
   const [exportedIds,  setExportedIds]  = useState(getExportedSet);
+  // Product Requests (for Sales review)
+  const [productRequests, setProductRequests] = useState([]);
+  const [prLoading, setPrLoading] = useState(false);
+  const [prError, setPrError] = useState("");
+  const [attachTarget, setAttachTarget] = useState(null);
+  const [attachQuery, setAttachQuery] = useState("");
+  const [viewRequestsForDelivery, setViewRequestsForDelivery] = useState(null);
 
   const fetchDeliveries = useCallback(async () => {
     setLoading(true);
@@ -1762,6 +1769,63 @@ export default function AdminOrders() {
 
   useEffect(() => { fetchDeliveries(); }, [fetchDeliveries]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, sortBy]);
+
+  const fetchProductRequests = useCallback(async () => {
+    setPrLoading(true); setPrError("");
+    try {
+      // Try public endpoint, fall back to admin-scoped endpoint if necessary
+      let res;
+      try {
+        res = await api.get('/product-requests');
+      } catch (e) {
+        if (e.response?.status === 404) {
+          res = await api.get('/admin/product-requests');
+        } else throw e;
+      }
+
+      // If the public endpoint returned an empty list but we have a token,
+      // try the admin endpoint to show admin-scoped requests.
+      let data = res.data?.data || res.data || [];
+      try {
+        if (Array.isArray(data) && data.length === 0 && typeof window !== 'undefined') {
+          const token = localStorage.getItem('token');
+          if (token) {
+            try {
+              const adminRes = await api.get('/admin/product-requests');
+              const adminData = adminRes.data?.data || adminRes.data || [];
+              if (Array.isArray(adminData) && adminData.length > 0) data = adminData;
+            } catch (adminErr) {
+              // ignore admin fetch errors; fall back to original data
+            }
+          }
+        }
+      } catch (chkErr) {
+        // ignore
+      }
+
+      setProductRequests(data);
+    } catch (e) {
+      setPrError(e.response?.data?.message || 'Failed to load product requests.');
+    } finally {
+      setPrLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchProductRequests(); }, [fetchProductRequests]);
+
+  const requestsByDelivery = useMemo(() => {
+    const map = new Map();
+    (productRequests || []).forEach((r) => {
+      const key = r.delivery_id ?? r.deliveryId ?? null;
+      if (key) {
+        const k = String(key);
+        const arr = map.get(k) || [];
+        arr.push(r);
+        map.set(k, arr);
+      }
+    });
+    return map;
+  }, [productRequests]);
 
   const handleUpdated = (updated) => {
     setDeliveries((prev) =>
@@ -1999,6 +2063,172 @@ export default function AdminOrders() {
           {/* ── Table Card (matches AdminProducts cardStyle) ── */}
           <div style={cardStyle}>
 
+            {/* Product Requests (Sales) */}
+            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${T.slate100}` }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Product Requests</h3>
+                  <div style={{ fontSize: 11, color: T.slate400 }}>Requests submitted by users for sales review</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={fetchProductRequests} style={{ ...btnBase, background: '#fff', color: T.slate700, border: `1px solid ${T.slate200}` }}>↻ Refresh</button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: 12 }}>
+              {prLoading ? (
+                <div style={{ padding: 18, textAlign: 'center', color: T.slate400 }}>Loading product requests…</div>
+              ) : prError ? (
+                <div style={{ padding: 12, color: '#b91c1c' }}>{prError}</div>
+              ) : productRequests.length === 0 ? (
+                <div style={{ padding: 12, color: T.slate400 }}>No product requests</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', color: T.slate500 }}>
+                        <th style={{ padding: '8px 10px', width: 80 }}>ID</th>
+                        <th style={{ padding: '8px 10px' }}>Product</th>
+                        <th style={{ padding: '8px 10px', width: 140 }}>Requester</th>
+                        <th style={{ padding: '8px 10px', width: 120 }}>Available?</th>
+                        <th style={{ padding: '8px 10px' }}>Description</th>
+                        <th style={{ padding: '8px 10px', width: 120 }}>Status</th>
+                        <th style={{ padding: '8px 10px', width: 180 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productRequests.map((r) => (
+                        <tr key={r.id} style={{ borderTop: `1px solid ${T.slate100}`, background: '#fff' }}>
+                          <td style={{ padding: '10px' }}>{r.id}</td>
+                          <td style={{ padding: '10px' }}>{r.product_name ?? r.product_query ?? '—'}</td>
+                          <td style={{ padding: '10px' }}>{r.requester_name ?? r.name ?? (r.user?.email ?? '—')}</td>
+                          <td style={{ padding: '10px' }}>{r.product_available === '1' || r.product_available === 1 || r.product_available === true ? 'Yes' : 'No'}</td>
+                          <td style={{ padding: '10px' }}>{r.description ?? '—'}</td>
+                          <td style={{ padding: '10px' }}><strong>{String(r.status ?? 'pending')}</strong></td>
+                          <td style={{ padding: '10px', display: 'flex', gap: 8 }}>
+                            <button onClick={() => { setAttachTarget(r); setAttachQuery(''); }} className="ao-btn-action" style={{ ...btnBase, background: '#FFFDF7', border: `1px solid ${T.slate100}`, color: T.slate700 }}>Attach</button>
+                            <button onClick={async () => {
+                                try {
+                                  let res;
+                                  try { res = await api.patch(`/product-requests/${r.id}`, { status: 'found' }); }
+                                  catch (e) { if (e.response?.status === 404) res = await api.patch(`/admin/product-requests/${r.id}`, { status: 'found' }); else throw e; }
+                                  console.debug('product-request update', res.data);
+                                  setProductRequests((prev) => prev.map(p => p.id === r.id ? { ...p, status: 'found' } : p));
+                                } catch (e) { console.error('update failed', e); alert('Update failed'); }
+                              }} className="ao-btn-action" style={{ ...btnBase, background: '#E6FFFA', border: `1px solid ${T.emerald100}`, color: T.emerald600 }}>Mark Found</button>
+                            <button onClick={async () => {
+                                try {
+                                  let res;
+                                  try { res = await api.patch(`/product-requests/${r.id}`, { status: 'not-available' }); }
+                                  catch (e) { if (e.response?.status === 404) res = await api.patch(`/admin/product-requests/${r.id}`, { status: 'not-available' }); else throw e; }
+                                  console.debug('product-request update', res.data);
+                                  setProductRequests((prev) => prev.map(p => p.id === r.id ? { ...p, status: 'not-available' } : p));
+                                } catch (e) { console.error('update failed', e); alert('Update failed'); }
+                              }} className="ao-btn-action" style={{ ...btnBase, background: '#FFF1F2', border: `1px solid ${T.red100}`, color: T.red600 }}>Mark Not Available</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Attach modal */}
+            {attachTarget && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                <div style={{ width: 820, maxWidth: '95%', background: '#fff', borderRadius: 12, padding: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>Attach Request #{attachTarget.id} to Delivery</div>
+                      <div style={{ fontSize: 12, color: T.slate500 }}>{attachTarget.product_name ?? attachTarget.product_query}</div>
+                    </div>
+                    <div>
+                      <button onClick={() => setAttachTarget(null)} style={{ ...btnBase, background: '#fff', border: `1px solid ${T.slate200}` }}>Close</button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <input placeholder="Search deliveries by order ID or client" value={attachQuery} onChange={(e) => setAttachQuery(e.target.value)} style={{ width: '100%', padding: 8, border: `1px solid ${T.slate200}`, borderRadius: 8 }} />
+                      <div style={{ marginTop: 8, maxHeight: 320, overflow: 'auto' }}>
+                        {(deliveries || []).filter((dv) => {
+                          if (!attachQuery) return true;
+                          const q = attachQuery.toString().toLowerCase();
+                          const id = String(dv.checkout?.checkout_id ?? dv.checkout_id ?? dv.delivery_id ?? '');
+                          const name = `${(dv.checkout?.user?.first_name||'')+' '+(dv.checkout?.user?.last_name||'')}`.toLowerCase();
+                          const prod = (dv.checkout?.items?.[0]?.product?.product_name || '').toLowerCase();
+                          return id.includes(q) || name.includes(q) || prod.includes(q);
+                        }).map((dv) => (
+                          <div key={dv.delivery_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderBottom: `1px solid ${T.slate100}` }}>
+                            <div>
+                              <div style={{ fontWeight: 700 }}>#{dv.checkout?.checkout_id ?? dv.delivery_id}</div>
+                              <div style={{ fontSize: 12, color: T.slate500 }}>{dv.checkout?.user ? `${dv.checkout.user.first_name ?? ''} ${dv.checkout.user.last_name ?? ''}` : '—'}</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button onClick={async () => {
+                                try {
+                                  let res;
+                                  try { res = await api.patch(`/product-requests/${attachTarget.id}`, { delivery_id: dv.delivery_id }); }
+                                  catch (e) { if (e.response?.status === 404) res = await api.patch(`/admin/product-requests/${attachTarget.id}`, { delivery_id: dv.delivery_id }); else throw e; }
+                                  console.debug('attached', res.data);
+                                  setProductRequests((prev) => prev.map(p => p.id === attachTarget.id ? { ...p, delivery_id: dv.delivery_id, status: 'found' } : p));
+                                  setAttachTarget(null);
+                                  fetchProductRequests();
+                                  fetchDeliveries();
+                                } catch (e) { console.error('attach failed', e); alert('Attach failed'); }
+                              }} style={{ ...btnBase, background: '#E6FFFA', border: `1px solid ${T.emerald100}`, color: T.emerald600 }}>Attach</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ width: 260, borderLeft: `1px solid ${T.slate100}`, paddingLeft: 12 }}>
+                      <div style={{ fontSize: 12, color: T.slate500, marginBottom: 8 }}>Recent deliveries</div>
+                      {(deliveries || []).slice(0,8).map((dv) => (
+                        <div key={dv.delivery_id} style={{ padding: 8, borderBottom: `1px solid ${T.slate100}` }}>
+                          <div style={{ fontWeight: 700 }}>#{dv.checkout?.checkout_id ?? dv.delivery_id}</div>
+                          <div style={{ fontSize: 12, color: T.slate500 }}>{dv.checkout?.user ? `${dv.checkout.user.first_name ?? ''} ${dv.checkout.user.last_name ?? ''}` : '—'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View requests for delivery modal */}
+            {viewRequestsForDelivery && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                <div style={{ width: 640, maxWidth: '95%', background: '#fff', borderRadius: 12, padding: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>Product Requests for Delivery #{viewRequestsForDelivery}</div>
+                    </div>
+                    <div>
+                      <button onClick={() => setViewRequestsForDelivery(null)} style={{ ...btnBase, background: '#fff', border: `1px solid ${T.slate200}` }}>Close</button>
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: 420, overflow: 'auto' }}>
+                    { (requestsByDelivery.get(String(viewRequestsForDelivery)) || []).map((r) => (
+                      <div key={r.id} style={{ padding: 10, borderBottom: `1px solid ${T.slate100}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{r.product_name ?? r.product_query}</div>
+                          <div style={{ fontSize: 12, color: T.slate500 }}>{r.requester_name ?? r.name ?? r.user?.email}</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: T.slate700 }}>{r.status ?? 'pending'}</div>
+                      </div>
+                    )) }
+                    { (requestsByDelivery.get(String(viewRequestsForDelivery)) || []).length === 0 && (
+                      <div style={{ padding: 12, color: T.slate400 }}>No requests attached</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+
             {/* Filter bar */}
             <div style={{ padding: "12px 16px", borderBottom: `1px solid ${T.slate100}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -2167,6 +2397,15 @@ export default function AdminOrders() {
                                   border: `1px solid ${T.green100}`, width: "fit-content",
                                 }}>✓ Exported</span>
                               )}
+                                  {/* linked product requests badge */}
+                                  {(() => {
+                                    const linked = requestsByDelivery.get(String(d.delivery_id)) || [];
+                                    return linked.length > 0 ? (
+                                      <button onClick={() => setViewRequestsForDelivery(d.delivery_id)} style={{ marginTop: 4, display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#FFFBEB', color: T.amber600, border: `1px solid ${T.amber100}`, cursor: 'pointer' }}>
+                                        {linked.length} Request{linked.length>1?'s':''}
+                                      </button>
+                                    ) : null;
+                                  })()}
                             </div>
                           </td>
 

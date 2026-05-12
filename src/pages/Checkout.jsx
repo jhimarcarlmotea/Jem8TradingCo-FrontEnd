@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { Header, Footer } from "../components/Layout";
+// Inline delivery UI (was CheckoutDelivery component)
 import { getUserAddresses } from "../api/address";
 
 const ph = (w, h, label = "") =>
@@ -407,6 +408,12 @@ export default function Checkout() {
   const deselectAddress = () => setSelectedAddrId(null);
   const selectedAddr = savedAddresses.find((a) => a.id === selectedAddrId) || null;
 
+  
+  const [deliveryType, setDeliveryType] = useState("inhouse"); // 'inhouse' or 'pickup'
+  const [computedShippingFee, setComputedShippingFee] = useState(() => SHIPPING_FEE);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingMessage, setShippingMessage] = useState(null);
+
   const contactValid = !!(user?.first_name && user?.email);
   const deliveryValid =
     addrMode === "saved"
@@ -450,6 +457,63 @@ export default function Checkout() {
       setPayFieldErrors((prev) => ({ ...prev, [name]: error }));
     }
   };
+
+  // Compute shipping fee when delivery type or address changes
+  useEffect(() => {
+    let cancelled = false;
+    const compute = async () => {
+      if (deliveryType === 'pickup') {
+        setComputedShippingFee(0);
+        setShippingLoading(false);
+        setShippingMessage(null);
+        return;
+      }
+      const addr = getResolvedAddress();
+      if (!addr || !(addr.street && addr.city && addr.province)) {
+        // Address incomplete; don't compute yet
+        return;
+      }
+      setShippingLoading(true);
+      setShippingMessage('Calculating…');
+      try {
+        // Try checkout preview (may return shipping_fee)
+        try {
+          const previewRes = await axios.post(`${BASE}/checkout/preview`, { cart_ids: items.map(i => i.id), delivery_type: 'inhouse', address: addr }, { withCredentials: true });
+          const fee = previewRes.data?.shipping_fee ?? previewRes.data?.data?.shipping_fee ?? null;
+          if (!cancelled && fee !== null && fee !== undefined) {
+            setComputedShippingFee(Number(fee));
+            setShippingMessage(null);
+            setShippingLoading(false);
+            return;
+          }
+        } catch (e) {
+          // ignore preview errors and try dedicated rate endpoint
+        }
+
+        try {
+          const rateRes = await axios.get(`${BASE}/shipping-rate`, { params: { cart_ids: items.map(i => i.id), street: addr.street, barangay: addr.barangay, city: addr.city, province: addr.province, zip: addr.zip }, withCredentials: true });
+          const fee2 = rateRes.data?.shipping_fee ?? rateRes.data?.data?.shipping_fee ?? null;
+          if (!cancelled && fee2 !== null && fee2 !== undefined) {
+            setComputedShippingFee(Number(fee2));
+            setShippingMessage(null);
+            setShippingLoading(false);
+            return;
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        // Fallback to simple heuristic
+        if (!cancelled) setComputedShippingFee(subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE);
+      } catch (err) {
+        if (!cancelled) setShippingMessage(null);
+      } finally {
+        if (!cancelled) setShippingLoading(false);
+      }
+    };
+    compute();
+    return () => { cancelled = true; };
+  }, [deliveryType, delivery.address, delivery.barangay, delivery.city, delivery.province, delivery.zip, selectedAddrId, items, subtotal]);
 
   // ── Mark field as touched on blur ─────────────────────────────────────────
   const handlePayFieldBlur = (e) => {
@@ -495,19 +559,26 @@ export default function Checkout() {
   const handleProceedToReview = () => {
     setPlaceError(null);
 
-    // Resolve address and determine required minimum + provider
-    const resolved = getResolvedAddress();
-    const minReq = getMinOrderForAddress(resolved, items, subtotal);
-    setRequiredMinimum(minReq);
-    if (subtotal < minReq) {
-      setPlaceError(`Minimum order for this delivery location is ₱${Number(minReq).toLocaleString()}.`);
-      // Move user back to delivery step if they somehow advanced
-      setStep(0);
-      return;
-    }
+    // Resolve address and determine required minimum + provider only for in-house delivery
+    if (deliveryType === 'inhouse') {
+      const resolved = getResolvedAddress();
+      const minReq = getMinOrderForAddress(resolved, items, subtotal);
+      setRequiredMinimum(minReq);
+      if (subtotal < minReq) {
+        setPlaceError(`Minimum order for this delivery location is ₱${Number(minReq).toLocaleString()}.`);
+        // Do not force navigation back to Delivery; keep user on Payment so they can adjust.
+        return;
+      }
 
-    const provider = chooseDeliveryProvider(resolved, items, subtotal);
-    setDeliveryProvider(provider);
+      const provider = chooseDeliveryProvider(resolved, items, subtotal);
+      setDeliveryProvider(provider);
+    } else {
+      // Pickup
+      setRequiredMinimum(null);
+      setDeliveryProvider('pickup');
+      // shipping fee for pickup is zero
+      setComputedShippingFee(0);
+    }
 
     // Validate payment fields as before
     const errors = validatePaymentFields(payMethod, payFields);
@@ -599,9 +670,12 @@ export default function Checkout() {
     const formData = new FormData();
     cartIds.forEach((id) => formData.append("cart_ids[]", id));
     formData.append("payment_method", payMethod);
-    formData.append("shipping_fee", shippingFee);
-    // Provider chosen by rules (e.g., lalamove, ap_cargo, pre_delivery, courier)
-    formData.append("shipping_provider", deliveryProvider || "lalamove");
+    // shipping fee: use computedShippingFee for in-house, 0 for pickup
+    const finalShipping = deliveryType === 'pickup' ? 0 : Number(computedShippingFee || 0);
+    formData.append("shipping_fee", finalShipping);
+    // Provider chosen by rules (e.g., lalamove, ap_cargo, pre_delivery, courier, or 'pickup')
+    formData.append("shipping_provider", deliveryProvider || (deliveryType === 'pickup' ? 'pickup' : 'lalamove'));
+    formData.append("delivery_type", deliveryType);
     // If Lalamove quote is required, backend should request it; placeholder here
     formData.append("shipping_quote", "");
     if (specialNote) formData.append("special_instructions", specialNote);
@@ -625,9 +699,10 @@ export default function Checkout() {
       });
       navigate(`/orders?new=${res.data.checkout_id}`);
     } catch (err) {
-      setPlaceError(
-        err.response?.data?.message || "Failed to place order. Please try again."
-      );
+      console.error('Place order error', err);
+      const respData = err.response?.data;
+      const friendly = respData?.message || (respData && typeof respData === 'string' ? respData : null);
+      setPlaceError(friendly || (respData ? JSON.stringify(respData) : err.message || 'Failed to place order.'));
       setPlacing(false);
     }
   };
@@ -796,168 +871,79 @@ export default function Checkout() {
                   </Link>
                 </div>
 
-                {/* Mode toggle */}
-                {savedAddresses.length > 0 && (
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setAddrMode("saved")}
-                      className={`flex-1 px-3.5 py-2.5 rounded-xl border-[1.5px] text-[13px] font-medium cursor-pointer transition-all font-[inherit]
-                        ${
-                          addrMode === "saved"
-                            ? "border-[#4d7b65] bg-[#4d7b65] text-white font-semibold"
-                            : "border-[#e0e9e4] bg-[#fafafa] text-[#666] hover:border-[#4d7b65] hover:text-[#4d7b65]"
-                        }`}
-                    >
-                      📍 My Saved Addresses
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddrMode("new");
-                        setSelectedAddrId(null);
-                      }}
-                      className={`flex-1 px-3.5 py-2.5 rounded-xl border-[1.5px] text-[13px] font-medium cursor-pointer transition-all font-[inherit]
-                        ${
-                          addrMode === "new"
-                            ? "border-[#4d7b65] bg-[#4d7b65] text-white font-semibold"
-                            : "border-[#e0e9e4] bg-[#fafafa] text-[#666] hover:border-[#4d7b65] hover:text-[#4d7b65]"
-                        }`}
-                    >
-                      ✏️ Use a Different Address
-                    </button>
-                  </div>
-                )}
-
-                {/* Saved addresses list */}
-                {addrMode === "saved" && savedAddresses.length > 0 && (
-                  <div className="mb-1">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-[#5a7a68] mb-3">
-                      Select a delivery address
-                    </div>
-                    <div className="flex flex-wrap gap-2.5">
-                      {savedAddresses.map((addr) => {
-                        const isCompany = addr.type === "company";
-                        const isActive = selectedAddrId === addr.id;
-                        const lines = [
-                          addr.street,
-                          [addr.barangay, addr.city].filter(Boolean).join(", "),
-                          [addr.province, addr.postal_code].filter(Boolean).join(" "),
-                          addr.country,
-                        ].filter(Boolean);
-                        return (
-                          <button
-                            key={addr.id}
-                            type="button"
-                            onClick={() =>
-                              isActive ? deselectAddress() : selectSavedAddress(addr)
-                            }
-                            className={`flex-1 min-w-[180px] text-left bg-white border-[1.5px] rounded-xl px-4 py-3.5 cursor-pointer transition-all font-[inherit]
-                              ${
-                                isActive
-                                  ? "border-[#4d7b65] bg-[#f0f7f3] shadow-[0_0_0_3px_rgba(77,123,101,0.13)]"
-                                  : "border-[#e0e9e4] hover:border-[#4d7b65] hover:shadow-[0_2px_10px_rgba(77,123,101,0.10)]"
-                              }`}
-                          >
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-[#5a7a68] mb-1.5">
-                              {isCompany ? "🏢 Company" : "👤 Personal"}
-                            </div>
-                            {isCompany && addr.company_name && (
-                              <div className="text-[13px] font-semibold text-[#1a1a1a] mb-0.5">
-                                {addr.company_name}
-                              </div>
-                            )}
-                            {lines.map((line, i) => (
-                              <div key={i} className="text-[13px] text-[#444] leading-relaxed">
-                                {line}
-                              </div>
-                            ))}
-                            {isCompany && (addr.company_number || addr.company_email) && (
-                              <div className="flex flex-col gap-0.5 mt-1.5 pt-1.5 border-t border-[#eee] text-[11px] text-[#888]">
-                                {addr.company_number && <span>📞 {addr.company_number}</span>}
-                                {addr.company_email && <span>✉ {addr.company_email}</span>}
-                              </div>
-                            )}
-                            <div className="mt-2.5">
-                              {isActive ? (
-                                <span className="text-xs font-bold text-[#4d7b65]">
-                                  ✓ Delivering here
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-[#bbb]">Tap to select</span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
+                {/* Delivery method & address (inline) */}
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <div className="text-xs font-semibold text-[#374151]">Delivery Method</div>
+                    <div className="flex gap-2 mt-2">
+                      <label className={`inline-flex items-center gap-2 px-3 py-2 border rounded-xl cursor-pointer ${deliveryType === 'pickup' ? 'bg-[#4d7b65] text-white' : 'bg-[#fafcfb]'}`}>
+                        <input type="radio" name="delivery_type" value="pickup" checked={deliveryType === 'pickup'} onChange={() => setDeliveryType('pickup')} className="sr-only" />
+                        <span className="text-sm">Pickup (Store)</span>
+                      </label>
+                      <label className={`inline-flex items-center gap-2 px-3 py-2 border rounded-xl cursor-pointer ${deliveryType === 'inhouse' ? 'bg-[#4d7b65] text-white' : 'bg-[#fafcfb]'}`}>
+                        <input type="radio" name="delivery_type" value="inhouse" checked={deliveryType === 'inhouse'} onChange={() => setDeliveryType('inhouse')} className="sr-only" />
+                        <span className="text-sm">Delivery (In-house)</span>
+                      </label>
                     </div>
                   </div>
-                )}
 
-                {/* New address form */}
-                {addrMode === "new" && (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="sm:col-span-2 flex flex-col gap-1.5">
-                      <label className={labelCls}>Street Address / Building / Unit *</label>
-                      <input
-                        name="address"
-                        value={delivery.address}
-                        onChange={handleDeliveryChange}
-                        placeholder="e.g. Unit 202, Cityland Tower, HV Dela Costa St."
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className={labelCls}>Barangay</label>
-                      <input
-                        name="barangay"
-                        value={delivery.barangay}
-                        onChange={handleDeliveryChange}
-                        placeholder="Barangay name"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className={labelCls}>City / Municipality *</label>
-                      <input
-                        name="city"
-                        value={delivery.city}
-                        onChange={handleDeliveryChange}
-                        placeholder="Makati City"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className={labelCls}>Province *</label>
-                      <input
-                        name="province"
-                        value={delivery.province}
-                        onChange={handleDeliveryChange}
-                        placeholder="Metro Manila"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className={labelCls}>ZIP Code</label>
-                      <input
-                        name="zip"
-                        value={delivery.zip}
-                        onChange={handleDeliveryChange}
-                        placeholder="1227"
-                        className={inputCls}
-                      />
-                    </div>
-                    {savedAddresses.length === 0 && (
-                      <div className="sm:col-span-2 text-xs text-[#5a7a68] bg-[#f0f7f3] border border-[#c8e4d4] rounded-lg px-3.5 py-2.5">
-                        💾 This address will be saved to your profile automatically.
+                  {deliveryType === 'inhouse' ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="text-sm font-semibold">Delivery Address</div>
+                      {addrMode === 'saved' && savedAddresses.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {savedAddresses.map((a) => (
+                            <label key={a.id} className={`p-3 border rounded-xl cursor-pointer ${selectedAddrId === a.id ? 'border-[#4d7b65] bg-[#f3f8f5]' : 'bg-[#fafcfb]'}`} onClick={() => selectSavedAddress(a)}>
+                              <div className="font-medium">{a.label || `${a.street}, ${a.city}`}</div>
+                              <div className="text-xs text-[#6b7c70]">{a.street}, {a.barangay}, {a.city}, {a.province} {a.postal_code}</div>
+                            </label>
+                          ))}
+                          <div className="text-xs text-[#6b7c70]">Or choose "Use a Different Address" below to enter a new one.</div>
+                        </div>
+                      ) : null}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className={labelCls}>Street</label>
+                          <input name="address" value={delivery.address} onChange={handleDeliveryChange} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Barangay</label>
+                          <input name="barangay" value={delivery.barangay} onChange={handleDeliveryChange} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>City</label>
+                          <input name="city" value={delivery.city} onChange={handleDeliveryChange} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Province</label>
+                          <input name="province" value={delivery.province} onChange={handleDeliveryChange} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>ZIP</label>
+                          <input name="zip" value={delivery.zip} onChange={handleDeliveryChange} className={inputCls} />
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
+
+                      <div className="text-sm text-[#6b7c70]">Shipping Fee:</div>
+                      <div className="text-lg font-bold">
+                        {shippingLoading ? 'Calculating…' : (Number(computedShippingFee) === 0 ? 'FREE' : `₱${Number(computedShippingFee).toLocaleString()}`)}
+                        {shippingMessage ? <div className="text-xs text-[#6b7c70]">{shippingMessage}</div> : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="text-sm font-semibold">Pickup Location</div>
+                      <div className="text-sm text-[#6b7c70]">Store address: Unit 202P, Cityland 10 Tower 1, HV Dela Costa St., Salcedo Village, Makati City. Pickup hours: Mon–Fri 10:00–17:00.</div>
+                      <div className="text-sm mt-2">Shipping Fee: <strong>₱0.00</strong></div>
+                      <div className="text-xs text-[#6b7c70]">We’ll notify you when the order is ready for pickup.</div>
+                    </div>
+                  )}
+                </div>
 
                 <button
                   onClick={() => setStep(1)}
-                  disabled={!deliveryValid}
+                  disabled={!(contactValid && (deliveryType === 'pickup' || (addrMode === 'saved' ? !!selectedAddrId : (delivery.address && delivery.city && delivery.province))))}
                   className="mt-6 w-full sm:w-auto px-7 py-3.5 bg-[#3d6552] text-white border-none rounded-xl text-[15px] font-bold cursor-pointer transition-all hover:not-disabled:-translate-y-px hover:not-disabled:shadow-[0_4px_14px_rgba(77,123,101,0.25)] disabled:opacity-45 disabled:cursor-not-allowed"
                 >
                   Continue to Payment →
