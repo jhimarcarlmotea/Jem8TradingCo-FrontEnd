@@ -36,16 +36,54 @@ const About = () => {
   const [leaders, setLeaders]         = useState([]);
   const [appdev,  setAppdev]          = useState([]);
   const [teamLoading, setTeamLoading] = useState(true);
-
   useEffect(() => {
+    // Fetch leadership (existing endpoint)
     fetch(`${BASE}/api/admin-leadership`)
       .then((r) => r.json())
       .then((json) => {
         const all = Array.isArray(json.data) ? json.data : [];
         setLeaders(all.filter((m) => m.status && (m.team ?? 'leadership') === 'leadership'));
-        setAppdev(all.filter((m)  => m.status && m.team === 'appdev'));
       })
-      .catch(console.error)
+      .catch(console.error);
+
+    // Dev team: prefer dedicated API, but fall back to seeded list on failure or empty response
+    const seeded = [
+      { id: 1, name: 'Mark Cyrus Mendoza', email: '', avatar_url: null, role: 'Developer' },
+      { id: 2, name: 'Miguel Carlo Tapalla', email: '', avatar_url: null, role: 'Developer' },
+      { id: 3, name: 'Marvin Tomales', email: '', avatar_url: null, role: 'Developer' },
+      { id: 4, name: 'Eivrian Nicholson S. Pacis', email: '', avatar_url: null, role: 'Developer' },
+      { id: 5, name: 'Thomas Adrian M. Naguit', email: '', avatar_url: null, role: 'Developer' },
+      { id: 6, name: 'Jhimar Carl U. Motea', email: '', avatar_url: null, role: 'Developer' },
+      { id: 7, name: 'Clark Kent B. Raguhos', email: '', avatar_url: null, role: 'Developer' },
+      { id: 8, name: 'Francis Dave C. Sulit', email: '', avatar_url: null, role: 'Developer' },
+    ];
+
+    fetch(`${BASE}/api/dev-team`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`dev-team fetch failed: ${r.status}`);
+        return r.json();
+      })
+      .then((json) => {
+        const data = Array.isArray(json) ? json : Array.isArray(json.data) ? json.data : [];
+        if (data.length === 0) {
+          setAppdev(seeded);
+        } else {
+          // Map API contract to expected fields used by the UI
+          const mapped = data.map((m, idx) => ({
+            id: m.id ?? m.dev_id ?? idx + 1,
+            name: m.name || m.full_name || 'Unknown',
+            email: m.email || '',
+            avatar_url: m.avatar_url || m.image || null,
+            role: m.role || m.position || 'Developer',
+            bio: m.bio || '',
+          }));
+          setAppdev(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load dev team:', err);
+        setAppdev(seeded);
+      })
       .finally(() => setTeamLoading(false));
   }, []);
 
@@ -427,18 +465,19 @@ const About = () => {
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 max-[1100px]:grid-cols-3 max-[480px]:gap-[14px]">
               {appdev.map((member) => (
                 <div
-                  key={member.leadership_id ?? member.id}
+                  key={member.id}
                   className="overflow-hidden text-center transition-all duration-300 bg-white hover:-translate-y-1 hover:shadow-lg"
                   style={{ borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--green-border)'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
                 >
                   <div className="relative w-full overflow-hidden" style={{ aspectRatio: '1/1', background: 'var(--green-light)' }}>
-                    {resolveImg(member.leadership_img) ? (
+                    {resolveImg(member.avatar_url || member.leadership_img) ? (
                       <img
-                        src={resolveImg(member.leadership_img)}
-                        alt={member.name}
+                        src={resolveImg(member.avatar_url || member.leadership_img)}
+                        alt={`${member.name} avatar`}
                         className="object-cover object-top w-full h-full"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-end" style={{ background: 'linear-gradient(160deg, #d4e9de 0%, #edf4f0 100%)' }}>
@@ -474,7 +513,7 @@ const About = () => {
                       {member.name}
                     </div>
                     <div className="font-medium leading-[1.4]" style={{ fontFamily: 'var(--font-sub)', fontSize: 12, color: 'var(--green)' }}>
-                      {member.position}
+                      {member.role || member.position}
                     </div>
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import { Routes, Route, Outlet, useLocation} from 'react-router-dom'
 import { useEffect } from 'react';
 import { Header, Footer } from './components/Layout'
 import { CartProvider } from "./context/CartContext";
+import { AuthProvider, DepartmentGate } from "./context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 // ── PUBLIC PAGES ──
@@ -34,6 +35,7 @@ import AdminPanelSettings from "./pages/adminSettings";
 import AdminLeadership from "./pages/adminLeadership";
 import AdminBlogpost from "./pages/adminBlogpost";
 import AdminActivitylogs from "./pages/adminActivitylogs";
+import AdminPayments from "./pages/adminPayments";
 import AdminAccountManagement from "./pages/adminAccountmanagement";
 import AdminOrders from './pages/adminOrders';
 import AdminBackup from './pages/adminBackup';
@@ -166,7 +168,8 @@ export default function App() {
   }, []);
 
   return (
-    <CartProvider>
+    <AuthProvider>
+      <CartProvider>
       
       <Routes>
         {/* ── PUBLIC ROUTES ── */}
@@ -207,10 +210,31 @@ export default function App() {
           <Route path="/adminProducts" element={<AdminProducts />} />
           <Route path="/adminSettings" element={<AdminPanelSettings />} />
           <Route path="/adminLeadership" element={<AdminLeadership />} />
-          <Route path="/adminOrders" element={<AdminOrders />} />
-          <Route path="/adminBlogpost" element={<AdminBlogpost />} />
-          <Route path="/adminActivitylogs" element={<AdminActivitylogs />} />
-          <Route path="/adminAccountmanagement" element={<AdminAccountManagement />} />
+          <Route path="/adminOrders" element={
+            <DepartmentGate allowed="Sales" fallback={<div style={{padding:20}}>Unauthorized</div>}>
+              <AdminOrders />
+            </DepartmentGate>
+          } />
+          <Route path="/adminBlogpost" element={
+            <DepartmentGate allowed="Marketing" fallback={<div style={{padding:20}}>Unauthorized</div>}>
+              <AdminBlogpost />
+            </DepartmentGate>
+          } />
+          <Route path="/adminActivitylogs" element={
+            <DepartmentGate allowed="Finance" fallback={<div style={{padding:20}}>Unauthorized</div>}>
+              <AdminActivitylogs />
+            </DepartmentGate>
+          } />
+          <Route path="/adminPayments" element={
+            <DepartmentGate allowed="Finance" fallback={<div style={{padding:20}}>Unauthorized</div>}>
+              <AdminPayments />
+            </DepartmentGate>
+          } />
+          <Route path="/adminAccountmanagement" element={
+            <DepartmentGate allowed="IT" fallback={<div style={{padding:20}}>Unauthorized</div>}>
+              <AdminAccountManagement />
+            </DepartmentGate>
+          } />
           <Route path="/adminBackup" element={<AdminBackup />} />
           <Route path="/adminContact" element={<AdminContactMessages />} />
           <Route path="/adminReviews" element={<AdminReviews />} />
@@ -221,6 +245,7 @@ export default function App() {
         </Route>
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
-    </CartProvider>
+      </CartProvider>
+    </AuthProvider>
   );
 }

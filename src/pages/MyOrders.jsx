@@ -313,6 +313,15 @@ function renderPaymentTag(method) {
 /* ─── Order Detail Panel ──────────────────────────────────── */
 function OrderDetail({ order, onReceiptClick }) {
   const navigate      = useNavigate();
+  const [actionMsg, setActionMsg] = useState(null);
+  // Quote modal/form state (order-level quote request)
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [sendingQuote, setSendingQuote] = useState(false);
+  const [quoteName, setQuoteName] = useState("");
+  const [quoteEmail, setQuoteEmail] = useState("");
+  const [quotePhone, setQuotePhone] = useState("");
+  const [quoteCompany, setQuoteCompany] = useState("");
+  const [quoteNotes, setQuoteNotes] = useState("");
   const colors        = STATUS_COLORS[order.status] ?? STATUS_COLORS.processing;
   const trackerIdx    = getTrackerIndex(order.status);
   const receiptImage  = order.receipt?.image  ?? null;
@@ -568,6 +577,98 @@ function OrderDetail({ order, onReceiptClick }) {
 
         {/* ── Actions ── */}
         <div className="flex flex-wrap gap-3">
+          <div>
+            <button
+              onClick={() => {
+                setQuoteName(`${order.delivery.firstName || ''} ${order.delivery.lastName || ''}`.trim());
+                setQuoteEmail(order.delivery.email || "");
+                setQuotePhone(order.delivery.phone || "");
+                setQuoteCompany(order.delivery.companyName || "");
+                setQuoteNotes("");
+                setShowQuoteModal(true);
+              }}
+              className="inline-block px-6 py-2.5 bg-[#155DFC] text-white rounded-xl text-sm font-bold cursor-pointer border-none hover:bg-[#1248cc] transition-colors"
+            >
+              Request Quote →
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={() => exportOrderToExcelJS(order)}
+              className="inline-block px-4 py-2 bg-white text-[#4d7b65] border-[1.5px] border-[#c0ddd0] rounded-xl text-sm font-bold hover:bg-[#f8faf9]"
+            >
+              Export Excel
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={() => exportOrderToPDF(order)}
+              className="inline-block px-4 py-2 bg-white text-[#4d7b65] border-[1.5px] border-[#c0ddd0] rounded-xl text-sm font-bold hover:bg-[#f8faf9]"
+            >
+              Export PDF
+            </button>
+          </div>
+          {actionMsg && (
+            <div className="text-sm text-[#334155] bg-white border border-[#e8f0eb] px-3 py-2 rounded shadow-sm">
+              {actionMsg}
+            </div>
+          )}
+
+          {showQuoteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setShowQuoteModal(false)} />
+              <div className="relative z-10 w-full max-w-lg mx-4 bg-white rounded-2xl shadow-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Request a Quote</h3>
+                  <button onClick={() => setShowQuoteModal(false)} className="text-gray-600 hover:text-gray-900">✕</button>
+                </div>
+                <p className="text-sm text-slate-500 mb-3">You're requesting a quote for order <strong>#{order.id}</strong>. The items will be included but not shown here.</p>
+                <div className="grid grid-cols-1 gap-3 mb-3">
+                  <input value={quoteName} onChange={(e) => setQuoteName(e.target.value)} placeholder="Your name" className="px-3 py-2 border rounded" />
+                  <input value={quoteEmail} onChange={(e) => setQuoteEmail(e.target.value)} placeholder="Email" className="px-3 py-2 border rounded" />
+                  <input value={quotePhone} onChange={(e) => setQuotePhone(e.target.value)} placeholder="Phone" className="px-3 py-2 border rounded" />
+                  <input value={quoteCompany} onChange={(e) => setQuoteCompany(e.target.value)} placeholder="Company (optional)" className="px-3 py-2 border rounded" />
+                  <textarea value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Notes (optional)" rows={3} className="px-3 py-2 border rounded" />
+                </div>
+                <div className="flex items-center justify-end gap-3">
+                  <button onClick={() => setShowQuoteModal(false)} className="px-4 py-2 border rounded">Cancel</button>
+                  <button
+                    onClick={async () => {
+                      if (sendingQuote) return;
+                      setSendingQuote(true);
+                      setActionMsg('Sending quote request…');
+                      const payload = {
+                        items: order.items.map((it) => ({ product_id: it.id, quantity: it.qty })),
+                        contact: {
+                          name: quoteName || `${order.delivery.firstName || ''} ${order.delivery.lastName || ''}`.trim(),
+                          email: quoteEmail || order.delivery.email || null,
+                          phone: quotePhone || order.delivery.phone || null,
+                          company: quoteCompany || order.delivery.companyName || null,
+                        },
+                        notes: quoteNotes || null,
+                        order_reference: order.id,
+                      };
+                      try {
+                        await api.post('/quotes', payload);
+                        setActionMsg('Quote request sent. Our sales team will contact you.');
+                        setShowQuoteModal(false);
+                        setTimeout(() => setActionMsg(null), 4500);
+                      } catch (err) {
+                        console.error('Quote request failed', err);
+                        setActionMsg('Failed to send quote request.');
+                        setTimeout(() => setActionMsg(null), 4500);
+                      } finally {
+                        setSendingQuote(false);
+                      }
+                    }}
+                    className="px-4 py-2 bg-[#155DFC] text-white rounded"
+                  >
+                    {sendingQuote ? 'Sending…' : 'Send Quote'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <button
             onClick={() =>
               navigate("/checkout", {
@@ -848,4 +949,259 @@ useEffect(() => {
       </section>
     </div>
   );
+}
+// Small currency formatter matching adminOrders style
+const fmt = (n) =>
+  Number(n ?? 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+// Build a delivery-shaped object expected by admin export helpers
+function buildDeliveryForExport(order) {
+  const checkout = {
+    checkout_id: order.id,
+    paid_amount: order.total,
+    shipping_fee: order.shippingFee,
+    payment_method: order.paymentMethod || 'COD',
+    created_at: new Date().toISOString(),
+    user: {
+      first_name: order.delivery.firstName || '',
+      last_name: order.delivery.lastName || '',
+      email: order.delivery.email || '',
+      phone_number: order.delivery.phone || '',
+      company_name: order.delivery.companyName || '',
+    },
+    items: (order.items || []).map((it) => ({
+      product: Object.assign({}, it.product || {}, {
+        product_name: it.name || (it.product && it.product.product_name) || 'Product',
+        price: it.rawPrice || (it.product && (it.product.price || 0)) || 0,
+        size: (it.product && (it.product.size || it.product.variant || it.product.color)) || '',
+        unit: (it.product && (it.product.unit || 'pc')) || 'pc',
+      }),
+      quantity: it.qty || it.quantity || 1,
+      price: it.rawPrice || it.price || (it.product && it.product.price) || 0,
+    })),
+  };
+  return { checkout, delivery_id: order.id };
+}
+
+function resolveCheckoutAddress(checkout) {
+  if (!checkout) return "";
+  const parts = [
+    checkout.delivery_street,
+    checkout.delivery_barangay,
+    checkout.delivery_city,
+    checkout.delivery_province,
+    checkout.delivery_zip,
+    checkout.delivery_country,
+  ].filter(Boolean);
+  return parts.join(", ") || "";
+}
+
+// ExcelJS-based export (dynamic import, with CSV fallback)
+async function exportOrderToExcelJS(order) {
+  const delivery = buildDeliveryForExport(order);
+  try {
+    let ExcelJS = null;
+    let saveAs = null;
+    try {
+      const mod = await import('exceljs');
+      ExcelJS = mod && (mod.default || mod);
+    } catch (e) { ExcelJS = null; }
+    try {
+      const fs = await import('file-saver');
+      saveAs = fs && (fs.saveAs || fs.default || null);
+    } catch (e) { saveAs = null; }
+
+    const checkout = delivery.checkout || {};
+    const user = checkout.user || {};
+    const items = checkout.items || [];
+    const orderId = checkout.checkout_id || delivery.delivery_id || "order";
+    const paid = Number(checkout.paid_amount || 0);
+    const shipping = Number(checkout.shipping_fee || 0);
+    const subtotal = Math.max(0, paid - shipping);
+    if (!ExcelJS) throw new Error('exceljs-not-available');
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(`Order_${orderId}`);
+    ws.mergeCells('A5:G7');
+    ws.getCell('A5').value = 'QUOTATION';
+    ws.getCell('A5').font = { bold: true, size: 24 };
+    ws.getCell('A5').alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(5).height = 28;
+    const ciStart = 9;
+    ws.getCell(`A${ciStart}`).value = 'Client Name:';
+    ws.mergeCells(`B${ciStart}:F${ciStart}`);
+    ws.getCell(`B${ciStart}`).value = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    ws.getCell(`B${ciStart}`).alignment = { wrapText: true, vertical: 'top' };
+    ws.getCell(`G${ciStart}`).value = 'Date:';
+    ws.getCell(`A${ciStart}`).font = { bold: true };
+    ws.getCell(`A${ciStart+1}`).value = 'Company Name:';
+    ws.mergeCells(`B${ciStart+1}:F${ciStart+1}`);
+    ws.getCell(`B${ciStart+1}`).value = user.company_name || '';
+    ws.getCell(`B${ciStart+1}`).alignment = { wrapText: true, vertical: 'top' };
+    ws.getCell(`G${ciStart+1}`).value = 'Deliver:';
+    ws.getCell(`A${ciStart+1}`).font = { bold: true };
+    ws.getCell(`A${ciStart+2}`).value = 'Contact Details:';
+    ws.mergeCells(`B${ciStart+2}:F${ciStart+2}`);
+    ws.getCell(`B${ciStart+2}`).value = [user.email, user.phone_number].filter(Boolean).join(' | ');
+    ws.getCell(`B${ciStart+2}`).alignment = { wrapText: true, vertical: 'top' };
+    ws.getCell(`G${ciStart+2}`).value = 'Validity:';
+    ws.getCell(`A${ciStart+2}`).font = { bold: true };
+    ws.getCell(`A${ciStart+3}`).value = 'Address:';
+    ws.mergeCells(`B${ciStart+3}:F${ciStart+3}`);
+    const addr = order.delivery && order.delivery.formattedAddress ? order.delivery.formattedAddress : resolveCheckoutAddress(checkout);
+    ws.getCell(`B${ciStart+3}`).value = addr || '';
+    ws.getCell(`B${ciStart+3}`).alignment = { wrapText: true, vertical: 'top' };
+    ws.getCell(`G${ciStart+3}`).value = 'Payment & Terms';
+    ws.getCell(`A${ciStart+3}`).font = { bold: true };
+    ws.getCell(`G${ciStart+3}`).font = { bold: true };
+    ws.getCell(`G${ciStart+3}`).value = (checkout.payment_method || 'COD').toString().replace(/_/g,' ').toUpperCase();
+    for (let r = ciStart; r <= ciStart+3; r++) {
+      ['A','B','C','D','E','F','G'].forEach((col) => {
+        const c = ws.getCell(`${col}${r}`);
+        c.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+      });
+    }
+    const headerRow = 14;
+    const cols = ['No','Description','Size/Variant','Qty','Unit','Unit Price','Amount'];
+    ws.columns = [ { width: 16 }, { width: 18 }, { width: 18 }, { width: 16 }, { width: 18 }, { width: 16 }, { width: 34 } ];
+    try { ws.getColumn(2).alignment = { wrapText: true, vertical: 'top' }; } catch (e) {}
+    cols.forEach((c, i) => {
+      const cell = ws.getCell(headerRow, i+1);
+      cell.value = c; cell.font = { bold: true }; cell.alignment = { horizontal: 'center' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE3F0' } };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    });
+    const ITEM_START = headerRow + 1;
+    const ITEM_COUNT = Math.max(1, (items && items.length) || 0);
+    for (let r = 0; r < ITEM_COUNT; r++) {
+      const rowNumber = ITEM_START + r;
+      const it = items[r] || null;
+      if (it) {
+        const product = it.product || {};
+        const qty = Number(it.quantity || 1);
+        const price = Number(it.price ?? product.price ?? 0);
+        const amount = qty * price;
+        ws.getCell(rowNumber, 1).value = String(r + 1).padStart(2, '0');
+        ws.getCell(rowNumber, 2).value = product.product_name || it.name || '';
+        ws.getCell(rowNumber, 3).value = product.size || product.variant || product.color || '';
+        ws.getCell(rowNumber, 4).value = qty;
+        ws.getCell(rowNumber, 5).value = product.unit || 'pc';
+        ws.getCell(rowNumber, 6).value = price;
+        ws.getCell(rowNumber, 6).numFmt = '#,##0.00';
+        ws.getCell(rowNumber, 7).value = amount;
+        ws.getCell(rowNumber, 7).numFmt = '#,##0.00';
+      } else {
+        for (let c = 1; c <= 7; c++) ws.getCell(rowNumber, c).value = '';
+      }
+      ws.getCell(rowNumber,1).alignment = { horizontal: 'center' };
+      ws.getCell(rowNumber,4).alignment = { horizontal: 'center' };
+      ws.getCell(rowNumber,6).alignment = { horizontal: 'right' };
+      ws.getCell(rowNumber,7).alignment = { horizontal: 'right' };
+      for (let c = 1; c <= 7; c++) {
+        ws.getCell(rowNumber, c).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+      }
+    }
+    let rowIdx = ITEM_START + ITEM_COUNT;
+    ws.mergeCells(`A${rowIdx}:G${rowIdx}`);
+    ws.getCell(`A${rowIdx}`).value = '***Nothing Follows***';
+    ws.getCell(`A${rowIdx}`).font = { bold: true, color: { argb: 'FFB91C1C' } };
+    ws.getCell(`A${rowIdx}`).alignment = { horizontal: 'center' };
+    rowIdx++;
+    ws.getCell(`F${rowIdx}`).value = 'Subtotal';
+    ws.getCell(`G${rowIdx}`).value = subtotal;
+    ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00';
+    const cyanFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFF0FF' } };
+    for (let col = 1; col <= 6; col++) { const letter = String.fromCharCode(64 + col); const cell = ws.getCell(`${letter}${rowIdx}`); cell.fill = cyanFill; cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } }; }
+    const rightCell = ws.getCell(`G${rowIdx}`); rightCell.fill = cyanFill; rightCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    rowIdx++;
+    ws.getCell(`F${rowIdx}`).value = 'Shipping';
+    ws.getCell(`G${rowIdx}`).value = shipping === 0 ? 'FREE' : shipping;
+    if (shipping !== 0) ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00';
+    for (let col = 1; col <= 6; col++) { const letter = String.fromCharCode(64 + col); const cell = ws.getCell(`${letter}${rowIdx}`); cell.fill = cyanFill; cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } }; }
+    ws.getCell(`G${rowIdx}`).fill = cyanFill; ws.getCell(`G${rowIdx}`).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    rowIdx++;
+    const VAT_RATE = 0.12; const vatAmount = Math.round((subtotal * VAT_RATE) * 100) / 100;
+    ws.getCell(`F${rowIdx}`).value = `VAT (${Math.round(VAT_RATE * 100)}%)`;
+    ws.getCell(`G${rowIdx}`).value = vatAmount; ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00'; ws.getCell(`F${rowIdx}`).font = { bold: false };
+    for (let col = 1; col <= 6; col++) { const letter = String.fromCharCode(64 + col); const cell = ws.getCell(`${letter}${rowIdx}`); cell.fill = cyanFill; cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } }; }
+    ws.getCell(`G${rowIdx}`).fill = cyanFill; ws.getCell(`G${rowIdx}`).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+    rowIdx++;
+    ws.getCell(`F${rowIdx}`).value = 'Total Paid'; ws.getCell(`G${rowIdx}`).value = paid; ws.getCell(`G${rowIdx}`).numFmt = '#,##0.00'; ws.getCell(`F${rowIdx}`).font = { bold: true }; ws.getCell(`G${rowIdx}`).font = { bold: true };
+    for (let col = 1; col <= 6; col++) { const letter = String.fromCharCode(64 + col); const cell = ws.getCell(`${letter}${rowIdx}`); cell.fill = cyanFill; cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } }; }
+    ws.getCell(`G${rowIdx}`).fill = cyanFill; ws.getCell(`G${rowIdx}`).border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } };
+
+    ws.columns = [ { width: 16 }, { width: 18 }, { width: 18 }, { width: 16 }, { width: 18 }, { width: 16 }, { width: 34 } ];
+    try { ws.getColumn(2).alignment = { wrapText: true, vertical: 'top' }; } catch (e) {}
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    if (saveAs) {
+      saveAs(blob, `Quotation_Order_${orderId}.xlsx`);
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `Quotation_Order_${orderId}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+  } catch (e) {
+    console.error('exportOrderToExcelJS failed', e);
+    try {
+      const checkout = (buildDeliveryForExport(order).checkout) || {};
+      const user = checkout.user || {};
+      const items = checkout.items || [];
+      const orderId = checkout.checkout_id || "order";
+      const rows = [];
+      rows.push(["Quotation"]);
+      rows.push([]);
+      rows.push(["Client Name", `${user.first_name || ''} ${user.last_name || ''}`.trim()]);
+      rows.push(["Company", user.company_name || '']);
+      rows.push(["Contact", [user.email, user.phone_number].filter(Boolean).join(' | ')]);
+      rows.push(["Address", order.delivery && order.delivery.formattedAddress ? order.delivery.formattedAddress : '']);
+      rows.push([]);
+      rows.push(["No","Description","Size/Variant","Qty","Unit","Unit Price","Amount"]);
+      for (let i = 0; i < Math.max(items.length, 1); i++) {
+        const it = items[i] || {};
+        const product = it.product || {};
+        const qty = Number(it.quantity || 1);
+        const price = Number(it.price ?? product.price ?? 0);
+        const amount = qty * price;
+        rows.push([String(i + 1).padStart(2, '0'), product.product_name || it.name || '', product.size || product.variant || '', qty, product.unit || 'pc', price.toFixed(2), amount.toFixed(2)]);
+      }
+      const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Quotation_Order_${orderId}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    } catch (e2) { console.error('CSV fallback failed', e2); alert('Failed to export Excel file.'); }
+  }
+}
+
+// PDF export using printable HTML (opens in new tab and triggers print)
+function exportOrderToPDF(order) {
+  const checkout = buildDeliveryForExport(order).checkout;
+  const user = checkout.user || {};
+  const items = checkout.items || [];
+  const fullAddr = order.delivery && order.delivery.formattedAddress ? order.delivery.formattedAddress : resolveCheckoutAddress(checkout);
+  const orderId = checkout.checkout_id || order.id;
+  const paid = Number(checkout.paid_amount || 0);
+  const shipping = Number(checkout.shipping_fee || 0);
+  const grandTotal = paid;
+  const vatBase = grandTotal / 1.12;
+  const vat = grandTotal - vatBase;
+  const dateStr = new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+  const paymentMethod = (checkout.payment_method || 'COD').replace(/_/g, ' ').toUpperCase();
+  const itemRowsArr = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const product = item.product || {};
+    const qty = Number(item.quantity || 1);
+    const price = Number(item.price || product.price || 0);
+    const amount = price * qty;
+    itemRowsArr.push(`<tr><td style="text-align:center;padding:5px 4px;">${String(i + 1).padStart(2, "0")}</td><td style="padding:5px 6px;">${product.product_name ?? 'Product'}</td><td style="text-align:center;padding:5px 4px;">${product.size ?? product.variant ?? product.color ?? ''}</td><td style="text-align:center;padding:5px 4px;">${qty}</td><td style="text-align:center;padding:5px 4px;">${product.unit ?? 'pc'}</td><td style="text-align:right;padding:5px 6px;">${fmt(price)}</td><td style="text-align:right;padding:5px 6px;">${fmt(amount)}</td></tr>`);
+  }
+  const itemRows = itemRowsArr.join('');
+  const nfRowHtml = `\n      <tr class="nothing-follows">\n        <td colspan="7" style="border-top:2px solid #333;padding:8px 0;text-align:center;font-weight:bold;">***Nothing Follows***</td>\n      </tr>`;
+  const html = `<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8"/>\n<title>Quotation #${orderId}</title>\n<style>body{font-family:Arial,sans-serif;font-size:10pt;color:#111}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px}th{background:#f3f4f6}</style>\n</head>\n<body>\n<h2>Quotation #${orderId}</h2>\n<div><strong>Client:</strong> ${(`${user.first_name || ''} ${user.last_name || ''}`).trim() || '—'}</div>\n<div><strong>Company:</strong> ${user.company_name || ''}</div>\n<div><strong>Contact:</strong> ${[user.email, user.phone_number].filter(Boolean).join(' | ')}</div>\n<div><strong>Address:</strong> ${fullAddr || '—'}</div>\n<br/>\n<table><thead><tr><th style="width:40px">No.</th><th>Item Description</th><th style="width:80px">Size/Variant</th><th style="width:40px">Qty</th><th style="width:50px">Unit</th><th style="width:90px">Unit Price</th><th style="width:90px">Amount</th></tr></thead><tbody>${itemRows}${nfRowHtml}</tbody></table>\n<br/>\n<table style="width:100%"><tr><td style="text-align:right">Subtotal:</td><td style="width:120px;text-align:right">${fmt(vatBase)}</td></tr><tr><td style="text-align:right">VAT:</td><td style="text-align:right">${fmt(vat)}</td></tr><tr><td style="text-align:right">Total Amount:</td><td style="text-align:right">${fmt(grandTotal)}</td></tr></table>\n</body>\n</html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }

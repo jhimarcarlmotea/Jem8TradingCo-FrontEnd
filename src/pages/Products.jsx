@@ -157,7 +157,7 @@ function ToastContainer({ toasts }) {
    Now receives `avgRating` and `reviewCount` as explicit props computed from
    the global review list — so it always reflects real submitted reviews.
 ───────────────────────────────────────────────────────────────────────────── */
-function ProductCard({ product, onToast, avgRating, reviewCount }) {
+function ProductCard({ product, onToast, avgRating, reviewCount, selectable = false, selected = false, onSelectToggle }) {
   const [imgError, setImgError] = useState(false);
   const [added,    setAdded]    = useState(false);
   const [adding,   setAdding]   = useState(false);
@@ -203,6 +203,21 @@ function ProductCard({ product, onToast, avgRating, reviewCount }) {
 
   return (
     <div className="group relative bg-white rounded-[16px] overflow-hidden border border-[#e2e8f0] shadow-sm transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col hover:shadow-[0_20px_60px_rgba(0,0,0,0.12)] hover:-translate-y-[5px] hover:border-[#b8d9c8]">
+      {/* selection checkbox */}
+      {selectable && (
+          <label className="absolute top-3 left-3 z-20 flex items-center justify-center w-9 h-9 bg-white rounded-[8px] border border-[#e2e8f0] cursor-pointer" style={{ boxShadow: '0 4px 10px rgba(0,0,0,0.04)' }}>
+          <input
+            type="checkbox"
+            role="checkbox"
+            aria-checked={selected}
+            checked={selected}
+            onChange={(e) => { e.stopPropagation(); onSelectToggle && onSelectToggle(); }}
+            aria-label={`Select ${name} for quote`}
+            className="w-5 h-5 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#4d7b65]"
+            tabIndex={0}
+          />
+        </label>
+      )}
       <Link
         to={`/products/${productId}`}
         className="flex flex-col flex-1 no-underline text-inherit"
@@ -383,6 +398,11 @@ export default function Products() {
   */
   const [productRatings, setProductRatings] = useState({});
   const [showReqModal, setShowReqModal] = useState(false);
+  // Quote selection state: map productId -> boolean (moved higher so hero can read it)
+  const [quoteSelections, setQuoteSelections] = useState({});
+  const toggleSelect = (pid) => setQuoteSelections((s) => ({ ...s, [pid]: !s[pid] }));
+  const selectedProductIds = Object.keys(quoteSelections).filter((k) => quoteSelections[k]);
+  const selectedProducts = products.filter((p) => selectedProductIds.includes(String(p.id ?? p.product_id)));
 
   const [searchParams] = useSearchParams();
 
@@ -529,6 +549,7 @@ export default function Products() {
     { icon: "🚚", num: "Fast",                  label: "Direct Delivery" },
   ];
 
+
   return (
     <div className="bg-white">
       <Header />
@@ -571,7 +592,14 @@ export default function Products() {
               >
                 ✕
               </button>
-              <ProductRequestForm products={products} />
+              <ProductRequestForm
+                products={selectedProducts}
+                onSuccess={() => {
+                  setShowReqModal(false);
+                  setQuoteSelections({});
+                  showToast('Quote requested');
+                }}
+              />
             </div>
           </div>
         </div>
@@ -616,11 +644,13 @@ export default function Products() {
                 🛒 Browse Products
               </button>
               <button
-                className="inline-flex items-center gap-[8px] px-[28px] py-[13px] bg-transparent rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:-translate-y-[2px]"
-                style={{ border: `2px solid ${theme.accent}`, color: theme.accent, transition: "border-color 0.4s, color 0.4s" }}
-                onClick={() => setShowReqModal(true)}
+                className={selectedProducts.length === 0 ? 'inline-flex items-center gap-[8px] px-[22px] py-[11px] rounded-[10px] font-semibold text-[15px] transition-all duration-200 bg-white/60 text-[#9aa9a0] border border-[#e6efe8] cursor-not-allowed' : 'inline-flex items-center gap-[8px] px-[22px] py-[11px] bg-transparent rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:-translate-y-[2px]'}
+                style={selectedProducts.length === 0 ? { border: `1px solid #e6efe8` } : { border: `2px solid ${theme.accent}`, color: theme.accent, transition: "border-color 0.4s, color 0.4s" }}
+                onClick={() => { if (selectedProducts.length > 0) setShowReqModal(true); else window.alert('Please select at least one product to request a quote.'); }}
+                aria-disabled={selectedProducts.length === 0}
+                title={selectedProducts.length === 0 ? 'Select products first' : 'Request a quote for selected products'}
               >
-                Request a Quote →
+                Request a Quote{selectedProducts.length > 0 ? ` (${selectedProducts.length})` : ''} →
               </button>
             </div>
           </div>
@@ -763,6 +793,9 @@ export default function Products() {
                           onToast={showToast}
                           avgRating={rEntry.avg}
                           reviewCount={rEntry.count}
+                          selectable={true}
+                          selected={!!quoteSelections[pid]}
+                          onSelectToggle={() => toggleSelect(pid)}
                         />
                       );
                     })

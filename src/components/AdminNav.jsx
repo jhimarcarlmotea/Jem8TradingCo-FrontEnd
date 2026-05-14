@@ -6,37 +6,38 @@ const navGroups = [
   {
     group: "Overview",
     items: [
-      { label: "Dashboard", icon: "⊞", href: "/adminDashboard" },
+      { label: "Dashboard", icon: "⊞", href: "/adminDashboard", visibleTo: null },
     ],
   },
   {
     group: "Equipments and Supplies",
     items: [
-      { label: "Products", icon: "📦", href: "/adminProducts" },
-      { label: "Orders", icon: "🛒", href: "/adminOrders" },
-      { label: "Reviews", icon: "⭐", href: "/adminReviews" },
+      { label: "Products", icon: "📦", href: "/adminProducts", visibleTo: ['Sales','IT','Admin'] },
+      { label: "Orders", icon: "🛒", href: "/adminOrders", visibleTo: ['Sales','Admin'] },
+      { label: "Reviews", icon: "⭐", href: "/adminReviews", visibleTo: ['Marketing','Sales','Admin'] },
     ],
   },
   {
     group: "Content",
     items: [
-      { label: "Blog Post", icon: "📝", href: "/adminBlogpost" },
-      { label: "Messages", icon: "✉️", href: "/adminMessage" },
+      { label: "Blog Post", icon: "📝", href: "/adminBlogpost", visibleTo: ['Marketing','Admin'] },
+      { label: "Messages", icon: "✉️", href: "/adminMessage", visibleTo: ['Marketing','Sales','Admin'] },
     ],
   },
   {
     group: "People",
     items: [
-      { label: "Account Management", icon: "👤", href: "/adminAccountmanagement" },
-      { label: "Leadership Management", icon: "🏆", href: "/adminLeadership" },
-      { label: "Customer Reports", icon: "📊", href: "/adminContact" },
+      { label: "Account Management", icon: "👤", href: "/adminAccountmanagement", visibleTo: ['IT','Admin'] },
+      { label: "Leadership Management", icon: "🏆", href: "/adminLeadership", visibleTo: ['Admin'] },
+      { label: "Customer Reports", icon: "📊", href: "/adminContact", visibleTo: ['Finance','Admin'] },
     ],
   },
   {
     group: "System",
     items: [
-      { label: "Activity Log", icon: "📋", href: "/adminActivitylogs" },
-      { label: "Backup & Recovery", icon: "💾", href: "/adminBackup" },
+      { label: "Activity Log", icon: "📋", href: "/adminActivitylogs", visibleTo: ['Admin'] },
+      { label: "Payments", icon: "💳", href: "/adminPayments", visibleTo: ['Finance','Admin'] },
+      { label: "Backup & Recovery", icon: "💾", href: "/adminBackup", visibleTo: ['IT','Admin'] },
     ],
   },
 ];
@@ -150,9 +151,18 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
             <p className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
               {group.group}
             </p>
-            {group.items.map((item) => (
-              <NavLink key={item.label} item={item} />
-            ))}
+            {group.items
+              .filter((item) => {
+                // visibleTo === null -> visible to everyone
+                if (!item.visibleTo) return true;
+                // if user not loaded, default to hidden
+                if (!user) return false;
+                const dept = (user.department || user.dept || user.department_name || '').toString();
+                const isAdmin = (user.is_admin || user.isAdmin || user.role === 'admin' || user.role === 'administrator');
+                if (isAdmin) return true;
+                return item.visibleTo.map((v) => v.toString().toLowerCase()).includes(dept.toLowerCase());
+              })
+              .map((item) => (<NavLink key={item.label} item={item} />))}
           </div>
         ))}
 

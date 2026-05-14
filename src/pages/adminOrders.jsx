@@ -1742,6 +1742,7 @@ export default function AdminOrders() {
   const [currentPage,  setCurrentPage]  = useState(1);
   const [modalTarget,  setModalTarget]  = useState(null);
   const [viewTarget,   setViewTarget]   = useState(null);
+  const [priceTarget,  setPriceTarget]  = useState(null);
   const [selectedIds,  setSelectedIds]  = useState(new Set());
   const [exportedIds,  setExportedIds]  = useState(getExportedSet);
   // Product Requests (for Sales review)
@@ -1950,6 +1951,12 @@ export default function AdminOrders() {
       )}
       {viewTarget && (
         <ViewOrderModal delivery={viewTarget} onClose={() => setViewTarget(null)} />
+      )}
+      {priceTarget && (
+        <PriceModal delivery={priceTarget} onClose={() => setPriceTarget(null)} onSaved={(data) => {
+          // Refresh deliveries list after save
+          fetchDeliveries();
+        }} />
       )}
 
       <div style={{ display: "flex", minHeight: "100vh", background: "#F0F4F8", fontFamily: T.font }}>
@@ -2497,6 +2504,30 @@ export default function AdminOrders() {
                                   }}
                                 >{btn.label}</button>
                               ))}
+
+                              {/* Prices button */}
+                              <button onClick={() => setViewTarget(null) || setModalTarget(null) || (window.dispatchEvent(new CustomEvent('noop')), setModalTarget(null))} style={{ display: 'none' }} />
+                              <button
+                                onClick={() => setPriceTarget(d)}
+                                title="Edit item prices"
+                                className="ao-btn-action"
+                                style={{ padding: '4px 8px', borderRadius: T.radius.sm, fontSize: 10, fontWeight: 600, background: '#fff7ed', color: T.amber600, border: `1px solid ${T.amber100}`, cursor: 'pointer' }}
+                              >💲 Prices</button>
+
+                              {/* Quotation button — enabled only when all items have prices > 0 */}
+                              {(() => {
+                                const items = d.checkout?.items || [];
+                                const allPriced = items.length > 0 && items.every((it) => Number(it.price ?? it.product?.price ?? 0) > 0);
+                                return (
+                                  <button
+                                    onClick={() => exportOrderToExcelJS(d)}
+                                    disabled={!allPriced}
+                                    title={!allPriced ? 'All items must have prices to create a quotation' : 'Export quotation'}
+                                    className="ao-btn-action"
+                                    style={{ padding: '4px 8px', borderRadius: T.radius.sm, fontSize: 10, fontWeight: 600, background: allPriced ? T.blue600 : T.slate200, color: '#fff', border: 'none', cursor: allPriced ? 'pointer' : 'not-allowed' }}
+                                  >📄 Quotation</button>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
@@ -2570,5 +2601,80 @@ export default function AdminOrders() {
         </main>
       </div>
     </>
+  );
+}
+
+// ── Price Edit Modal ────────────────────────────────────────────────────────
+function PriceModal({ delivery, onClose, onSaved }) {
+  const [items, setItems] = useState((delivery.checkout?.items || []).map((it) => ({ ...it })));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleChange = (idx, val) => {
+    setItems((prev) => {
+      const next = prev.slice();
+      next[idx] = { ...next[idx], price: val };
+      return next;
+    });
+  };
+
+  const detectItemId = (it) => it.id ?? it.item_id ?? it.order_item_id ?? it.checkout_item_id ?? null;
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const payload = { items: items.map((it) => ({ id: detectItemId(it), price: Number(it.price || 0) })) };
+      // Try common endpoints with admin fallback
+      let res;
+      try { res = await api.patch(`/deliveries/${delivery.delivery_id}/items`, payload); }
+      catch (e) {
+        if (e.response?.status === 404) res = await api.patch(`/admin/deliveries/${delivery.delivery_id}/items`, payload);
+        else throw e;
+      }
+      onSaved && onSaved(res.data);
+      onClose();
+    } catch (e) {
+      console.error('price update failed', e);
+      setError(e.response?.data?.message || 'Failed to update prices.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Overlay wide onClose={onClose}>
+      <ModalHeader title={`Edit Prices — Order #${delivery.checkout?.checkout_id ?? ''}`} onClose={onClose} />
+      <div style={{ padding: 20 }}>
+        {items.length === 0 ? (
+          <div style={{ padding: 18, color: T.slate400 }}>No items to edit.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+            {items.map((it, idx) => {
+              const product = it.product || {};
+              return (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{product.product_name ?? it.name ?? 'Item'}</div>
+                    <div style={{ fontSize: 11, color: T.slate500 }}>Qty: {it.quantity ?? 1}</div>
+                  </div>
+                  <div style={{ width: 140, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input type="number" min="0" step="0.01" value={it.price ?? product.price ?? 0}
+                      onChange={(e) => handleChange(idx, e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: `1px solid ${T.slate200}`, borderRadius: 8 }} />
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>PHP</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {error && <div style={{ padding: '8px 10px', background: T.red50, border: `1px solid ${T.red100}`, color: T.red600, marginBottom: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ ...btnBase, background: '#fff', border: `1px solid ${T.slate200}` }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ ...btnBase, background: saving ? T.slate300 : T.blue600, color: '#fff' }}>{saving ? 'Saving…' : 'Save Prices'}</button>
+        </div>
+      </div>
+    </Overlay>
   );
 }

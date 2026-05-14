@@ -380,6 +380,10 @@ export default function AdminAccountManagement() {
   const [editModal,   setEditModal]   = useState(null);
   const [roleModal,   setRoleModal]   = useState(null);
   const [deleteModal, setDeleteModal] = useState(null);
+  const [createAdminModal, setCreateAdminModal] = useState(false);
+  const [departmentsModal, setDepartmentsModal] = useState(false);
+  const [resetModal, setResetModal] = useState(null);
+  const [departments, setDepartments] = useState([]);
   const [saving, setSaving]           = useState(false);
   const [toasts, setToasts]           = useState([]);
 
@@ -405,6 +409,17 @@ export default function AdminAccountManagement() {
   }, []);
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+
+  const fetchDepartments = useCallback(() => {
+    api.get('/departments')
+      .then((res) => {
+        const data = res.data?.data ?? res.data ?? [];
+        setDepartments(Array.isArray(data) ? data : []);
+      })
+      .catch(() => { setDepartments([]); });
+  }, []);
+
+  useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
 
   const totalAccounts = accounts.length;
   const totalAdmins   = accounts.filter((a) => a.role === "admin").length;
@@ -544,7 +559,7 @@ export default function AdminAccountManagement() {
             </div>
           </div>
           <button
-            onClick={fetchAccounts}
+              onClick={fetchAccounts}
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "8px 14px", borderRadius: T.radius.sm,
@@ -557,6 +572,10 @@ export default function AdminAccountManagement() {
           >
             {loading ? "⟳ Loading…" : "⟳ Refresh"}
           </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setCreateAdminModal(true)} style={{ padding: '8px 12px', borderRadius: T.radius.sm, border: `1px solid ${T.green500}`, background: '#fff', color: T.green600, fontWeight: 700 }}>＋ New Admin</button>
+            <button onClick={() => { setDepartmentsModal(true); fetchDepartments(); }} style={{ padding: '8px 12px', borderRadius: T.radius.sm, border: `1px solid ${T.slate200}`, background: '#fff', color: T.slate700 }}>⚙️ Departments</button>
+          </div>
         </div>
 
         {/* Stat Cards */}
@@ -830,6 +849,18 @@ export default function AdminAccountManagement() {
                           >
                             🗑️ Delete
                           </button>
+                          <button
+                            onClick={() => setResetModal(account)}
+                            title="Reset password"
+                            style={{
+                              padding: "4px 14px", borderRadius: T.radius.sm,
+                              border: `1px solid ${T.amber600}`, background: "#fff",
+                              color: T.amber600, fontSize: 12, fontWeight: 600,
+                              cursor: "pointer", transition: "background 0.12s", fontFamily: T.font,
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = T.amber50}
+                            onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+                          >🔐 Reset Password</button>
                         </div>
                       </div>
                     </div>
@@ -918,6 +949,124 @@ export default function AdminAccountManagement() {
       {editModal   && <EditModal   account={editModal}   onClose={() => !saving && setEditModal(null)}   onSave={handleEditSave}  saving={saving} />}
       {roleModal   && <RoleModal   account={roleModal}   onClose={() => !saving && setRoleModal(null)}   onSave={handleRoleSave}  saving={saving} />}
       {deleteModal && <DeleteModal account={deleteModal} onClose={() => !saving && setDeleteModal(null)} onConfirm={handleDelete} saving={saving} />}
+      {resetModal && (
+        <Overlay onClose={() => setResetModal(null)} narrow>
+          <ModalHeader title="Reset Password" subtitle={fullName(resetModal)} onClose={() => setResetModal(null)} />
+          <div style={{ padding: 20 }}>
+            <p>Send password reset email or set a temporary password for this account?</p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              <BtnCancel onClick={() => setResetModal(null)} />
+              <BtnPrimary onClick={() => {
+                setSaving(true);
+                api.post(`/accounts/${resetModal.id}/reset-password`).then(() => {
+                  setResetModal(null); toast('Reset email sent.');
+                }).catch(() => { toast('Failed to send reset.', 'error'); }).finally(() => setSaving(false));
+              }} disabled={saving}>Send Reset</BtnPrimary>
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {createAdminModal && (
+        <Overlay onClose={() => setCreateAdminModal(false)}>
+          <ModalHeader title="Create Admin" subtitle="Add a new admin account" onClose={() => setCreateAdminModal(false)} />
+          <CreateAdminForm onClose={() => { setCreateAdminModal(false); fetchAccounts(); }} onCreated={(u) => { setAccounts((p) => [u, ...p]); toast('Admin created.'); }} departments={departments} />
+        </Overlay>
+      )}
+
+      {departmentsModal && (
+        <Overlay onClose={() => setDepartmentsModal(false)} wide>
+          <ModalHeader title="Manage Departments" subtitle="Add or remove departments" onClose={() => setDepartmentsModal(false)} />
+          <DepartmentManager departments={departments} onChange={() => { fetchDepartments(); }} />
+        </Overlay>
+      )}
+    </div>
+  );
+}
+
+// ── Create Admin Form ────────────────────────────────────────────────────────
+function CreateAdminForm({ onClose, onCreated, departments = [] }) {
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone_number: '', role: 'admin', department: departments[0]?.name ?? '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleSubmit = () => {
+    setSubmitting(true);
+    api.post('/accounts', form).then((res) => {
+      const data = res.data?.data ?? res.data;
+      onCreated && onCreated(data);
+      onClose && onClose();
+    }).catch((e) => { console.error(e); alert('Failed to create admin'); }).finally(() => setSubmitting(false));
+  };
+
+  return (
+    <div style={{ padding: 20 }}>
+      <div style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <input name="first_name" placeholder="First name" value={form.first_name} onChange={handleChange} style={inputStyle} />
+          <input name="last_name" placeholder="Last name" value={form.last_name} onChange={handleChange} style={inputStyle} />
+        </div>
+        <input name="email" placeholder="Email" value={form.email} onChange={handleChange} style={inputStyle} />
+        <input name="phone_number" placeholder="Phone" value={form.phone_number} onChange={handleChange} style={inputStyle} />
+        <div>
+          <label style={{ fontSize: 11, color: T.slate600, marginBottom: 6, display: 'block' }}>Department</label>
+          <select name="department" value={form.department} onChange={handleChange} style={inputStyle}>
+            <option value="">Select department</option>
+            {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+          <BtnCancel onClick={onClose} />
+          <BtnPrimary onClick={handleSubmit} disabled={submitting}>{submitting ? 'Creating…' : 'Create Admin'}</BtnPrimary>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Department Manager ──────────────────────────────────────────────────────
+function DepartmentManager({ departments = [], onChange }) {
+  const [list, setList] = useState(departments || []);
+  const [newName, setNewName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = () => {
+    if (!newName.trim()) return;
+    setSaving(true);
+    api.post('/departments', { name: newName.trim() }).then((res) => {
+      setList((p) => [res.data?.data ?? res.data, ...p]);
+      setNewName('');
+      onChange && onChange();
+    }).catch(() => alert('Failed to add department')).finally(() => setSaving(false));
+  };
+
+  const handleDelete = (id) => {
+    if (!confirm('Delete department?')) return;
+    api.delete(`/departments/${id}`).then(() => {
+      setList((p) => p.filter((d) => d.id !== id));
+      onChange && onChange();
+    }).catch(() => alert('Failed to delete'));
+  };
+
+  return (
+    <div style={{ padding: 20 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New department" style={inputStyle} />
+        <button onClick={handleAdd} disabled={saving} style={{ padding: '8px 12px', borderRadius: T.radius.sm, border: `1px solid ${T.blue600}`, background: T.blue600, color: '#fff', fontWeight: 700 }}>
+          {saving ? 'Adding…' : 'Add'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {list.map((d) => (
+          <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 10, border: `1px solid ${T.slate200}`, borderRadius: T.radius.md }}>
+            <div>{d.name}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => handleDelete(d.id)} style={{ padding: '6px 10px', borderRadius: T.radius.sm, border: `1px solid ${T.red600}`, background: '#fff', color: T.red600 }}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

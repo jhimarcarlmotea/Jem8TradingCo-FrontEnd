@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
+import api from "../api/axios";
 import { Header, Footer } from "../components/Layout";
 // Inline delivery UI (was CheckoutDelivery component)
 import { getUserAddresses } from "../api/address";
@@ -294,17 +295,16 @@ export default function Checkout() {
         if (reorderItems.length > 0) {
           const responses = await Promise.all(
             reorderItems.map((item) =>
-              axios.post(
-                `${BASE}/cart/add`,
-                { product_id: item.productId, quantity: item.quantity },
-                { withCredentials: true }
+              api.post(
+                `/cart/add`,
+                { product_id: item.productId, quantity: item.quantity }
               )
             )
           );
           const newCartIds = new Set(
             responses.map((r) => r.data?.cart?.cart_id).filter(Boolean)
           );
-          const res = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
+          const res = await api.get(`/cart?isCheckout=false`);
           const cartItems = res.data.cartItems ?? [];
           const formatted = cartItems
             .filter((c) => newCartIds.has(c.cart_id))
@@ -328,7 +328,7 @@ export default function Checkout() {
           return;
         }
 
-        const res = await axios.get(`${BASE}/cart?isCheckout=false`, { withCredentials: true });
+        const res = await api.get(`/cart?isCheckout=false`);
         const cartItems = res.data.cartItems ?? [];
         const formatted = cartItems.map((c) => ({
           id: c.cart_id,
@@ -368,8 +368,8 @@ export default function Checkout() {
 
   const [user, setUser] = useState(null);
   useEffect(() => {
-    axios
-      .get(`${BASE}/me`, { withCredentials: true })
+    api
+      .get(`/me`)
       .then((res) => setUser(res.data?.data ?? res.data))
       .catch(() => {});
   }, []);
@@ -392,6 +392,10 @@ export default function Checkout() {
   const receiptInputRef = useRef(null);
   const [deliveryProvider, setDeliveryProvider] = useState(null);
   const [requiredMinimum, setRequiredMinimum] = useState(null);
+  // Debug: capture last request/response for troubleshooting
+  const [lastRequest, setLastRequest] = useState(null);
+  const [lastResponse, setLastResponse] = useState(null);
+  const [debugVisible, setDebugVisible] = useState(false);
 
   useEffect(() => {
     getUserAddresses()
@@ -413,6 +417,8 @@ export default function Checkout() {
   const [computedShippingFee, setComputedShippingFee] = useState(() => SHIPPING_FEE);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingMessage, setShippingMessage] = useState(null);
+  const [previewAvailable, setPreviewAvailable] = useState(true);
+  const [rateAvailable, setRateAvailable] = useState(true);
 
   const contactValid = !!(user?.first_name && user?.email);
   const deliveryValid =
@@ -477,30 +483,43 @@ export default function Checkout() {
       setShippingMessage('Calculating…');
       try {
         // Try checkout preview (may return shipping_fee)
-        try {
-          const previewRes = await axios.post(`${BASE}/checkout/preview`, { cart_ids: items.map(i => i.id), delivery_type: 'inhouse', address: addr }, { withCredentials: true });
-          const fee = previewRes.data?.shipping_fee ?? previewRes.data?.data?.shipping_fee ?? null;
-          if (!cancelled && fee !== null && fee !== undefined) {
-            setComputedShippingFee(Number(fee));
-            setShippingMessage(null);
-            setShippingLoading(false);
-            return;
+        if (previewAvailable) {
+          try {
+            const previewRes = await api.post(`/checkout/preview`, { cart_ids: items.map(i => i.id), delivery_type: 'inhouse', address: addr });
+            const fee = previewRes.data?.shipping_fee ?? previewRes.data?.data?.shipping_fee ?? null;
+            if (!cancelled && fee !== null && fee !== undefined) {
+              setComputedShippingFee(Number(fee));
+              setShippingMessage(null);
+              setShippingLoading(false);
+              return;
+            }
+          } catch (e) {
+            if (e.response?.status === 404) {
+              setPreviewAvailable(false);
+              setShippingMessage('Shipping preview not available; using fallback rate.');
+            }
+            // otherwise ignore and continue to rate endpoint
           }
-        } catch (e) {
-          // ignore preview errors and try dedicated rate endpoint
         }
 
-        try {
-          const rateRes = await axios.get(`${BASE}/shipping-rate`, { params: { cart_ids: items.map(i => i.id), street: addr.street, barangay: addr.barangay, city: addr.city, province: addr.province, zip: addr.zip }, withCredentials: true });
-          const fee2 = rateRes.data?.shipping_fee ?? rateRes.data?.data?.shipping_fee ?? null;
-          if (!cancelled && fee2 !== null && fee2 !== undefined) {
-            setComputedShippingFee(Number(fee2));
-            setShippingMessage(null);
-            setShippingLoading(false);
-            return;
+        // Try dedicated rate endpoint if available
+        if (rateAvailable) {
+          try {
+            const rateRes = await api.post(`/shipping-rate`, { cart_ids: items.map(i => i.id), address: addr });
+            const fee2 = rateRes.data?.shipping_fee ?? rateRes.data?.data?.shipping_fee ?? null;
+            if (!cancelled && fee2 !== null && fee2 !== undefined) {
+              setComputedShippingFee(Number(fee2));
+              setShippingMessage(null);
+              setShippingLoading(false);
+              return;
+            }
+          } catch (e) {
+            if (e.response?.status === 404) {
+              setRateAvailable(false);
+              setShippingMessage('Shipping rate service not available; using fallback.');
+            }
+            // ignore other errors
           }
-        } catch (e) {
-          // ignore
         }
 
         // Fallback to simple heuristic
@@ -558,6 +577,11 @@ export default function Checkout() {
 
   const handleProceedToReview = () => {
     setPlaceError(null);
+    // Require a complete delivery address before performing delivery-specific checks
+    if (deliveryType === 'inhouse' && !deliveryValid) {
+      setPlaceError('Please complete delivery address before reviewing your order.');
+      return;
+    }
 
     // Resolve address and determine required minimum + provider only for in-house delivery
     if (deliveryType === 'inhouse') {
@@ -693,16 +717,39 @@ export default function Checkout() {
     if (receiptFile) formData.append("receipt_image", receiptFile);
 
     try {
-      const res = await axios.post(`${BASE}/checkout`, formData, {
-        withCredentials: true,
+      // Capture request payload for debug before sending
+      const reqObj = {};
+      for (const pair of formData.entries()) {
+        const [k, v] = pair;
+        if (k.endsWith('[]')) {
+          const key = k.slice(0, -2);
+          if (!reqObj[key]) reqObj[key] = [];
+          reqObj[key].push(v);
+        } else if (k.startsWith('payment_details[') && k.endsWith(']')) {
+          const inner = k.slice('payment_details['.length, -1);
+          if (!reqObj.payment_details) reqObj.payment_details = {};
+          try {
+            reqObj.payment_details[inner] = JSON.parse(v);
+          } catch (e) {
+            reqObj.payment_details[inner] = v;
+          }
+        } else {
+          reqObj[k] = v instanceof File ? { name: v.name, type: v.type, size: v.size } : v;
+        }
+      }
+      setLastRequest(reqObj);
+
+      const res = await api.post(`/checkout`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      setLastResponse(res.data ?? res);
       navigate(`/orders?new=${res.data.checkout_id}`);
     } catch (err) {
       console.error('Place order error', err);
       const respData = err.response?.data;
       const friendly = respData?.message || (respData && typeof respData === 'string' ? respData : null);
       setPlaceError(friendly || (respData ? JSON.stringify(respData) : err.message || 'Failed to place order.'));
+      setLastResponse(respData ?? { error: err.message });
       setPlacing(false);
     }
   };
@@ -1157,6 +1204,12 @@ export default function Checkout() {
                   >
                     ← Back
                   </button>
+                  {placeError && (
+                    <div className="bg-[#fef2f2] border border-red-200 rounded-xl px-4 py-3 text-[13px] text-red-600 mb-4 mr-4">
+                      ⚠️ {placeError}
+                    </div>
+                  )}
+
                   <button
                     onClick={handleProceedToReview}
                     className="px-7 py-3.5 bg-[#3d6552] text-white border-none rounded-xl text-[15px] font-bold cursor-pointer hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(77,123,101,0.25)] transition-all"
@@ -1330,6 +1383,20 @@ export default function Checkout() {
                   >
                     {placing ? "Placing Order..." : "Place Order & Confirm Payment →"}
                   </button>
+                </div>
+                {/* Debug panel (temporary) */}
+                <div className="mt-4">
+                  <button onClick={() => setDebugVisible((v) => !v)} className="text-xs text-[#4d7b65] font-medium underline">
+                    {debugVisible ? 'Hide debug panel' : 'Show debug panel'}
+                  </button>
+                  {debugVisible && (
+                    <div className="mt-3 p-3 bg-[#0f1724] text-white rounded-xl text-xs">
+                      <div className="mb-2 font-bold">Last Request</div>
+                      <pre className="whitespace-pre-wrap text-[12px] mb-3" style={{ maxHeight: 180, overflow: 'auto' }}>{JSON.stringify(lastRequest, null, 2)}</pre>
+                      <div className="mb-2 font-bold">Last Response</div>
+                      <pre className="whitespace-pre-wrap text-[12px]" style={{ maxHeight: 180, overflow: 'auto' }}>{JSON.stringify(lastResponse, null, 2)}</pre>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
