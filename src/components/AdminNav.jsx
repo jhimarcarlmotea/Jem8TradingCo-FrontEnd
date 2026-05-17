@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { me } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 const navGroups = [
   {
@@ -49,24 +49,7 @@ const settingsItems = [
 
 export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
   const location = useLocation();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await me();
-        if (response.status === 200 && response.data.status === "success") {
-          setUser(response.data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch user:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { user, loading, setDepartmentForDev } = useAuth();
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -142,6 +125,24 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
         </div>
         <div className="mt-3 text-[15px] font-bold text-gray-900 leading-tight">Admin Panel</div>
         <div className="text-[11px] text-gray-400 mt-0.5">Account Management System</div>
+        {/* Dev-only department switcher */}
+            {import.meta.env.DEV && setDepartmentForDev && (
+          <div className="mt-3">
+            <label className="block text-[11px] text-gray-500 mb-1">Dev: switch department</label>
+            <select
+              className="w-full rounded-md border px-2 py-1 text-sm"
+              value={user?.department ?? (typeof window !== 'undefined' ? localStorage.getItem('dev_department') ?? "" : "")}
+              onChange={(e) => setDepartmentForDev(e.target.value)}
+            >
+              <option value="">(none)</option>
+              <option value="Sales">Sales</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Finance">Finance</option>
+              <option value="IT">IT</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Navigation Links */}

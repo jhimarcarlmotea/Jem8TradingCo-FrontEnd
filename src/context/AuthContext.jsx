@@ -13,7 +13,22 @@ export function AuthProvider({ children }) {
       const res = await me();
       // `me()` may return axios response or plain object
       const payload = res?.data ?? res;
-      setUser(payload?.data ?? payload ?? null);
+      let payloadUser = payload?.data ?? payload ?? null;
+
+      // apply dev override from localStorage when running in dev
+      if (import.meta.env.DEV && payloadUser) {
+        try {
+          const devDept = localStorage.getItem('dev_department');
+          if (devDept) {
+            const isAdminFlag = devDept.toString().toLowerCase() === 'admin';
+            payloadUser = { ...payloadUser, department: devDept, is_admin: isAdminFlag };
+          }
+        } catch (e) {
+          // ignore localStorage errors
+        }
+      }
+
+      setUser(payloadUser);
     } catch (e) {
       setUser(null);
     } finally {
@@ -49,6 +64,33 @@ export function AuthProvider({ children }) {
       if (!user) return false;
       return !!(user.is_admin || user.isAdmin || user.role === 'admin' || user.role === 'administrator');
     })(),
+    // Dev helper: allow temporarily changing department in dev for testing
+    setDepartmentForDev: import.meta.env.DEV
+      ? (dept) => {
+          setUser((prev) => {
+            if (!prev) return prev;
+            const normalized = dept || null;
+            const isAdminFlag = normalized ? normalized.toString().toLowerCase() === 'admin' : false;
+            const next = { ...prev, department: normalized, is_admin: isAdminFlag };
+            try {
+              if (normalized) {
+                localStorage.setItem('dev_department', normalized);
+              } else {
+                localStorage.removeItem('dev_department');
+              }
+            } catch (e) {
+              // ignore
+            }
+            // notify other listeners (some components listen to auth-login)
+            try {
+              window.dispatchEvent(new Event('auth-login'));
+            } catch (e) {
+              // ignore
+            }
+            return next;
+          });
+        }
+      : undefined,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

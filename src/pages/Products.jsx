@@ -398,11 +398,7 @@ export default function Products() {
   */
   const [productRatings, setProductRatings] = useState({});
   const [showReqModal, setShowReqModal] = useState(false);
-  // Quote selection state: map productId -> boolean (moved higher so hero can read it)
-  const [quoteSelections, setQuoteSelections] = useState({});
-  const toggleSelect = (pid) => setQuoteSelections((s) => ({ ...s, [pid]: !s[pid] }));
-  const selectedProductIds = Object.keys(quoteSelections).filter((k) => quoteSelections[k]);
-  const selectedProducts = products.filter((p) => selectedProductIds.includes(String(p.id ?? p.product_id)));
+  // Note: quote selection removed — product requests are entered inside the modal.
 
   const [searchParams] = useSearchParams();
 
@@ -593,10 +589,9 @@ export default function Products() {
                 ✕
               </button>
               <ProductRequestForm
-                products={selectedProducts}
+                products={products}
                 onSuccess={() => {
                   setShowReqModal(false);
-                  setQuoteSelections({});
                   showToast('Quote requested');
                 }}
               />
@@ -644,13 +639,12 @@ export default function Products() {
                 🛒 Browse Products
               </button>
               <button
-                className={selectedProducts.length === 0 ? 'inline-flex items-center gap-[8px] px-[22px] py-[11px] rounded-[10px] font-semibold text-[15px] transition-all duration-200 bg-white/60 text-[#9aa9a0] border border-[#e6efe8] cursor-not-allowed' : 'inline-flex items-center gap-[8px] px-[22px] py-[11px] bg-transparent rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:-translate-y-[2px]'}
-                style={selectedProducts.length === 0 ? { border: `1px solid #e6efe8` } : { border: `2px solid ${theme.accent}`, color: theme.accent, transition: "border-color 0.4s, color 0.4s" }}
-                onClick={() => { if (selectedProducts.length > 0) setShowReqModal(true); else window.alert('Please select at least one product to request a quote.'); }}
-                aria-disabled={selectedProducts.length === 0}
-                title={selectedProducts.length === 0 ? 'Select products first' : 'Request a quote for selected products'}
+                className={'inline-flex items-center gap-[8px] px-[22px] py-[11px] bg-transparent rounded-[10px] font-semibold text-[15px] transition-all duration-200 hover:-translate-y-[2px]'}
+                style={{ border: `2px solid ${theme.accent}`, color: theme.accent, transition: "border-color 0.4s, color 0.4s" }}
+                onClick={() => setShowReqModal(true)}
+                title={'Request a quote'}
               >
-                Request a Quote{selectedProducts.length > 0 ? ` (${selectedProducts.length})` : ''} →
+                Request a Quote →
               </button>
             </div>
           </div>
@@ -793,9 +787,6 @@ export default function Products() {
                           onToast={showToast}
                           avgRating={rEntry.avg}
                           reviewCount={rEntry.count}
-                          selectable={true}
-                          selected={!!quoteSelections[pid]}
-                          onSelectToggle={() => toggleSelect(pid)}
                         />
                       );
                     })

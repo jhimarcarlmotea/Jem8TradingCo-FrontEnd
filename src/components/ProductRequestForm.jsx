@@ -174,16 +174,38 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
         }
         if (!resolvedId) {
           try {
-            const res = await axios.get(`${API_BASE}/api/products/search`, { params: { query: productQuery } });
-            const fetched = res.data?.data || res.data || [];
-            if (Array.isArray(fetched) && fetched.length > 0) {
-              resolvedId = fetched[0]?.id ?? fetched[0]?.product_id ?? fetched[0]?.productId ?? null;
-              console.debug('ProductRequestForm: auto-resolved productId from API', resolvedId);
+            const q = (productQuery || '').toString().trim();
+            if (q) {
+              // Try primary expected param name `query` first
+              try {
+                const res = await axios.get(`${API_BASE}/api/products/search`, { params: { query: q } });
+                const fetched = res.data?.data || res.data || [];
+                if (Array.isArray(fetched) && fetched.length > 0) {
+                  resolvedId = fetched[0]?.id ?? fetched[0]?.product_id ?? fetched[0]?.productId ?? null;
+                  console.debug('ProductRequestForm: auto-resolved productId from API (query)', resolvedId);
+                }
+              } catch (firstErr) {
+                const resp = firstErr?.response;
+                console.debug('ProductRequestForm: auto-resolve API first attempt error', resp || firstErr?.message || firstErr);
+                // If backend complains about missing query param, retry with alternate param key `q`.
+                if (resp && resp.status === 400 && typeof resp.data?.message === 'string' && resp.data.message.toLowerCase().includes('query')) {
+                  try {
+                    const res2 = await axios.get(`${API_BASE}/api/products/search`, { params: { q } });
+                    const fetched2 = res2.data?.data || res2.data || [];
+                    if (Array.isArray(fetched2) && fetched2.length > 0) {
+                      resolvedId = fetched2[0]?.id ?? fetched2[0]?.product_id ?? fetched2[0]?.productId ?? null;
+                      console.debug('ProductRequestForm: auto-resolved productId from API (q)', resolvedId);
+                    }
+                  } catch (secondErr) {
+                    console.debug('ProductRequestForm: auto-resolve API second attempt error', secondErr?.response || secondErr?.message || secondErr);
+                  }
+                }
+              }
             } else {
-              console.debug('ProductRequestForm: no auto-resolution results from API');
+              console.debug('ProductRequestForm: empty query — skipping API auto-resolve');
             }
           } catch (apiErr) {
-            console.debug('ProductRequestForm: auto-resolve API error', apiErr?.response || apiErr.message || apiErr);
+            console.debug('ProductRequestForm: auto-resolve unexpected error', apiErr?.response || apiErr.message || apiErr);
           }
         }
       } catch (autoErr) {
