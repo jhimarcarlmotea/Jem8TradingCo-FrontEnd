@@ -1,11 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import axios from "axios";
-
-const API_BASE = (
-  typeof import.meta !== 'undefined' && import.meta.env
-    ? (import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE)
-    : undefined
-) || window.REACT_APP_API_BASE || "http://127.0.0.1:8000";
+import api from "../api/axios";
 
 function useDebounced(value, delay = 300) {
   const [debounced, setDebounced] = useState(value);
@@ -85,7 +79,7 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
 
     (async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/products/search`, { params: { query: debouncedQuery } });
+        const res = await api.get(`/products/search`, { params: { query: debouncedQuery } });
         const fetched = res.data?.data || res.data || [];
         console.debug('ProductRequestForm: fetched products', fetched);
         if (!cancelled) setProducts(fetched);
@@ -178,7 +172,7 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
             if (q) {
               // Try primary expected param name `query` first
               try {
-                const res = await axios.get(`${API_BASE}/api/products/search`, { params: { query: q } });
+                const res = await api.get(`/products/search`, { params: { query: q } });
                 const fetched = res.data?.data || res.data || [];
                 if (Array.isArray(fetched) && fetched.length > 0) {
                   resolvedId = fetched[0]?.id ?? fetched[0]?.product_id ?? fetched[0]?.productId ?? null;
@@ -190,7 +184,7 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
                 // If backend complains about missing query param, retry with alternate param key `q`.
                 if (resp && resp.status === 400 && typeof resp.data?.message === 'string' && resp.data.message.toLowerCase().includes('query')) {
                   try {
-                    const res2 = await axios.get(`${API_BASE}/api/products/search`, { params: { q } });
+                    const res2 = await api.get(`/products/search`, { params: { q } });
                     const fetched2 = res2.data?.data || res2.data || [];
                     if (Array.isArray(fetched2) && fetched2.length > 0) {
                       resolvedId = fetched2[0]?.id ?? fetched2[0]?.product_id ?? fetched2[0]?.productId ?? null;
@@ -254,7 +248,7 @@ export default function ProductRequestForm({ products: clientProducts = [] }) {
 
     try {
       setSending(true); setUploadProgress(0);
-      const res = await axios.post(`${API_BASE}/api/product-requests`, fd, {
+      const res = await api.post(`/product-requests`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (p) => {
           if (p.total) {

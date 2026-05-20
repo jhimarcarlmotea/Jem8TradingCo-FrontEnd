@@ -49,7 +49,7 @@ const settingsItems = [
 
 export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
   const location = useLocation();
-  const { user, loading, setDepartmentForDev } = useAuth();
+  const { user, loading, setDepartmentForDev, department, isAdmin } = useAuth();
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -131,7 +131,7 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
             <label className="block text-[11px] text-gray-500 mb-1">Dev: switch department</label>
             <select
               className="w-full rounded-md border px-2 py-1 text-sm"
-              value={user?.department ?? (typeof window !== 'undefined' ? localStorage.getItem('dev_department') ?? "" : "")}
+              value={department ?? (typeof window !== 'undefined' ? localStorage.getItem('dev_department') ?? "" : "")}
               onChange={(e) => setDepartmentForDev(e.target.value)}
             >
               <option value="">(none)</option>
@@ -152,16 +152,18 @@ export default function AdminNav({ sidebarOpen, setSidebarOpen }) {
             <p className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
               {group.group}
             </p>
-            {group.items
+              {group.items
               .filter((item) => {
                 // visibleTo === null -> visible to everyone
                 if (!item.visibleTo) return true;
                 // if user not loaded, default to hidden
                 if (!user) return false;
-                const dept = (user.department || user.dept || user.department_name || '').toString();
-                const isAdmin = (user.is_admin || user.isAdmin || user.role === 'admin' || user.role === 'administrator');
-                if (isAdmin) return true;
-                return item.visibleTo.map((v) => v.toString().toLowerCase()).includes(dept.toLowerCase());
+                const dept = (department || '').toString().trim();
+                const isAdminFlag = !!isAdmin;
+                if (isAdminFlag) return true;
+                return item.visibleTo
+                  .map((v) => (v || '').toString().trim().toLowerCase())
+                  .includes(dept.toLowerCase());
               })
               .map((item) => (<NavLink key={item.label} item={item} />))}
           </div>

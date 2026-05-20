@@ -397,6 +397,16 @@ export default function Checkout() {
   const [lastResponse, setLastResponse] = useState(null);
   const [debugVisible, setDebugVisible] = useState(false);
 
+  // Quote modal/form state (pre-checkout quote request)
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [sendingQuote, setSendingQuote] = useState(false);
+  const [quoteName, setQuoteName] = useState("");
+  const [quoteEmail, setQuoteEmail] = useState("");
+  const [quotePhone, setQuotePhone] = useState("");
+  const [quoteCompany, setQuoteCompany] = useState("");
+  const [quoteNotes, setQuoteNotes] = useState("");
+  const [actionMsg, setActionMsg] = useState(null);
+
   useEffect(() => {
     getUserAddresses()
       .then((res) => {
@@ -751,6 +761,35 @@ export default function Checkout() {
       setPlaceError(friendly || (respData ? JSON.stringify(respData) : err.message || 'Failed to place order.'));
       setLastResponse(respData ?? { error: err.message });
       setPlacing(false);
+    }
+  };
+
+  const handleRequestQuoteSubmit = async () => {
+    if (sendingQuote) return;
+    setSendingQuote(true);
+    setActionMsg('Sending quote request…');
+    const payload = {
+      items: items.map((it) => ({ product_id: it.productId || it.id, quantity: it.qty })),
+      contact: {
+        name: quoteName || `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
+        email: quoteEmail || user?.email || null,
+        phone: quotePhone || user?.phone_number || null,
+        company: quoteCompany || user?.company_name || null,
+      },
+      notes: quoteNotes || null,
+      order_reference: null,
+    };
+    try {
+      await api.post('/quotes', payload);
+      setActionMsg('Quote request sent successfully. Our sales team will contact you.');
+      setShowQuoteModal(false);
+      setTimeout(() => setActionMsg(null), 5000);
+    } catch (err) {
+      console.error('Quote request failed', err);
+      setActionMsg(err.response?.data?.message || 'Failed to send quote request.');
+      setTimeout(() => setActionMsg(null), 5000);
+    } finally {
+      setSendingQuote(false);
     }
   };
 
@@ -1363,27 +1402,97 @@ export default function Checkout() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between gap-3 mt-6">
+                {actionMsg && (
+                  <div className="bg-[#eff6ff] border border-blue-200 rounded-xl px-4 py-3 text-[13px] text-[#1e40af] mb-4">
+                    ℹ️ {actionMsg}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 mt-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      onClick={() => setStep(1)}
+                      disabled={placing}
+                      className="px-6 py-3.5 bg-transparent border-[1.5px] border-[#e8f0eb] rounded-xl text-sm font-semibold text-slate-600 cursor-pointer hover:border-[#4d7b65] hover:text-[#4d7b65] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={handlePlaceOrder}
+                      disabled={placing}
+                      className={`flex-1 px-6 py-3.5 bg-[#4d7b65] text-white border-none rounded-xl text-[15px] font-bold text-center transition-all
+                        ${
+                          placing
+                            ? "opacity-70 cursor-not-allowed"
+                            : "cursor-pointer hover:bg-[#3d6552] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(77,123,101,0.25)]"
+                        }`}
+                    >
+                      {placing ? "Placing Order..." : "Place Order & Confirm Payment →"}
+                    </button>
+                  </div>
+
                   <button
-                    onClick={() => setStep(1)}
-                    disabled={placing}
-                    className="px-6 py-3 bg-transparent border-[1.5px] border-[#e8f0eb] rounded-xl text-sm font-semibold text-slate-600 cursor-pointer hover:border-[#4d7b65] hover:text-[#4d7b65] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    type="button"
+                    onClick={() => {
+                      setQuoteName(`${user?.first_name || ''} ${user?.last_name || ''}`.trim());
+                      setQuoteEmail(user?.email || "");
+                      setQuotePhone(user?.phone_number || "");
+                      setQuoteCompany(user?.company_name || "");
+                      setQuoteNotes("");
+                      setShowQuoteModal(true);
+                    }}
+                    className="w-full py-3.5 bg-[#155DFC] text-white border-none rounded-xl text-[15px] font-bold text-center cursor-pointer hover:bg-[#1248cc] transition-all hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(21,93,252,0.25)]"
                   >
-                    ← Back
-                  </button>
-                  <button
-                    onClick={handlePlaceOrder}
-                    disabled={placing}
-                    className={`flex-1 px-6 py-4 bg-[#4d7b65] text-white border-none rounded-xl text-[15px] font-bold text-center transition-all
-                      ${
-                        placing
-                          ? "opacity-70 cursor-not-allowed"
-                          : "cursor-pointer hover:bg-[#3d6552] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(77,123,101,0.25)]"
-                      }`}
-                  >
-                    {placing ? "Placing Order..." : "Place Order & Confirm Payment →"}
+                    Request Quote for these Items →
                   </button>
                 </div>
+
+                {showQuoteModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" role="dialog" aria-modal="true" style={{ background: "rgba(0,0,0,0.5)" }}>
+                    <div className="absolute inset-0" onClick={() => setShowQuoteModal(false)} />
+                    <div className="relative z-10 w-full max-w-lg mx-4 bg-white rounded-2xl shadow-xl p-6" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-[#1a2e22] m-0">Request a Quote</h3>
+                        <button onClick={() => setShowQuoteModal(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none text-xl cursor-pointer">✕</button>
+                      </div>
+                      <p className="text-sm text-slate-500 mb-4 m-0 leading-relaxed">
+                        You are requesting a price quotation for the items currently in your checkout summary. Our sales team will get back to you with bulk rates.
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 mb-4">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-slate-600">Your Name</label>
+                          <input value={quoteName} onChange={(e) => setQuoteName(e.target.value)} placeholder="Full Name" className="px-3.5 py-2.5 border border-[#d1e8da] rounded-xl text-sm outline-none focus:border-[#4d7b65] font-[inherit]" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-slate-600">Email Address</label>
+                          <input type="email" value={quoteEmail} onChange={(e) => setQuoteEmail(e.target.value)} placeholder="email@example.com" className="px-3.5 py-2.5 border border-[#d1e8da] rounded-xl text-sm outline-none focus:border-[#4d7b65] font-[inherit]" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-slate-600">Phone Number</label>
+                          <input value={quotePhone} onChange={(e) => setQuotePhone(e.target.value)} placeholder="Contact Number" className="px-3.5 py-2.5 border border-[#d1e8da] rounded-xl text-sm outline-none focus:border-[#4d7b65] font-[inherit]" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-slate-600">Company Name</label>
+                          <input value={quoteCompany} onChange={(e) => setQuoteCompany(e.target.value)} placeholder="Company Name (optional)" className="px-3.5 py-2.5 border border-[#d1e8da] rounded-xl text-sm outline-none focus:border-[#4d7b65] font-[inherit]" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-slate-600">Additional Notes</label>
+                          <textarea value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Any special notes or requirements for this quote..." rows={3} className="px-3.5 py-2.5 border border-[#d1e8da] rounded-xl text-sm outline-none resize-none focus:border-[#4d7b65] font-[inherit]" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <button onClick={() => setShowQuoteModal(false)} className="px-5 py-2.5 border border-[#e8f0eb] rounded-xl text-sm font-bold text-slate-600 cursor-pointer bg-white hover:bg-slate-50 transition-colors">Cancel</button>
+                        <button
+                          onClick={handleRequestQuoteSubmit}
+                          disabled={sendingQuote}
+                          className="px-6 py-2.5 bg-[#155DFC] text-white rounded-xl text-sm font-bold cursor-pointer border-none hover:bg-[#1248cc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {sendingQuote ? 'Sending…' : 'Send Quote'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Debug panel (temporary) */}
                 <div className="mt-4">
                   <button onClick={() => setDebugVisible((v) => !v)} className="text-xs text-[#4d7b65] font-medium underline">

@@ -1753,6 +1753,48 @@ export default function AdminOrders() {
   const [attachQuery, setAttachQuery] = useState("");
   const [viewRequestsForDelivery, setViewRequestsForDelivery] = useState(null);
 
+  const renderPRDescription = useCallback((desc) => {
+    if (!desc && desc !== 0) return '—';
+    try {
+      const obj = typeof desc === 'string' ? JSON.parse(desc) : desc;
+      const parts = [];
+      if (obj && Array.isArray(obj.items) && obj.items.length) {
+        parts.push(
+          obj.items
+            .map((it) => {
+              const qty = it.quantity ?? it.qty ?? 1;
+              const name = it.product_name ?? it.name ?? (it.product_id ? `Product #${it.product_id}` : 'item');
+              return `${qty} × ${name}`;
+            })
+            .join('; ')
+        );
+      }
+      if (obj && obj.company) parts.push(`Company: ${obj.company}`);
+      if (obj && obj.order_reference) parts.push(`Ref: ${obj.order_reference}`);
+      if (obj && typeof obj === 'object') {
+        Object.keys(obj).forEach((k) => {
+          if (['items', 'company', 'order_reference'].includes(k)) return;
+          const v = obj[k];
+          if (typeof v === 'string' && v.trim()) parts.push(`${k}: ${v}`);
+        });
+      }
+      if (parts.length) return parts.join(' · ');
+      return String(desc);
+    } catch (e) {
+      return String(desc);
+    }
+  }, []);
+
+  const renderAvailability = useCallback((status, productAvailable) => {
+    if (status) {
+      const s = String(status).toLowerCase();
+      if (s === 'found') return 'Yes';
+      if (s === 'pending') return '-';
+      if (s === 'not-available' || s === 'not_available' || s.includes('not')) return 'No';
+    }
+    return productAvailable === '1' || productAvailable === 1 || productAvailable === true ? 'Yes' : 'No';
+  }, []);
+
   const fetchDeliveries = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -2110,8 +2152,8 @@ export default function AdminOrders() {
                           <td style={{ padding: '10px' }}>{r.id}</td>
                           <td style={{ padding: '10px' }}>{r.product_name ?? r.product_query ?? '—'}</td>
                           <td style={{ padding: '10px' }}>{r.requester_name ?? r.name ?? (r.user?.email ?? '—')}</td>
-                          <td style={{ padding: '10px' }}>{r.product_available === '1' || r.product_available === 1 || r.product_available === true ? 'Yes' : 'No'}</td>
-                          <td style={{ padding: '10px' }}>{r.description ?? '—'}</td>
+                          <td style={{ padding: '10px' }}>{renderAvailability(r.status, r.product_available)}</td>
+                          <td style={{ padding: '10px', whiteSpace: 'normal', maxWidth: 420 }}>{renderPRDescription(r.description)}</td>
                           <td style={{ padding: '10px' }}><strong>{String(r.status ?? 'pending')}</strong></td>
                           <td style={{ padding: '10px', display: 'flex', gap: 8 }}>
                             <button onClick={() => { setAttachTarget(r); setAttachQuery(''); }} className="ao-btn-action" style={{ ...btnBase, background: '#FFFDF7', border: `1px solid ${T.slate100}`, color: T.slate700 }}>Attach</button>
